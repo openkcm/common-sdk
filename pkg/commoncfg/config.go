@@ -1,0 +1,254 @@
+// Package common defines the necessary types to configure the application.
+// This minimal configuration is tailored for logging.
+package commoncfg
+
+import (
+	"encoding/json"
+	"runtime/debug"
+)
+
+// LoggerFormat is used to specify the logging format.
+type LoggerFormat string
+
+// LoggerTimeType is used to specify the type of time formatting.
+type LoggerTimeType string
+
+// SourceValueType represents the source type for retrieving configuration values.
+type SourceValueType string
+
+// FileFormat represents the format of a file.
+type FileFormat string
+
+// SecretType defines the type of secret used for authentication.
+type SecretType string
+
+// Protocol represents the communication protocol.
+type Protocol string
+
+const (
+	// Logger format types.
+	JSONLoggerFormat LoggerFormat = "json"
+	TextLoggerFormat LoggerFormat = "text"
+
+	// Logger time types.
+	UnixTimeLogger    LoggerTimeType = "unix"
+	PatternTimeLogger LoggerTimeType = "pattern"
+
+	GRPCProtocol Protocol = "grpc"
+	HTTPProtocol Protocol = "http"
+
+	InsecureSecretType SecretType = "insecure"
+	MTLSSecretType     SecretType = "mtls"
+	ApiTokenSecretType SecretType = "api-token"
+
+	EmbeddedSourceValue SourceValueType = "embedded"
+	EnvSourceValue      SourceValueType = "env"
+	FileSourceValue     SourceValueType = "file"
+
+	JSONFileFormat   FileFormat = "json"
+	BinaryFileFormat FileFormat = "binary"
+)
+
+type BaseConfig struct {
+	Application Application `yaml:"application" json:"application"`
+	Status      Status      `yaml:"status" json:"status"`
+	Logger      Logger      `yaml:"logger" json:"logger"`
+	Telemetry   Telemetry   `yaml:"telemetry" json:"telemetry"`
+	Audit       Audit       `yaml:"audit" json:"audit"`
+}
+
+// Application holds minimal application configuration.
+type Application struct {
+	Name             string            `yaml:"name" json:"name"`
+	Environment      string            `yaml:"environment" json:"environment"`
+	Labels           map[string]string `yaml:"labels" json:"labels"`
+	BuildInfo        BuildInfo
+	RuntimeBuildInfo *debug.BuildInfo
+}
+
+type Status struct {
+	Enabled bool `yaml:"enabled" json:"enabled"`
+	// Status.Address is the address to listen on for status reporting
+	Address string `yaml:"address" json:"address"`
+	// Status.Profiling enables profiling on the status server
+	Profiling bool `yaml:"profiling" json:"profiling"`
+}
+
+// Logger holds the configuration for logging.
+type Logger struct {
+	Source    bool            `yaml:"source" json:"source"`
+	Format    LoggerFormat    `yaml:"format" json:"format"`
+	Level     string          `yaml:"level" json:"level"`
+	Formatter LoggerFormatter `yaml:"formatter" json:"formatter"`
+}
+
+// LoggerTime holds configuration for the time formatting in logs.
+type LoggerTime struct {
+	Type      LoggerTimeType `yaml:"type" json:"type"`
+	Pattern   string         `yaml:"pattern" json:"pattern"`
+	Precision string         `yaml:"precision" json:"precision"`
+}
+
+// LoggerFormatter holds the logger formatter configuration.
+type LoggerFormatter struct {
+	Time   LoggerTime   `yaml:"time" json:"time"`
+	Fields LoggerFields `yaml:"fields" json:"fields"`
+}
+
+// LoggerOtel holds configuration for the OpenTelemetry fields.
+type LoggerOTel struct {
+	TraceID string `yaml:"traceId" json:"traceId"`
+	SpanID  string `yaml:"spanId" json:"spanId"`
+}
+
+// LoggerFields holds the mapping of log attributes.
+type LoggerFields struct {
+	Time    string              `yaml:"time" json:"time"`
+	Error   string              `yaml:"error" json:"error"`
+	Level   string              `yaml:"level" json:"level"`
+	Message string              `yaml:"message" json:"message"`
+	OTel    LoggerOTel          `yaml:"otel" json:"otel"`
+	Masking LoggerFieldsMasking `yaml:"masking" json:"masking"`
+}
+
+// LoggerFieldsMasking holds configuration for masking log fields.
+type LoggerFieldsMasking struct {
+	PII   []string          `yaml:"pii" json:"pii"`
+	Other map[string]string `yaml:"other" json:"other"`
+}
+
+// Telemetry defines the configuration for telemetry components.
+type Telemetry struct {
+	DynatraceOneAgent bool   `yaml:"dynatraceOneAgent" json:"dynatraceOneAgent"`
+	Traces            Trace  `yaml:"traces" json:"traces"`
+	Metrics           Metric `yaml:"metrics" json:"metrics"`
+	Logs              Log    `yaml:"logs" json:"logs"`
+}
+
+// Trace defines settings for distributed tracing.
+type Trace struct {
+	Enabled   bool      `yaml:"enabled" json:"enabled"`
+	Protocol  Protocol  `yaml:"protocol" json:"protocol"`
+	Host      SourceRef `yaml:"host" json:"host"`
+	URL       string    `yaml:"url" json:"url"`
+	SecretRef SecretRef `yaml:"secretRef" json:"secretRef"`
+}
+
+// Log defines settings for structured logging export.
+type Log struct {
+	Enabled   bool      `yaml:"enabled" json:"enabled"`
+	Protocol  Protocol  `yaml:"protocol" json:"protocol"`
+	Host      SourceRef `yaml:"host" json:"host"`
+	URL       string    `yaml:"url" json:"url"`
+	SecretRef SecretRef `yaml:"secretRef" json:"secretRef"`
+}
+
+// Metric defines settings for metrics export and Prometheus.
+type Metric struct {
+	Enabled    bool       `yaml:"enabled" json:"enabled"`
+	Protocol   Protocol   `yaml:"protocol" json:"protocol"`
+	Host       SourceRef  `yaml:"host" json:"host"`
+	URL        string     `yaml:"url" json:"url"`
+	SecretRef  SecretRef  `yaml:"secretRef" json:"secretRef"`
+	Prometheus Prometheus `yaml:"prometheus" json:"prometheus"`
+}
+
+// SecretRef defines how credentials or certificates are provided.
+type SecretRef struct {
+	Type     SecretType `yaml:"type" json:"type"`
+	MTLS     MTLS       `yaml:"mtls" json:"mtls"`
+	APIToken SourceRef  `yaml:"apiToken" json:"apiToken"`
+}
+
+// MTLS holds mTLS configuration for audit library.
+type MTLS struct {
+	Cert     SourceRef `yaml:"cert" json:"cert"`
+	CertKey  SourceRef `yaml:"certKey" json:"certKey"`
+	ServerCA SourceRef `yaml:"serverCa" json:"serverCa"`
+}
+
+// Audit holds the audit log library configuration.
+type Audit struct {
+	Endpoint string `yaml:"endpoint" json:"endpoint"`
+	// Potential mTLS for the endpoint.
+	MTLS *MTLS `yaml:"mtls" json:"mtls"`
+	// Potential BasicAuth for the endpoint.
+	BasicAuth *BasicAuth `yaml:"basicAuth" json:"basicAuth"`
+	// Optional set of additional properties to be added to OTLP log object. Must be added as a literal string to maintain casing.
+	AdditionalProperties string `yaml:"additionalProperties" json:"additionalProperties"`
+}
+
+// BasicAuth holds basic auth configuration for audit library.
+type BasicAuth struct {
+	Username SourceRef `yaml:"username" json:"username"`
+	Password SourceRef `yaml:"password" json:"password"`
+}
+
+// SourceRef defines a reference to a source for retrieving a value.
+type SourceRef struct {
+	Source SourceValueType `yaml:"source" json:"source"`
+	Env    string          `yaml:"env" json:"env"`
+	File   CredentialFile  `yaml:"file" json:"file"`
+	Value  string          `yaml:"value" json:"value"`
+}
+
+// CredentialFile describes a file-based credential.
+type CredentialFile struct {
+	Path     string     `yaml:"path" json:"path"`
+	Format   FileFormat `yaml:"format" json:"format"`
+	JSONPath string     `yaml:"jsonPath" json:"jsonPath"`
+}
+
+// Prometheus defines configuration for Prometheus integration.
+type Prometheus struct {
+	Enabled bool `yaml:"enabled" json:"enabled"`
+}
+
+// GRPCServer specifies the gRPC server configuration e.g. used by the
+// business gRPC server if any.
+type GRPCServer struct {
+	Address                  string               `yaml:"address" json:"address"`
+	MaxRecvMsgSize           int                  `yaml:"maxRecvMsgSize" json:"maxRecvMsgSize"`
+	EfPolMinTime             int                  `yaml:"efPolMinTime" json:"efPolMinTime"`
+	EfPolPermitWithoutStream bool                 `yaml:"efPolPermitWithoutStream" json:"efPolPermitWithoutStream"`
+	Attributes               GRPCServerAttributes `yaml:"attributes" json:"attributes"`
+}
+
+type GRPCServerAttributes struct {
+	MaxConnectionIdle     int `yaml:"maxConnectionIdle" json:"maxConnectionIdle"`
+	MaxConnectionAge      int `yaml:"maxConnectionAge" json:"maxConnectionAge"`
+	MaxConnectionAgeGrace int `yaml:"maxConnectionAgeGrace" json:"maxConnectionAgeGrace"`
+	Time                  int `yaml:"time" json:"time"`
+	Timeout               int `yaml:"timeout" json:"timeout"`
+}
+
+// GRPCClient specifies the gRPC client configuration e.g. used by the
+// gRPC health check client.
+type GRPCClient struct {
+	Address    string               `yaml:"address" json:"address"`
+	Attributes GRPCClientAttributes `yaml:"attributes" json:"attributes"`
+}
+
+type GRPCClientAttributes struct {
+	KeepaliveTimeSec    int `yaml:"keepaliveTimeSec" json:"keepaliveTimeSec"`
+	KeepaliveTimeoutSec int `yaml:"keepaliveTimeoutSec" json:"keepaliveTimeoutSec"`
+}
+
+// BuildInfo holds metadata about the build
+type BuildInfo struct {
+	rawJSON json.RawMessage
+
+	Branch          string `json:"branch"`
+	BuildWorkflowId string `json:"buildWorkflowId"`
+	Org             string `json:"org"`
+	Product         string `json:"product"`
+	ReleaseMetadata string `json:"releaseMetadata"`
+	Repo            string `json:"repo"`
+	SHA             string `json:"sha"`
+	SecurityScan    string `json:"securityScan"`
+	Version         string `json:"version"`
+}
+
+func (bi *BuildInfo) String() string {
+	return string(bi.rawJSON)
+}

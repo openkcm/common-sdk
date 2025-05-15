@@ -1,0 +1,5 @@
+{
+  "otlp-cert": "incorrect-cert-content",
+  "otlp-key": "incorrect-cert-key-content",
+  "otlp-server-ca": "incorrect-server-ca-content"
+}

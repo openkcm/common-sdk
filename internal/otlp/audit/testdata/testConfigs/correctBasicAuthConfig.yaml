@@ -1,0 +1,19 @@
+application:
+  name: go-svc-template
+  environment: development
+
+audit:
+  endpoint: "http://localhost:4043/logs"
+  basicAuth:
+    username:
+      source: file
+      file:
+        path: ../../../internal/otlp/audit/testdata/correctBasicAuth.json
+        format: json
+        jsonPath: "$.username"
+    password:
+      source: file
+      file:
+        path: ../../../internal/otlp/audit/testdata/correctBasicAuth.json
+        format: json
+        jsonPath: "$.password"

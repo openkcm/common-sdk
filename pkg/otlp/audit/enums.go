@@ -1,0 +1,140 @@
+package otlpaudit
+
+type KeyCreateActionType string
+type KeyUpdateActionType string
+type KeyReadActionType string
+type UserLoginFailureActionType string
+type TenantUpdateActionType string
+type LoginMethod string
+type MfaType string
+type UserType string
+type FailReason string
+type CredentialType string
+type KeyLevel string
+
+const (
+	L1 KeyLevel = "L1KEY"
+	L2 KeyLevel = "L2KEY"
+	L3 KeyLevel = "L3KEY"
+)
+
+const (
+	KEYCREATE_CREATE  KeyCreateActionType = "CREATE"
+	KEYCREATE_IMPORT  KeyCreateActionType = "IMPORT"
+	KEYCREATE_RESTORE KeyCreateActionType = "RESTORE"
+)
+const (
+	KEYUPDATE_ENABLE  KeyUpdateActionType = "ENABLE"
+	KEYUPDATE_DISABLE KeyUpdateActionType = "DISABLE"
+	KEYUPDATE_ROTATE  KeyUpdateActionType = "ROTATE"
+)
+const (
+	KEYREAD_READMETADATA KeyReadActionType = "READ_METADATA"
+	KEYREAD_CRYPTOACCESS KeyReadActionType = "CRYPTO_ACCESS"
+)
+const (
+	USERLOGINFAIL_AUTHN UserLoginFailureActionType = "AUTHN"
+	USERLOGINFAIL_AUTHZ UserLoginFailureActionType = "AUTHZ"
+	USERLOGINFAIL_FLOW  UserLoginFailureActionType = "FLOW"
+)
+const (
+	TENANTUPDATE_TESTMODE        TenantUpdateActionType = "TEST_MODE"
+	TENANTUPDATE_WORKFLOWENABLE  TenantUpdateActionType = "WORKFLOW_ENABLE"
+	TENANTUPDATE_WORKFLOWDISABLE TenantUpdateActionType = "WORKFLOW_DISABLE"
+)
+const (
+	LOGINMETHOD_OPENIDCONNECT LoginMethod = "OPEN_ID_CONNECT"
+	LOGINMETHOD_X509CERT      LoginMethod = "X509_CERTIFICATE"
+)
+const (
+	MFATYPE_WEBAUTHN MfaType = "WEB_AUTHN"
+	MFATYPE_NONE     MfaType = "NONE"
+)
+const (
+	USERTYPE_BUSINESS  UserType = "BUSINESS_USER"
+	USERTYPE_TECHNICAL UserType = "TECHNICAL_USER"
+)
+const (
+	FAILREASON_PASSWORD        FailReason = "PASSWORD"
+	FAILREASON_MFAFAIL         FailReason = "MFA_FAILED"
+	FAILREASON_USERNOTFOUND    FailReason = "USER_NOT_FOUND"
+	FAILREASON_USERLOCKED      FailReason = "USER_LOCKED"
+	FAILREASON_USERBLOCKED     FailReason = "USER_BLOCKED"
+	FAILREASON_USERUNVERIFIED  FailReason = "USER_UNVERIFIED"
+	FAILREASON_USEREXPIRED     FailReason = "USER_EXPIRED"
+	FAILREASON_USERINVALID     FailReason = "USER_INVALID"
+	FAILREASON_INSECURECONNECT FailReason = "INSECURE_CONNECTION"
+	FAILREASON_METHODDISABLED  FailReason = "LOGIN_METHOD_DISABLED"
+	FAILREASON_TOKENEXPIRED    FailReason = "TOKEN_EXPIRED"
+	FAILREASON_TOKENREVOKED    FailReason = "TOKEN_REVOKED"
+	FAILREASON_TOKENINVALID    FailReason = "TOKEN_INVALID"
+	FAILREASON_SESSIONEXPIRED  FailReason = "SESSION_EXPIRED"
+	FAILREASON_SESSIONREVOKED  FailReason = "SESSION_REVOKED"
+	FAILREASON_CERTEXPIRED     FailReason = "CERTIFICATE_EXPIRED"
+	FAILREASON_CERTREVOKED     FailReason = "CERTIFICATE_REVOKED"
+	FAILREASON_CERTINVALID     FailReason = "CERTIFICATE_INVALID"
+)
+
+const (
+	CREDTYPE_X509CERT CredentialType = "X509_CERTIFICATE"
+	CREDTYPE_KEY      CredentialType = "KEY"
+	CREDTYPE_SECRET   CredentialType = "SECRET"
+)
+
+const UNSPECIFIED = "UNSPECIFIED"
+
+func (l KeyLevel) IsValid() bool {
+	return isOneOf(l, L1, L2, L3)
+}
+
+func (t KeyCreateActionType) IsValid() bool {
+	return isOneOf(t, KEYCREATE_CREATE, KEYCREATE_IMPORT, KEYCREATE_RESTORE)
+}
+func (t KeyUpdateActionType) IsValid() bool {
+	return isOneOf(t, KEYUPDATE_ROTATE, KEYUPDATE_DISABLE, KEYUPDATE_ENABLE)
+}
+func (t KeyReadActionType) IsValid() bool {
+	return isOneOf(t, KEYREAD_READMETADATA, KEYREAD_CRYPTOACCESS)
+}
+func (t UserLoginFailureActionType) IsValid() bool {
+	return isOneOf(t, USERLOGINFAIL_AUTHN, USERLOGINFAIL_AUTHZ, USERLOGINFAIL_FLOW)
+}
+func (t TenantUpdateActionType) IsValid() bool {
+	return isOneOf(t, TENANTUPDATE_WORKFLOWENABLE, TENANTUPDATE_WORKFLOWDISABLE, TENANTUPDATE_TESTMODE)
+}
+func (l LoginMethod) IsValid() bool {
+	return isOneOf(l, LOGINMETHOD_OPENIDCONNECT, LOGINMETHOD_X509CERT, "")
+}
+func (l MfaType) IsValid() bool {
+	return isOneOf(l, MFATYPE_NONE, MFATYPE_WEBAUTHN, "")
+}
+func (u UserType) IsValid() bool {
+	return isOneOf(u, USERTYPE_BUSINESS, USERTYPE_TECHNICAL, "")
+}
+func (r FailReason) IsValid() bool {
+	return isOneOf(r,
+		FAILREASON_PASSWORD,
+		FAILREASON_MFAFAIL,
+		FAILREASON_USERINVALID,
+		FAILREASON_USERLOCKED,
+		FAILREASON_USERBLOCKED,
+		FAILREASON_USERNOTFOUND,
+		FAILREASON_USERUNVERIFIED,
+		FAILREASON_USEREXPIRED,
+		FAILREASON_METHODDISABLED,
+		FAILREASON_TOKENEXPIRED,
+		FAILREASON_TOKENINVALID,
+		FAILREASON_TOKENREVOKED,
+		FAILREASON_SESSIONREVOKED,
+		FAILREASON_SESSIONEXPIRED,
+		FAILREASON_CERTEXPIRED,
+		FAILREASON_CERTREVOKED,
+		FAILREASON_CERTINVALID,
+		FAILREASON_INSECURECONNECT,
+		FAILREASON_MFAFAIL,
+		"",
+	)
+}
+func (c CredentialType) IsValid() bool {
+	return isOneOf(c, CREDTYPE_X509CERT, CREDTYPE_KEY, CREDTYPE_SECRET, "")
+}
