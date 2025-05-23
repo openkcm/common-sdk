@@ -43,8 +43,14 @@ type ClientData struct {
 	Email   string `json:"mail"`
 	Region  string `json:"reg"`
 
+	// KeyID is a unique identifier for the key used to sign the client data.
+	// This way the consumer can determine which key to use to verify the signature
+	// and when to fetch a new public key.
+	KeyID string `json:"kid"`
+	// SignatureAlgorithm is the algorithm used to sign the client data.
 	SignatureAlgorithm SignatureAlgorithm `json:"alg"`
-	b64data            string
+
+	b64data string
 }
 
 // DecodeFrom decodes the base64 URL encoded client data and unmarshals it into a ClientData struct.
