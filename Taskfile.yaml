@@ -4,6 +4,8 @@ includes:
   shared:
     taskfile: hack/common/Taskfile_library.yaml
     flatten: true
+    excludes: # put task names in here which are overwritten in this file
+      - generate:generate
     vars:
       CODE_DIRS: '{{.ROOT_DIR}}/pkg/... {{.ROOT_DIR}}/internal/...'
       GENERATE_DOCS_INDEX: "true"
