@@ -16,7 +16,7 @@ require (
 	github.com/veqryn/slog-context/otel v0.8.0
 	go.opentelemetry.io/collector/pdata v1.33.0
 	go.opentelemetry.io/contrib/bridges/otelslog v0.11.0
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.61.0
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.12.2
