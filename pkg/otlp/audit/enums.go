@@ -10,12 +10,14 @@ type MfaType string
 type UserType string
 type FailReason string
 type CredentialType string
-type KeyLevel string
+type KeyType string
+type CmkAction string
 
 const (
-	L1 KeyLevel = "L1KEY"
-	L2 KeyLevel = "L2KEY"
-	L3 KeyLevel = "L3KEY"
+	KEYTYPE_SYSTEM  KeyType = "KEY_TYPE_SYSTEM"
+	KEYTYPE_SERVICE KeyType = "KEY_TYPE_SERVICE"
+	KEYTYPE_DATA    KeyType = "KEY_TYPE_DATA"
+	KEYTYPE_KEK     KeyType = "KEY_TYPE_KEK"
 )
 
 const (
@@ -81,10 +83,18 @@ const (
 	CREDTYPE_SECRET   CredentialType = "SECRET"
 )
 
+const (
+	CMKACTION_ONBOARD      CmkAction = "CMK_ACTION_ONBOARD"
+	CMKACTION_BLOCK        CmkAction = "CMK_ACTION_BLOCK"
+	CMKACTION_SHUTDOWN     CmkAction = "CMK_ACTION_SHUTDOWN"
+	CMKACTION_CSEKFALLBACK CmkAction = "CMK_ACTION_CSEKFALLBACK"
+	CMKACTION_RESTORE      CmkAction = "CMK_ACTION_RESTORE"
+)
+
 const UNSPECIFIED = "UNSPECIFIED"
 
-func (l KeyLevel) IsValid() bool {
-	return isOneOf(l, L1, L2, L3)
+func (l KeyType) IsValid() bool {
+	return isOneOf(l, KEYTYPE_DATA, KEYTYPE_SERVICE, KEYTYPE_KEK, KEYTYPE_SYSTEM, "")
 }
 
 func (t KeyCreateActionType) IsValid() bool {
@@ -137,4 +147,8 @@ func (r FailReason) IsValid() bool {
 }
 func (c CredentialType) IsValid() bool {
 	return isOneOf(c, CREDTYPE_X509CERT, CREDTYPE_KEY, CREDTYPE_SECRET, "")
+}
+
+func (c CmkAction) IsValid() bool {
+	return isOneOf(c, CMKACTION_ONBOARD, CMKACTION_BLOCK, CMKACTION_SHUTDOWN, CMKACTION_CSEKFALLBACK, CMKACTION_RESTORE, "")
 }

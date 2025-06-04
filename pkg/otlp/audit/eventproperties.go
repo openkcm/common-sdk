@@ -18,6 +18,15 @@ func (m eventProperties) hasValues(keys ...string) bool {
 	return true
 }
 
+func hasValues(values ...any) bool {
+	for _, value := range values {
+		if isZeroVal(value) {
+			return false
+		}
+	}
+	return true
+}
+
 func isZeroVal[T comparable](v T) bool {
 	valueType := reflect.TypeOf(v)
 	if valueType == nil {

@@ -10,7 +10,11 @@ import (
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
 
-type OtlpClient struct {
+type AuditLogger struct {
+	client otlpClient
+}
+
+type otlpClient struct {
 	Endpoint  string
 	Client    *http.Client
 	BasicAuth *basicAuth
@@ -20,7 +24,7 @@ type basicAuth struct {
 	username, password string
 }
 
-func New(config *commoncfg.Audit) (*OtlpClient, error) {
+func NewLogger(config *commoncfg.Audit) (*AuditLogger, error) {
 	var b basicAuth
 	tr := &http.Transport{
 		MaxIdleConns:    10,
@@ -40,24 +44,26 @@ func New(config *commoncfg.Audit) (*OtlpClient, error) {
 		}
 	}
 
-	return &OtlpClient{
-		Endpoint: config.Endpoint,
-		Client: &http.Client{
-			Transport: tr,
-			Timeout:   30 * time.Second,
+	return &AuditLogger{
+		client: otlpClient{
+			Endpoint: config.Endpoint,
+			Client: &http.Client{
+				Transport: tr,
+				Timeout:   30 * time.Second,
+			},
+			BasicAuth: &b,
 		},
-		BasicAuth: &b,
 	}, nil
 }
 
 func loadBasicAuth(config *commoncfg.Audit, b basicAuth) (basicAuth, error) {
 	u, err := commoncfg.LoadValueFromSourceRef(config.BasicAuth.Username)
 	if err != nil {
-		return basicAuth{}, err
+		return basicAuth{}, errors.Join(errLoadValue, err)
 	}
 	p, err := commoncfg.LoadValueFromSourceRef(config.BasicAuth.Password)
 	if err != nil {
-		return basicAuth{}, err
+		return basicAuth{}, errors.Join(errLoadValue, err)
 	}
 	b = basicAuth{
 		username: string(u),

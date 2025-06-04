@@ -8,68 +8,71 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 )
 
-func NewKeyCreateEvent(metadata EventMetadata, objectID string, l KeyLevel, t KeyCreateActionType, value any, dpp bool) (plog.Logs, error) {
-	if !t.IsValid() || !l.IsValid() {
-		return plog.Logs{}, errEventCreation
+func NewKeyCreateEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType) (plog.Logs, error) {
+	m, err := newKeyEvent(KeyCreateEvent, metadata, objectID, systemID, cmkID, t)
+	if err != nil {
+		return plog.Logs{}, err
 	}
-
-	m := newEventProperties(objectID, KeyCreateEvent, metadata)
-	m[ObjectTypeKey] = string(l)
-	m[ActionTypeKey] = string(t)
-	m[ValueKey] = value
-	m[DppKey] = dpp
 
 	return createEvent(m)
 }
 
-func NewKeyDeleteEvent(metadata EventMetadata, objectID string, l KeyLevel, value any, dpp bool) (plog.Logs, error) {
-	if !l.IsValid() {
-		return plog.Logs{}, errEventCreation
+func NewKeyDeleteEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType) (plog.Logs, error) {
+	m, err := newKeyEvent(KeyDeleteEvent, metadata, objectID, systemID, cmkID, t)
+	if err != nil {
+		return plog.Logs{}, err
 	}
-
-	m := newEventProperties(objectID, KeyDeleteEvent, metadata)
-	m[ObjectTypeKey] = string(l)
-	m[ActionTypeKey] = deleteActionType
-	m[ValueKey] = value
-	m[DppKey] = dpp
 
 	return createEvent(m)
 }
 
-func NewKeyUpdateEvent(metadata EventMetadata, objectID, propertyName string, l KeyLevel, t KeyUpdateActionType, oldValue, newValue any, dpp bool) (plog.Logs, error) {
-	if propertyName == "" || !t.IsValid() || !l.IsValid() {
-		return plog.Logs{}, errEventCreation
+func NewKeyRestoreEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType) (plog.Logs, error) {
+	m, err := newKeyEvent(KeyRestoreEvent, metadata, objectID, systemID, cmkID, t)
+	if err != nil {
+		return plog.Logs{}, err
 	}
-
-	m := newEventProperties(objectID, KeyUpdateEvent, metadata)
-	m[PropertyNameKey] = propertyName
-	m[ObjectTypeKey] = string(l)
-	m[ActionTypeKey] = string(t)
-	m[OldValueKey] = oldValue
-	m[NewValueKey] = newValue
-	m[DppKey] = dpp
 
 	return createEvent(m)
 }
 
-func NewKeyReadEvent(metadata EventMetadata, objectID, channelType, channelID string, l KeyLevel, t KeyReadActionType, value any, dpp bool) (plog.Logs, error) {
-	if !l.IsValid() || !t.IsValid() || channelID == "" || channelType == "" {
-		return plog.Logs{}, errEventCreation
+func NewKeyPurgeEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType) (plog.Logs, error) {
+	m, err := newKeyEvent(KeyPurgeEvent, metadata, objectID, systemID, cmkID, t)
+	if err != nil {
+		return plog.Logs{}, err
 	}
 
-	m := newEventProperties(objectID, KeyReadEvent, metadata)
-	m[ObjectTypeKey] = string(l)
-	m[ActionTypeKey] = string(t)
-	m[ChannelTypeKey] = channelType
-	m[ChannelIDKey] = channelID
-	m[ValueKey] = value
-	m[DppKey] = dpp
+	return createEvent(m)
+}
+
+func NewKeyRotateEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType) (plog.Logs, error) {
+	m, err := newKeyEvent(KeyRotateEvent, metadata, objectID, systemID, cmkID, t)
+	if err != nil {
+		return plog.Logs{}, err
+	}
+
+	return createEvent(m)
+}
+
+func NewKeyEnableEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType) (plog.Logs, error) {
+	m, err := newKeyEvent(KeyEnableEvent, metadata, objectID, systemID, cmkID, t)
+	if err != nil {
+		return plog.Logs{}, err
+	}
+
+	return createEvent(m)
+}
+
+func NewKeyDisableEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType) (plog.Logs, error) {
+	m, err := newKeyEvent(KeyDisableEvent, metadata, objectID, systemID, cmkID, t)
+	if err != nil {
+		return plog.Logs{}, err
+	}
 
 	return createEvent(m)
 }
 
 func NewWorkflowStartEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool) (plog.Logs, error) {
-	if channelID == "" || channelType == "" {
+	if !hasValues(channelID, channelType) {
 		return plog.Logs{}, errEventCreation
 	}
 
@@ -94,7 +97,7 @@ func NewWorkflowUpdateEvent(metadata EventMetadata, objectID string, oldValue, n
 }
 
 func NewWorkflowExecuteEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool) (plog.Logs, error) {
-	if channelID == "" || channelType == "" {
+	if !hasValues(channelID, channelType) {
 		return plog.Logs{}, errEventCreation
 	}
 
@@ -109,7 +112,7 @@ func NewWorkflowExecuteEvent(metadata EventMetadata, objectID, channelID, channe
 }
 
 func NewWorkflowTerminateEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool) (plog.Logs, error) {
-	if channelID == "" || channelType == "" {
+	if !hasValues(channelID, channelType) {
 		return plog.Logs{}, errEventCreation
 	}
 
@@ -132,7 +135,7 @@ func NewGroupCreateEvent(metadata EventMetadata, objectID string, value any, dpp
 	return createEvent(m)
 }
 func NewGroupReadEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool) (plog.Logs, error) {
-	if channelID == "" || channelType == "" {
+	if !hasValues(channelID, channelType) {
 		return plog.Logs{}, errEventCreation
 	}
 
@@ -154,7 +157,7 @@ func NewGroupDeleteEvent(metadata EventMetadata, objectID string, value any, dpp
 	return createEvent(m)
 }
 func NewGroupUpdateEvent(metadata EventMetadata, objectID, propertyName string, oldValue, newValue any, dpp bool) (plog.Logs, error) {
-	if propertyName == "" {
+	if !hasValues(propertyName) {
 		return plog.Logs{}, errEventCreation
 	}
 
@@ -173,9 +176,9 @@ func NewUserLoginSuccessEvent(metadata EventMetadata, objectID string, l LoginMe
 	}
 
 	m := newEventProperties(objectID, UserLoginSuccessEvent, metadata)
-	m[LoginMethodKey] = string(l)
-	m[MfaTypeKey] = string(t)
-	m[UserTypeKey] = string(u)
+	m[LoginMethodKey] = unspecifiedIfEmpty(string(l))
+	m[MfaTypeKey] = unspecifiedIfEmpty(string(t))
+	m[UserTypeKey] = unspecifiedIfEmpty(string(u))
 	m[ValueKey] = value
 
 	return createEvent(m)
@@ -187,30 +190,26 @@ func NewUserLoginFailureEvent(metadata EventMetadata, objectID string, l LoginMe
 	}
 
 	m := newEventProperties(objectID, UserLoginFailureEvent, metadata)
-	m[LoginMethodKey] = string(l)
-	m[FailureReasonKey] = string(f)
+	m[LoginMethodKey] = unspecifiedIfEmpty(string(l))
+	m[FailureReasonKey] = unspecifiedIfEmpty(string(f))
 	m[ValueKey] = value
 
 	return createEvent(m)
 }
-func NewTenantOnboardingEvent(metadata EventMetadata, objectID string, value any) (plog.Logs, error) {
-	m := newEventProperties(objectID, TenantOnboardingEvent, metadata)
-	m[ObjectTypeKey] = tenantObjectType
-	m[ValueKey] = value
+func NewTenantOnboardingEvent(metadata EventMetadata, tenantID string) (plog.Logs, error) {
+	m := newEventProperties(tenantID, TenantOnboardingEvent, metadata)
 
 	return createEvent(m)
 }
 
-func NewTenantOffboardingEvent(metadata EventMetadata, objectID string, value any) (plog.Logs, error) {
-	m := newEventProperties(objectID, TenantOffboardingEvent, metadata)
-	m[ObjectTypeKey] = tenantObjectType
-	m[ValueKey] = value
+func NewTenantOffboardingEvent(metadata EventMetadata, tenantID string) (plog.Logs, error) {
+	m := newEventProperties(tenantID, TenantOffboardingEvent, metadata)
 
 	return createEvent(m)
 }
 
 func NewTenantUpdateEvent(metadata EventMetadata, objectID, propertyName string, t TenantUpdateActionType, oldValue, newValue any) (plog.Logs, error) {
-	if propertyName == "" || !t.IsValid() {
+	if !hasValues(propertyName, oldValue, newValue) || !t.IsValid() {
 		return plog.Logs{}, errEventCreation
 	}
 
@@ -224,6 +223,10 @@ func NewTenantUpdateEvent(metadata EventMetadata, objectID, propertyName string,
 }
 
 func NewConfigurationCreateEvent(metadata EventMetadata, objectID string, value any) (plog.Logs, error) {
+	if !hasValues(value) {
+		return plog.Logs{}, errEventCreation
+	}
+
 	m := newEventProperties(objectID, ConfigCreateEvent, metadata)
 	m[ObjectTypeKey] = configObjectType
 	m[PropertyNameKey] = configPropertyName
@@ -233,6 +236,10 @@ func NewConfigurationCreateEvent(metadata EventMetadata, objectID string, value 
 }
 
 func NewConfigurationUpdateEvent(metadata EventMetadata, objectID string, oldValue, newValue any) (plog.Logs, error) {
+	if !hasValues(oldValue, newValue) {
+		return plog.Logs{}, errEventCreation
+	}
+
 	m := newEventProperties(objectID, ConfigUpdateEvent, metadata)
 	m[ObjectTypeKey] = configObjectType
 	m[PropertyNameKey] = configPropertyName
@@ -243,6 +250,10 @@ func NewConfigurationUpdateEvent(metadata EventMetadata, objectID string, oldVal
 }
 
 func NewConfigurationDeleteEvent(metadata EventMetadata, objectID string, value any) (plog.Logs, error) {
+	if !hasValues(value) {
+		return plog.Logs{}, errEventCreation
+	}
+
 	m := newEventProperties(objectID, ConfigDeleteEvent, metadata)
 	m[ObjectTypeKey] = configObjectType
 	m[PropertyNameKey] = configPropertyName
@@ -252,7 +263,7 @@ func NewConfigurationDeleteEvent(metadata EventMetadata, objectID string, value 
 }
 
 func NewConfigurationReadEvent(metadata EventMetadata, objectID, channelType, channelID string, value any) (plog.Logs, error) {
-	if channelType == "" || channelID == "" {
+	if !hasValues(channelID, channelType, value) {
 		return plog.Logs{}, errEventCreation
 	}
 
@@ -266,62 +277,142 @@ func NewConfigurationReadEvent(metadata EventMetadata, objectID, channelType, ch
 	return createEvent(m)
 }
 
-func NewCredentialCreateEvent(metadata EventMetadata, credentialID string, c CredentialType, value any) (plog.Logs, error) {
+func NewCredentialCreateEvent(metadata EventMetadata, credentialID string, c CredentialType) (plog.Logs, error) {
 	if !c.IsValid() {
 		return plog.Logs{}, errEventCreation
 	}
 
 	m := newEventProperties(credentialID, CredentialCreateEvent, metadata)
 	m[CredentialTypeKey] = string(c)
-	m[ValueKey] = value
 
 	return createEvent(m)
 }
 
-func NewCredentialExpirationEvent(metadata EventMetadata, credentialID string, c CredentialType, value any) (plog.Logs, error) {
+func NewCredentialExpirationEvent(metadata EventMetadata, credentialID string, c CredentialType) (plog.Logs, error) {
 	if !c.IsValid() {
 		return plog.Logs{}, errEventCreation
 	}
 
 	m := newEventProperties(credentialID, CredentialExpirationEvent, metadata)
 	m[CredentialTypeKey] = string(c)
-	m[ValueKey] = value
 
 	return createEvent(m)
 }
 
-func NewCredentialDeleteEvent(metadata EventMetadata, credentialID string, c CredentialType, value any) (plog.Logs, error) {
+func NewCredentialDeleteEvent(metadata EventMetadata, credentialID string, c CredentialType) (plog.Logs, error) {
 	if !c.IsValid() {
 		return plog.Logs{}, errEventCreation
 	}
 
 	m := newEventProperties(credentialID, CredentialDeleteEvent, metadata)
 	m[CredentialTypeKey] = string(c)
-	m[ValueKey] = value
 
 	return createEvent(m)
 }
 
-func NewCredentialRevokationEvent(metadata EventMetadata, credentialID string, c CredentialType, value any) (plog.Logs, error) {
+func NewCredentialRevokationEvent(metadata EventMetadata, credentialID string, c CredentialType) (plog.Logs, error) {
 	if !c.IsValid() {
 		return plog.Logs{}, errEventCreation
 	}
 
 	m := newEventProperties(credentialID, CredentialRevokationEvent, metadata)
 	m[CredentialTypeKey] = string(c)
-	m[ValueKey] = value
 
 	return createEvent(m)
 }
 
+func NewCmkOnboardingEvent(metadata EventMetadata, cmkID, systemID string) (plog.Logs, error) {
+	if !hasValues(systemID) {
+		return plog.Logs{}, errEventCreation
+	}
+
+	m := newEventProperties(cmkID, CmkOnboardingEvent, metadata)
+	m[SystemIDKey] = systemID
+
+	return createEvent(m)
+}
+
+func NewCmkOffboardingEvent(metadata EventMetadata, cmkID, systemID string) (plog.Logs, error) {
+	if !hasValues(systemID) {
+		return plog.Logs{}, errEventCreation
+	}
+
+	m := newEventProperties(cmkID, CmkOffboardingEvent, metadata)
+	m[SystemIDKey] = systemID
+
+	return createEvent(m)
+}
+
+func NewCmkSwitchEvent(metadata EventMetadata, cmkID, cmkIDOld, cmkIDNew string) (plog.Logs, error) {
+	if !hasValues(cmkIDOld, cmkIDNew) {
+		return plog.Logs{}, errEventCreation
+	}
+
+	m := newEventProperties(cmkID, CmkSwitchEvent, metadata)
+	m[CmkIDOldKey] = cmkIDOld
+	m[CmkIDNewKey] = cmkIDNew
+
+	return createEvent(m)
+}
+
+func NewCmkTenantModificationEvent(metadata EventMetadata, cmkID, systemID string, c CmkAction) (plog.Logs, error) {
+	if !hasValues(systemID) || !c.IsValid() {
+		return plog.Logs{}, errEventCreation
+	}
+	m := newEventProperties(cmkID, CmkTenantModificationEvent, metadata)
+	m[SystemIDKey] = systemID
+	m[ObjectTypeKey] = string(c)
+
+	return createEvent(m)
+}
+
+func NewCmkCreateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+	m := newEventProperties(cmkID, CmkCreateEvent, metadata)
+	return createEvent(m)
+}
+
+func NewCmkRestoreEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+	m := newEventProperties(cmkID, CmkRestoreEvent, metadata)
+	return createEvent(m)
+}
+
+func NewCmkEnableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+	m := newEventProperties(cmkID, CmkEnableEvent, metadata)
+	return createEvent(m)
+}
+
+func NewCmkDisableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+	m := newEventProperties(cmkID, CmkDisableEvent, metadata)
+	return createEvent(m)
+}
+
+func NewCmkRotateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+	m := newEventProperties(cmkID, CmkRotateEvent, metadata)
+	return createEvent(m)
+}
+
+func newKeyEvent(keyEventType string, metadata EventMetadata, objectID string, systemID string, cmkID string, t KeyType) (eventProperties, error) {
+	if !hasValues(systemID, cmkID) || !t.IsValid() {
+		return nil, errEventCreation
+	}
+
+	m := newEventProperties(objectID, keyEventType, metadata)
+	m[ObjectTypeKey] = unspecifiedIfEmpty(string(t))
+	m[SystemIDKey] = systemID
+	m[CmkIDKey] = cmkID
+
+	return m, nil
+}
+
+func unspecifiedIfEmpty(input string) string {
+	if input == "" {
+		return UNSPECIFIED
+	}
+	return input
+}
+
 func createEvent(properties eventProperties) (plog.Logs, error) {
 	if !properties.hasValues(ObjectIDKey, EventTypeKey, UserInitiatorIDKey, TenantIDKey) {
-		return plog.NewLogs(), errEventCreation
-	}
-	if isOneOf(fmt.Sprint(properties[EventTypeKey]), ConfigCreateEvent, ConfigDeleteEvent, ConfigReadEvent) && !properties.hasValues(ValueKey) {
-		return plog.NewLogs(), errEventCreation
-	}
-	if (fmt.Sprint(properties[EventTypeKey]) == ConfigUpdateEvent || fmt.Sprint(properties[EventTypeKey]) == TenantUpdateEvent) && !properties.hasValues(OldValueKey, NewValueKey) {
 		return plog.NewLogs(), errEventCreation
 	}
 	logs := plog.NewLogs()
@@ -350,37 +441,20 @@ func createEvent(properties eventProperties) (plog.Logs, error) {
 	if properties.hasValues(ChannelTypeKey) {
 		lr.Attributes().PutStr(ChannelTypeKey, fmt.Sprint(properties[ChannelTypeKey]))
 	}
+	if properties.hasValues(SystemIDKey) {
+		lr.Attributes().PutStr(SystemIDKey, fmt.Sprint(properties[SystemIDKey]))
+	}
+	if properties.hasValues(CmkIDKey) {
+		lr.Attributes().PutStr(CmkIDKey, fmt.Sprint(properties[CmkIDKey]))
+	}
+	if properties.hasValues(CmkIDOldKey) {
+		lr.Attributes().PutStr(CmkIDOldKey, fmt.Sprint(properties[CmkIDOldKey]))
+	}
+	if properties.hasValues(CmkIDNewKey) {
+		lr.Attributes().PutStr(CmkIDNewKey, fmt.Sprint(properties[CmkIDNewKey]))
+	}
 	if properties.hasValues(ActionTypeKey) {
 		lr.Attributes().PutStr(ActionTypeKey, fmt.Sprint(properties[ActionTypeKey]))
-	}
-	if fmt.Sprint(properties[EventTypeKey]) == UserLoginSuccessEvent {
-		if properties.hasValues(LoginMethodKey) {
-			lr.Attributes().PutStr(LoginMethodKey, fmt.Sprint(properties[LoginMethodKey]))
-		} else {
-			lr.Attributes().PutStr(LoginMethodKey, UNSPECIFIED)
-		}
-		if properties.hasValues(MfaTypeKey) {
-			lr.Attributes().PutStr(MfaTypeKey, fmt.Sprint(properties[MfaTypeKey]))
-		} else {
-			lr.Attributes().PutStr(MfaTypeKey, UNSPECIFIED)
-		}
-		if properties.hasValues(UserTypeKey) {
-			lr.Attributes().PutStr(UserTypeKey, fmt.Sprint(properties[UserTypeKey]))
-		} else {
-			lr.Attributes().PutStr(UserTypeKey, UNSPECIFIED)
-		}
-	}
-	if fmt.Sprint(properties[EventTypeKey]) == UserLoginFailureEvent {
-		if properties.hasValues(LoginMethodKey) {
-			lr.Attributes().PutStr(LoginMethodKey, fmt.Sprint(properties[LoginMethodKey]))
-		} else {
-			lr.Attributes().PutStr(LoginMethodKey, UNSPECIFIED)
-		}
-		if properties.hasValues(FailureReasonKey) {
-			lr.Attributes().PutStr(FailureReasonKey, fmt.Sprint(properties[FailureReasonKey]))
-		} else {
-			lr.Attributes().PutStr(FailureReasonKey, UNSPECIFIED)
-		}
 	}
 	if isOneOf(properties[EventTypeKey], CredentialCreateEvent, CredentialExpirationEvent, CredentialRevokationEvent, CredentialDeleteEvent) {
 		lr.Attributes().PutStr(CredentialTypeKey, fmt.Sprint(properties[CredentialTypeKey]))

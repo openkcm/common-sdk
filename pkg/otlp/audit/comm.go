@@ -13,7 +13,7 @@ import (
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
 
-func (o *OtlpClient) send(ctx context.Context, payload string) error {
+func (o *otlpClient) send(ctx context.Context, payload string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.Endpoint, bytes.NewBufferString(payload))
 	if err != nil {
 		return errors.Join(errCreateReqFailed, err)
@@ -41,12 +41,8 @@ func (o *OtlpClient) send(ctx context.Context, payload string) error {
 	return err
 }
 
-func SendEvent(ctx context.Context, auditCfg *commoncfg.Audit, logs plog.Logs) error {
-	otlpClient, err := New(auditCfg)
-	if err != nil {
-		return err
-	}
-	err = enrichLogs(auditCfg, &logs)
+func (auditLogger *AuditLogger) SendEvent(ctx context.Context, auditCfg *commoncfg.Audit, logs plog.Logs) error {
+	err := enrichLogs(auditCfg, &logs)
 	if err != nil {
 		return err
 	}
@@ -56,7 +52,7 @@ func SendEvent(ctx context.Context, auditCfg *commoncfg.Audit, logs plog.Logs) e
 		return errors.Join(errMarshalingFailed, err)
 	}
 
-	err = otlpClient.send(ctx, string(marshaledLogs))
+	err = auditLogger.client.send(ctx, string(marshaledLogs))
 	if err != nil {
 		return err
 	}
