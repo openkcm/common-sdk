@@ -208,8 +208,8 @@ func NewTenantOffboardingEvent(metadata EventMetadata, tenantID string) (plog.Lo
 	return createEvent(m)
 }
 
-func NewTenantUpdateEvent(metadata EventMetadata, objectID, propertyName string, t TenantUpdateActionType, oldValue, newValue any) (plog.Logs, error) {
-	if !hasValues(propertyName, oldValue, newValue) || !t.IsValid() {
+func NewTenantUpdateEvent(metadata EventMetadata, objectID, propertyName string, oldValue, newValue any) (plog.Logs, error) {
+	if !hasValues(propertyName, oldValue, newValue) {
 		return plog.Logs{}, errEventCreation
 	}
 

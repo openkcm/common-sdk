@@ -851,7 +851,6 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 		metadata     EventMetadata
 		objectID     string
 		propertyName string
-		actionType   TenantUpdateActionType
 		oldValue     any
 		newValue     any
 	}
@@ -870,14 +869,13 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 				},
 				objectID:     "",
 				propertyName: "validProperty",
-				actionType:   TENANTUPDATE_WORKFLOWENABLE,
 				oldValue:     "oldValue",
 				newValue:     "newValue",
 			},
 			wantErr: true,
 		},
 		{
-			name: "T1701_TenantUpdate_InvalidActionType_Fail",
+			name: "T1701_TenantUpdate_ValidObjectIDAndPropertyName_Success",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -886,30 +884,13 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 				},
 				objectID:     "validObjectID",
 				propertyName: "validProperty",
-				actionType:   TenantUpdateActionType("invalidAction"),
-				oldValue:     "oldValue",
-				newValue:     "newValue",
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1702_TenantUpdate_ValidObjectIDAndPropertyNameAndActionType_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:     "validObjectID",
-				propertyName: "validProperty",
-				actionType:   TENANTUPDATE_WORKFLOWDISABLE,
 				oldValue:     "oldValue",
 				newValue:     "newValue",
 			},
 			wantErr: false,
 		},
 		{
-			name: "T1703_TenantUpdate_NoOldValue_Fail",
+			name: "T1702_TenantUpdate_NoOldValue_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -918,14 +899,13 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 				},
 				objectID:     "validObjectID",
 				propertyName: "validProperty",
-				actionType:   TENANTUPDATE_TESTMODE,
 				oldValue:     nil,
 				newValue:     "newValue",
 			},
 			wantErr: true,
 		},
 		{
-			name: "T1704_TenantUpdate_NoNewValue_Fail",
+			name: "T1703_TenantUpdate_NoNewValue_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -934,14 +914,13 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 				},
 				objectID:     "validObjectID",
 				propertyName: "validProperty",
-				actionType:   TENANTUPDATE_TESTMODE,
 				oldValue:     "oldValue",
 				newValue:     nil,
 			},
 			wantErr: true,
 		},
 		{
-			name: "T1705_TenantUpdate_EmptyPropertyName_Fail",
+			name: "T1704_TenantUpdate_EmptyPropertyName_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -950,7 +929,6 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 				},
 				objectID:     "validObjectID",
 				propertyName: "",
-				actionType:   TENANTUPDATE_TESTMODE,
 				oldValue:     "oldValue",
 				newValue:     nil,
 			},
@@ -959,7 +937,7 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewTenantUpdateEvent(tt.args.metadata, tt.args.objectID, tt.args.propertyName, tt.args.actionType, tt.args.oldValue, tt.args.newValue)
+			_, err := NewTenantUpdateEvent(tt.args.metadata, tt.args.objectID, tt.args.propertyName, tt.args.oldValue, tt.args.newValue)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewTenantUpdateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -14,30 +14,10 @@ type KeyType string
 type CmkAction string
 
 const (
-	KEYTYPE_SYSTEM  KeyType = "KEY_TYPE_SYSTEM"
-	KEYTYPE_SERVICE KeyType = "KEY_TYPE_SERVICE"
-	KEYTYPE_DATA    KeyType = "KEY_TYPE_DATA"
-	KEYTYPE_KEK     KeyType = "KEY_TYPE_KEK"
-)
-
-const (
-	KEYCREATE_CREATE  KeyCreateActionType = "CREATE"
-	KEYCREATE_IMPORT  KeyCreateActionType = "IMPORT"
-	KEYCREATE_RESTORE KeyCreateActionType = "RESTORE"
-)
-const (
-	KEYUPDATE_ENABLE  KeyUpdateActionType = "ENABLE"
-	KEYUPDATE_DISABLE KeyUpdateActionType = "DISABLE"
-	KEYUPDATE_ROTATE  KeyUpdateActionType = "ROTATE"
-)
-const (
-	KEYREAD_READMETADATA KeyReadActionType = "READ_METADATA"
-	KEYREAD_CRYPTOACCESS KeyReadActionType = "CRYPTO_ACCESS"
-)
-const (
-	USERLOGINFAIL_AUTHN UserLoginFailureActionType = "AUTHN"
-	USERLOGINFAIL_AUTHZ UserLoginFailureActionType = "AUTHZ"
-	USERLOGINFAIL_FLOW  UserLoginFailureActionType = "FLOW"
+	KEYTYPE_SYSTEM  KeyType = "SYSTEM"
+	KEYTYPE_SERVICE KeyType = "SERVICE"
+	KEYTYPE_DATA    KeyType = "DATA"
+	KEYTYPE_KEK     KeyType = "KEK"
 )
 const (
 	TENANTUPDATE_TESTMODE        TenantUpdateActionType = "TEST_MODE"
@@ -84,11 +64,11 @@ const (
 )
 
 const (
-	CMKACTION_ONBOARD      CmkAction = "CMK_ACTION_ONBOARD"
-	CMKACTION_BLOCK        CmkAction = "CMK_ACTION_BLOCK"
-	CMKACTION_SHUTDOWN     CmkAction = "CMK_ACTION_SHUTDOWN"
-	CMKACTION_CSEKFALLBACK CmkAction = "CMK_ACTION_CSEKFALLBACK"
-	CMKACTION_RESTORE      CmkAction = "CMK_ACTION_RESTORE"
+	CMKACTION_ONBOARD      CmkAction = "ONBOARD"
+	CMKACTION_BLOCK        CmkAction = "BLOCK"
+	CMKACTION_SHUTDOWN     CmkAction = "SHUTDOWN"
+	CMKACTION_CSEKFALLBACK CmkAction = "CSEKFALLBACK"
+	CMKACTION_RESTORE      CmkAction = "RESTORE"
 )
 
 const UNSPECIFIED = "UNSPECIFIED"
@@ -97,18 +77,6 @@ func (l KeyType) IsValid() bool {
 	return isOneOf(l, KEYTYPE_DATA, KEYTYPE_SERVICE, KEYTYPE_KEK, KEYTYPE_SYSTEM, "")
 }
 
-func (t KeyCreateActionType) IsValid() bool {
-	return isOneOf(t, KEYCREATE_CREATE, KEYCREATE_IMPORT, KEYCREATE_RESTORE)
-}
-func (t KeyUpdateActionType) IsValid() bool {
-	return isOneOf(t, KEYUPDATE_ROTATE, KEYUPDATE_DISABLE, KEYUPDATE_ENABLE)
-}
-func (t KeyReadActionType) IsValid() bool {
-	return isOneOf(t, KEYREAD_READMETADATA, KEYREAD_CRYPTOACCESS)
-}
-func (t UserLoginFailureActionType) IsValid() bool {
-	return isOneOf(t, USERLOGINFAIL_AUTHN, USERLOGINFAIL_AUTHZ, USERLOGINFAIL_FLOW)
-}
 func (t TenantUpdateActionType) IsValid() bool {
 	return isOneOf(t, TENANTUPDATE_WORKFLOWENABLE, TENANTUPDATE_WORKFLOWDISABLE, TENANTUPDATE_TESTMODE)
 }
