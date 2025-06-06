@@ -624,119 +624,13 @@ func TestNewGroupUpdateEvent(t *testing.T) {
 	}
 }
 
-func TestNewKeyCreateEvent(t *testing.T) {
-	type args struct {
-		metadata   EventMetadata
-		objectID   string
-		keyLevel   KeyLevel
-		actionType KeyCreateActionType
-		value      any
-		dpp        bool
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "T1100_KeyCreate_EmptyObjectID_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:   "",
-				keyLevel:   L1,
-				actionType: KEYCREATE_RESTORE,
-				value:      "someValue",
-				dpp:        true,
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1101_KeyCreate_InvalidActionType_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:   "validObjectID",
-				keyLevel:   L1,
-				actionType: KeyCreateActionType("invalidAction"),
-				value:      "someValue",
-				dpp:        true,
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1102_KeyCreate_InvalidKeyLevel_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:   "validObjectID",
-				keyLevel:   KeyLevel("invalidLevel"),
-				actionType: KEYCREATE_RESTORE,
-				value:      "someValue",
-				dpp:        false,
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1103_KeyCreate_ValidObjectIDAndKeyLevelAndActionType_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:   "validObjectID",
-				keyLevel:   L1,
-				actionType: KEYCREATE_RESTORE,
-				value:      "testValue",
-				dpp:        true,
-			},
-			wantErr: false,
-		},
-		{
-			name: "T1104_KeyCreate_NoValue_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:   "validObjectID",
-				keyLevel:   L1,
-				actionType: KEYCREATE_IMPORT,
-				value:      nil,
-				dpp:        false,
-			},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewKeyCreateEvent(tt.args.metadata, tt.args.objectID, tt.args.keyLevel, tt.args.actionType, tt.args.value, tt.args.dpp)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewKeyCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-		})
-	}
-}
-
-func TestNewKeyDeleteEvent(t *testing.T) {
+func TestKeyEvents(t *testing.T) {
 	type args struct {
 		metadata EventMetadata
 		objectID string
-		keyLevel KeyLevel
-		value    any
-		dpp      bool
+		keyType  KeyType
+		systemID string
+		cmkID    string
 	}
 	tests := []struct {
 		name    string
@@ -744,7 +638,7 @@ func TestNewKeyDeleteEvent(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "T1200_KeyDelete_EmptyObjectID_Fail",
+			name: "T1100_KeyEvent_EmptyObjectID_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -752,14 +646,14 @@ func TestNewKeyDeleteEvent(t *testing.T) {
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
 				objectID: "",
-				keyLevel: L3,
-				value:    "someValue",
-				dpp:      true,
+				keyType:  KEYTYPE_SYSTEM,
+				systemID: "1111-11111",
+				cmkID:    "1111-11111",
 			},
 			wantErr: true,
 		},
 		{
-			name: "T1201_KeyDelete_InvalidKeyLevel_Fail",
+			name: "T1101_KeyEvent_EmptySystemID_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -767,14 +661,14 @@ func TestNewKeyDeleteEvent(t *testing.T) {
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
 				objectID: "validObjectID",
-				keyLevel: KeyLevel("invalidLevel"),
-				value:    "someValue",
-				dpp:      false,
+				keyType:  KEYTYPE_KEK,
+				systemID: "",
+				cmkID:    "1111-11111",
 			},
 			wantErr: true,
 		},
 		{
-			name: "T1202_KeyDelete_ValidObjectIDAndKeyLevel_Success",
+			name: "T1102_KeyEvent_InvalidKeyType_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -782,14 +676,29 @@ func TestNewKeyDeleteEvent(t *testing.T) {
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
 				objectID: "validObjectID",
-				keyLevel: L1,
-				value:    "testValue",
-				dpp:      true,
+				keyType:  KeyType("invalidType"),
+				systemID: "1111-11111",
+				cmkID:    "1111-11111",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T1103_KeyEvent_CorrectData_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID: "validObjectID",
+				keyType:  KEYTYPE_SYSTEM,
+				systemID: "1111-11111",
+				cmkID:    "1111-11111",
 			},
 			wantErr: false,
 		},
 		{
-			name: "T1203_KeyDelete_NoValue_Success",
+			name: "T1104_KeyEvent_NoCmkID_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -797,323 +706,48 @@ func TestNewKeyDeleteEvent(t *testing.T) {
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
 				objectID: "validObjectID",
-				keyLevel: L2,
-				value:    nil,
-				dpp:      false,
+				keyType:  KEYTYPE_DATA,
+				systemID: "1111-11111",
+				cmkID:    "",
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewKeyDeleteEvent(tt.args.metadata, tt.args.objectID, tt.args.keyLevel, tt.args.value, tt.args.dpp)
+			_, err := NewKeyCreateEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewKeyCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			_, err = NewKeyDeleteEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewKeyDeleteEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-		})
-	}
-}
-
-func TestNewKeyReadEvent(t *testing.T) {
-	type args struct {
-		metadata    EventMetadata
-		objectID    string
-		channelType string
-		channelID   string
-		keyLevel    KeyLevel
-		actionType  KeyReadActionType
-		value       any
-		dpp         bool
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "T1300_KeyRead_EmptyObjectID_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:    "",
-				channelType: "web",
-				channelID:   "123-23",
-				keyLevel:    L1,
-				actionType:  KEYREAD_CRYPTOACCESS,
-				value:       "someValue",
-				dpp:         true,
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1301_KeyRead_InvalidKeyLevel_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:    "validObjectID",
-				channelType: "web",
-				channelID:   "123-23",
-				keyLevel:    KeyLevel("invalidLevel"),
-				actionType:  KEYREAD_CRYPTOACCESS,
-				value:       "someValue",
-				dpp:         false,
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1302_KeyRead_InvalidActionType_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:    "validObjectID",
-				channelType: "web",
-				channelID:   "123-23",
-				keyLevel:    L2,
-				actionType:  KeyReadActionType("invalidAction"),
-				value:       "someValue",
-				dpp:         false,
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1303_KeyRead_ValidObjectIDAndKeyLevelAndActionType_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:    "validObjectID",
-				channelType: "web",
-				channelID:   "123-23",
-				keyLevel:    L3,
-				actionType:  KEYREAD_READMETADATA,
-				value:       "testValue",
-				dpp:         true,
-			},
-			wantErr: false,
-		},
-		{
-			name: "T1304_KeyRead_NoValue_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:    "validObjectID",
-				channelType: "web",
-				channelID:   "123-23",
-				keyLevel:    L2,
-				actionType:  KEYREAD_READMETADATA,
-				value:       nil,
-				dpp:         false,
-			},
-			wantErr: false,
-		},
-		{
-			name: "T1305_KeyRead_NoChannelID_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:    "validObjectID",
-				channelType: "web",
-				keyLevel:    L2,
-				actionType:  KEYREAD_READMETADATA,
-				value:       nil,
-				dpp:         false,
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1306_KeyRead_NoChannelType_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:   "validObjectID",
-				channelID:  "123-23",
-				keyLevel:   L2,
-				actionType: KEYREAD_READMETADATA,
-				value:      nil,
-				dpp:        false,
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewKeyReadEvent(tt.args.metadata, tt.args.objectID, tt.args.channelType, tt.args.channelID, tt.args.keyLevel, tt.args.actionType, tt.args.value, tt.args.dpp)
+			_, err = NewKeyRotateEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewKeyReadEvent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewKeyRotateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-		})
-	}
-}
-
-func TestNewKeyUpdateEvent(t *testing.T) {
-	type args struct {
-		metadata     EventMetadata
-		objectID     string
-		propertyName string
-		keyLevel     KeyLevel
-		actionType   KeyUpdateActionType
-		oldValue     any
-		newValue     any
-		dpp          bool
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "T1400_KeyUpdate_EmptyObjectID_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:     "",
-				propertyName: "validProperty",
-				keyLevel:     L1,
-				actionType:   KEYUPDATE_ENABLE,
-				oldValue:     "oldValue",
-				newValue:     "newValue",
-				dpp:          true,
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1401_KeyUpdate_InvalidActionType_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:     "validObjectID",
-				propertyName: "validProperty",
-				keyLevel:     L1,
-				actionType:   KeyUpdateActionType("invalidAction"),
-				oldValue:     "oldValue",
-				newValue:     "newValue",
-				dpp:          false,
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1402_KeyUpdate_InvalidKeyLevel_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:     "validObjectID",
-				propertyName: "validProperty",
-				keyLevel:     KeyLevel("invalidLevel"),
-				actionType:   KEYUPDATE_DISABLE,
-				oldValue:     "oldValue",
-				newValue:     "newValue",
-				dpp:          true,
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1403_KeyUpdate_ValidObjectIDAndPropertyNameAndKeyLevelAndActionType_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:     "validObjectID",
-				propertyName: "validProperty",
-				keyLevel:     L2,
-				actionType:   KEYUPDATE_ROTATE,
-				oldValue:     "oldValue",
-				newValue:     "newValue",
-				dpp:          false,
-			},
-			wantErr: false,
-		},
-		{
-			name: "T1404_KeyUpdate_NoOldValue_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:     "validObjectID",
-				propertyName: "validProperty",
-				keyLevel:     L3,
-				actionType:   KEYUPDATE_ENABLE,
-				oldValue:     nil,
-				newValue:     "newValue",
-				dpp:          true,
-			},
-			wantErr: false,
-		},
-		{
-			name: "T1405_KeyUpdate_NoNewValue_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:     "validObjectID",
-				propertyName: "validProperty",
-				keyLevel:     L1,
-				actionType:   KEYUPDATE_ROTATE,
-				oldValue:     "oldValue",
-				newValue:     nil,
-				dpp:          false,
-			},
-			wantErr: false,
-		},
-		{
-			name: "T1406_KeyUpdate_EmptyPropertyName_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:     "validObjectID",
-				propertyName: "",
-				keyLevel:     L1,
-				actionType:   KEYUPDATE_ROTATE,
-				oldValue:     "oldValue",
-				newValue:     nil,
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewKeyUpdateEvent(tt.args.metadata, tt.args.objectID, tt.args.propertyName, tt.args.keyLevel, tt.args.actionType, tt.args.oldValue, tt.args.newValue, tt.args.dpp)
+			_, err = NewKeyPurgeEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewKeyUpdateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewKeyPurgeEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			_, err = NewKeyEnableEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewKeyEnableEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			_, err = NewKeyDisableEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewKeyDisableEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			_, err = NewKeyRestoreEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewKeyRestoreEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 		})
@@ -1124,7 +758,6 @@ func TestNewTenantOffboardingEvent(t *testing.T) {
 	type args struct {
 		metadata EventMetadata
 		objectID string
-		value    any
 	}
 	tests := []struct {
 		name    string
@@ -1140,7 +773,6 @@ func TestNewTenantOffboardingEvent(t *testing.T) {
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
 				objectID: "",
-				value:    "someValue",
 			},
 			wantErr: true,
 		},
@@ -1153,27 +785,13 @@ func TestNewTenantOffboardingEvent(t *testing.T) {
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
 				objectID: "validObjectID",
-				value:    "testValue",
-			},
-			wantErr: false,
-		},
-		{
-			name: "T1502_TenantOffboarding_NoValue_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID: "validObjectID",
-				value:    nil,
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewTenantOffboardingEvent(tt.args.metadata, tt.args.objectID, tt.args.value)
+			_, err := NewTenantOffboardingEvent(tt.args.metadata, tt.args.objectID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewTenantOffboardingEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1186,7 +804,6 @@ func TestNewTenantOnboardingEvent(t *testing.T) {
 	type args struct {
 		metadata EventMetadata
 		objectID string
-		value    any
 	}
 	tests := []struct {
 		name    string
@@ -1202,7 +819,6 @@ func TestNewTenantOnboardingEvent(t *testing.T) {
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
 				objectID: "",
-				value:    "someValue",
 			},
 			wantErr: true,
 		},
@@ -1215,27 +831,13 @@ func TestNewTenantOnboardingEvent(t *testing.T) {
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
 				objectID: "validObjectID",
-				value:    "testValue",
-			},
-			wantErr: false,
-		},
-		{
-			name: "T1602_TenantOnboarding_NoValue_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID: "validObjectID",
-				value:    nil,
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewTenantOnboardingEvent(tt.args.metadata, tt.args.objectID, tt.args.value)
+			_, err := NewTenantOnboardingEvent(tt.args.metadata, tt.args.objectID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewTenantOnboardingEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1249,7 +851,6 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 		metadata     EventMetadata
 		objectID     string
 		propertyName string
-		actionType   TenantUpdateActionType
 		oldValue     any
 		newValue     any
 	}
@@ -1268,14 +869,13 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 				},
 				objectID:     "",
 				propertyName: "validProperty",
-				actionType:   TENANTUPDATE_WORKFLOWENABLE,
 				oldValue:     "oldValue",
 				newValue:     "newValue",
 			},
 			wantErr: true,
 		},
 		{
-			name: "T1701_TenantUpdate_InvalidActionType_Fail",
+			name: "T1701_TenantUpdate_ValidObjectIDAndPropertyName_Success",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -1284,30 +884,13 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 				},
 				objectID:     "validObjectID",
 				propertyName: "validProperty",
-				actionType:   TenantUpdateActionType("invalidAction"),
-				oldValue:     "oldValue",
-				newValue:     "newValue",
-			},
-			wantErr: true,
-		},
-		{
-			name: "T1702_TenantUpdate_ValidObjectIDAndPropertyNameAndActionType_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				objectID:     "validObjectID",
-				propertyName: "validProperty",
-				actionType:   TENANTUPDATE_WORKFLOWDISABLE,
 				oldValue:     "oldValue",
 				newValue:     "newValue",
 			},
 			wantErr: false,
 		},
 		{
-			name: "T1703_TenantUpdate_NoOldValue_Fail",
+			name: "T1702_TenantUpdate_NoOldValue_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -1316,14 +899,13 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 				},
 				objectID:     "validObjectID",
 				propertyName: "validProperty",
-				actionType:   TENANTUPDATE_TESTMODE,
 				oldValue:     nil,
 				newValue:     "newValue",
 			},
 			wantErr: true,
 		},
 		{
-			name: "T1704_TenantUpdate_NoNewValue_Fail",
+			name: "T1703_TenantUpdate_NoNewValue_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -1332,14 +914,13 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 				},
 				objectID:     "validObjectID",
 				propertyName: "validProperty",
-				actionType:   TENANTUPDATE_TESTMODE,
 				oldValue:     "oldValue",
 				newValue:     nil,
 			},
 			wantErr: true,
 		},
 		{
-			name: "T1705_TenantUpdate_EmptyPropertyName_Fail",
+			name: "T1704_TenantUpdate_EmptyPropertyName_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -1348,7 +929,6 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 				},
 				objectID:     "validObjectID",
 				propertyName: "",
-				actionType:   TENANTUPDATE_TESTMODE,
 				oldValue:     "oldValue",
 				newValue:     nil,
 			},
@@ -1357,7 +937,7 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewTenantUpdateEvent(tt.args.metadata, tt.args.objectID, tt.args.propertyName, tt.args.actionType, tt.args.oldValue, tt.args.newValue)
+			_, err := NewTenantUpdateEvent(tt.args.metadata, tt.args.objectID, tt.args.propertyName, tt.args.oldValue, tt.args.newValue)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewTenantUpdateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -2073,7 +1653,6 @@ func TestCredentialEvents(t *testing.T) {
 		metadata EventMetadata
 		objectID string
 		c        CredentialType
-		value    any
 	}
 	tests := []struct {
 		name    string
@@ -2090,7 +1669,6 @@ func TestCredentialEvents(t *testing.T) {
 				},
 				objectID: "",
 				c:        CREDTYPE_SECRET,
-				value:    "someValue",
 			},
 			wantErr: true,
 		},
@@ -2104,7 +1682,6 @@ func TestCredentialEvents(t *testing.T) {
 				},
 				objectID: "validObjectID",
 				c:        CREDTYPE_KEY,
-				value:    "someValue",
 			},
 			wantErr: false,
 		},
@@ -2118,7 +1695,6 @@ func TestCredentialEvents(t *testing.T) {
 				},
 				objectID: "validObjectID",
 				c:        CredentialType("invalid type"),
-				value:    "someValue",
 			},
 			wantErr: true,
 		},
@@ -2132,32 +1708,320 @@ func TestCredentialEvents(t *testing.T) {
 				},
 				objectID: "validObjectID",
 				c:        CREDTYPE_X509CERT,
-				value:    nil,
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewCredentialCreateEvent(tt.args.metadata, tt.args.objectID, tt.args.c, tt.args.value)
+			_, err := NewCredentialCreateEvent(tt.args.metadata, tt.args.objectID, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			_, err = NewCredentialExpirationEvent(tt.args.metadata, tt.args.objectID, tt.args.c, tt.args.value)
+			_, err = NewCredentialExpirationEvent(tt.args.metadata, tt.args.objectID, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCredentialExpirationEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			_, err = NewCredentialDeleteEvent(tt.args.metadata, tt.args.objectID, tt.args.c, tt.args.value)
+			_, err = NewCredentialDeleteEvent(tt.args.metadata, tt.args.objectID, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCredentialDeleteEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			_, err = NewCredentialRevokationEvent(tt.args.metadata, tt.args.objectID, tt.args.c, tt.args.value)
+			_, err = NewCredentialRevokationEvent(tt.args.metadata, tt.args.objectID, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCredentialRevokationEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+		})
+	}
+}
+
+func TestCmkEvents(t *testing.T) {
+	type args struct {
+		metadata EventMetadata
+		cmkID    string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "T2500_CmkEvents_EmptyObjectID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID: "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T2501_CmkEvents_ValidData_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID: "validObjectID",
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewCmkCreateEvent(tt.args.metadata, tt.args.cmkID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			_, err = NewCmkDisableEvent(tt.args.metadata, tt.args.cmkID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			_, err = NewCmkEnableEvent(tt.args.metadata, tt.args.cmkID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			_, err = NewCmkRestoreEvent(tt.args.metadata, tt.args.cmkID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			_, err = NewCmkRotateEvent(tt.args.metadata, tt.args.cmkID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
+func TestCmkBoardingEvents(t *testing.T) {
+	type args struct {
+		metadata EventMetadata
+		cmkID    string
+		systemID string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "T2600_CmkBoardingEvents_EmptyObjectID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "",
+				systemID: "123123",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T2601_CmkBoardingEvents_EmptySystemID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "123123",
+				systemID: "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T2602_CmkBoardingEvents_ValidData_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "validObjectID",
+				systemID: "123123",
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewCmkOnboardingEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCmkOnboardingEvent() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			_, err = NewCmkOffboardingEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCmkOnboardingEvent() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNewCmkSwitchEvent(t *testing.T) {
+	type args struct {
+		metadata EventMetadata
+		cmkID    string
+		cmkIDOld string
+		cmkIDNew string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "T2700_NewCmkSwitchEvent_EmptyObjectID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "",
+				cmkIDOld: "123123",
+				cmkIDNew: "123123",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T2701_NewCmkSwitchEvent_EmptyCMKIDOld_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "123123",
+				cmkIDOld: "",
+				cmkIDNew: "123123",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T2702_NewCmkSwitchEvent_EmptyCMKIDNew_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "12333",
+				cmkIDOld: "123123",
+				cmkIDNew: "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T2703_NewCmkSwitchEvent_CorrectData_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "12333",
+				cmkIDOld: "123123",
+				cmkIDNew: "123123",
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewCmkSwitchEvent(tt.args.metadata, tt.args.cmkID, tt.args.cmkIDOld, tt.args.cmkIDNew)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCmkSwitchEvent() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNewCmkTenantModificationEvent(t *testing.T) {
+	type args struct {
+		metadata EventMetadata
+		cmkID    string
+		systemID string
+		c        CmkAction
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "T2800_NewCmkTenantModificationEvent_EmptyObjectID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "",
+				systemID: "123123",
+				c:        CMKACTION_ONBOARD,
+			},
+			wantErr: true,
+		},
+		{
+			name: "T2801_NewCmkTenantModificationEvent_EmptySystemID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "12312",
+				systemID: "",
+				c:        CMKACTION_ONBOARD,
+			},
+			wantErr: true,
+		},
+		{
+			name: "T2800_NewCmkTenantModificationEvent_WrongCMKAction_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "123123",
+				systemID: "123123",
+				c:        CmkAction("invalid"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "T2800_NewCmkTenantModificationEvent_CorrectData_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				cmkID:    "2222",
+				systemID: "123123",
+				c:        CMKACTION_ONBOARD,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewCmkTenantModificationEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID, tt.args.c)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCmkTenantModificationEvent() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

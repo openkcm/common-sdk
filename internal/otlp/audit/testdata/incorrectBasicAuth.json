@@ -1,4 +1,3 @@
 {
-  "username": "wrong",
-  "password": "credentials"
+  "username": "missing_pwd"
 }

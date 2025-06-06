@@ -21,10 +21,11 @@ const (
 	config        = "config.yaml"
 	envPrefix     = "AUDIT"
 
-	correctBasicAuthCfg   = "correctBasicAuthConfig.yaml"
-	incorrectBasicAuthCfg = "incorrectBasicAuthConfig.yaml"
-	correctMTLSCfg        = "correctMTLSConfig.yaml"
-	incorrectMTLSCfg      = "incorrectMTLSConfig.yaml"
+	correctBasicAuthCfg        = "correctBasicAuthConfig.yaml"
+	incorrectBasicAuthCfg      = "incorrectBasicAuthConfig.yaml"
+	incorrectBasicAuthCfgCreds = "incorrectBasicAuthConfigCreds.yaml"
+	correctMTLSCfg             = "correctMTLSConfig.yaml"
+	incorrectMTLSCfg           = "incorrectMTLSConfig.yaml"
 )
 
 func TestSend(t *testing.T) {
@@ -36,28 +37,22 @@ func TestSend(t *testing.T) {
 		expectError error
 	}{
 		{
-			name:        "T200_BasicAuth_Success",
+			name:        "T300_BasicAuth_Success",
 			configPath:  filepath.Join(testFilesDir, testConfigDir, correctBasicAuthCfg),
 			isBasicAuth: true,
 			expectError: nil,
 		},
 		{
-			name:        "T201_BasicAuth_Fail",
-			configPath:  filepath.Join(testFilesDir, testConfigDir, incorrectBasicAuthCfg),
+			name:        "T301_BasicAuth_Fail",
+			configPath:  filepath.Join(testFilesDir, testConfigDir, incorrectBasicAuthCfgCreds),
 			isBasicAuth: true,
 			expectError: errStatusNotOK,
 		},
 		{
-			name:        "T202_CorrectMTLS_Success",
+			name:        "T302_CorrectMTLS_Success",
 			configPath:  filepath.Join(testFilesDir, testConfigDir, correctMTLSCfg),
 			isBasicAuth: false,
 			expectError: nil,
-		},
-		{
-			name:        "T203_IncorrectMTLS_Fail",
-			configPath:  filepath.Join(testFilesDir, testConfigDir, incorrectMTLSCfg),
-			isBasicAuth: false,
-			expectError: errLoadMTLSConfigFailed,
 		},
 	}
 
@@ -84,8 +79,62 @@ func TestSend(t *testing.T) {
 			cfg.Audit.Endpoint = server.URL
 			logs := plog.NewLogs()
 			logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
-			err = SendEvent(t.Context(), &cfg.Audit, logs)
+			auditLogger, _ := NewLogger(&cfg.Audit)
+			err = auditLogger.SendEvent(t.Context(), &cfg.Audit, logs)
 
+			if (tt.expectError != nil && !errors.Is(err, tt.expectError)) || (err == nil && tt.expectError != nil) {
+				t.Errorf("Expected error '%v', got '%v'", tt.expectError, err)
+			}
+			if err != nil && tt.expectError == nil {
+				t.Errorf("Expected no error, got '%v'", err)
+			}
+		})
+	}
+}
+
+func Test_NewLogger(t *testing.T) {
+	tests := []struct {
+		name        string
+		configPath  string
+		isBasicAuth bool
+		serverError error
+		expectError error
+	}{
+		{
+			name:        "T200_BasicAuth_Success",
+			configPath:  filepath.Join(testFilesDir, testConfigDir, correctBasicAuthCfg),
+			isBasicAuth: true,
+			expectError: nil,
+		},
+		{
+			name:        "T201_BasicAuth_Fail",
+			configPath:  filepath.Join(testFilesDir, testConfigDir, incorrectBasicAuthCfg),
+			isBasicAuth: true,
+			expectError: errLoadValue,
+		},
+		{
+			name:        "T202_CorrectMTLS_Success",
+			configPath:  filepath.Join(testFilesDir, testConfigDir, correctMTLSCfg),
+			isBasicAuth: false,
+			expectError: nil,
+		},
+		{
+			name:        "T203_IncorrectMTLS_Fail",
+			configPath:  filepath.Join(testFilesDir, testConfigDir, incorrectMTLSCfg),
+			isBasicAuth: false,
+			expectError: errLoadMTLSConfigFailed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := createTempConfigFrom(tt.configPath)
+			defer removeTempConfig()
+			cfg, err := loadConfigForTests(t, err)
+			if err != nil {
+				t.Error(err)
+			}
+			_, err = NewLogger(&cfg.Audit)
 			if (tt.expectError != nil && !errors.Is(err, tt.expectError)) || (err == nil && tt.expectError != nil) {
 				t.Errorf("Expected error '%v', got '%v'", tt.expectError, err)
 			}
