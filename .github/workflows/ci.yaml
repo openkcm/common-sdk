@@ -31,7 +31,7 @@ jobs:
         with:
           version: 3.x
         env:
-          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: task validate
         run: task validate --verbose
