@@ -34,6 +34,7 @@ const (
 	CmkSwitchEvent             = "cmkSwitch"
 	CmkTenantModificationEvent = "cmkTenantModification"
 	CmkCreateEvent             = "cmkCreate"
+	CmkDeleteEvent             = "cmkDelete"
 	CmkRestoreEvent            = "cmkRestore"
 	CmkEnableEvent             = "cmkEnable"
 	CmkDisableEvent            = "cmkDisable"

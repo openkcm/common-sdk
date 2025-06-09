@@ -371,6 +371,11 @@ func NewCmkCreateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) 
 	return createEvent(m)
 }
 
+func NewCmkDeleteEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+	m := newEventProperties(cmkID, CmkDeleteEvent, metadata)
+	return createEvent(m)
+}
+
 func NewCmkRestoreEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
 	m := newEventProperties(cmkID, CmkRestoreEvent, metadata)
 	return createEvent(m)
@@ -456,8 +461,20 @@ func createEvent(properties eventProperties) (plog.Logs, error) {
 	if properties.hasValues(ActionTypeKey) {
 		lr.Attributes().PutStr(ActionTypeKey, fmt.Sprint(properties[ActionTypeKey]))
 	}
-	if isOneOf(properties[EventTypeKey], CredentialCreateEvent, CredentialExpirationEvent, CredentialRevokationEvent, CredentialDeleteEvent) {
+	if properties.hasValues(CredentialTypeKey) {
 		lr.Attributes().PutStr(CredentialTypeKey, fmt.Sprint(properties[CredentialTypeKey]))
+	}
+	if properties.hasValues(LoginMethodKey) {
+		lr.Attributes().PutStr(LoginMethodKey, fmt.Sprint(properties[LoginMethodKey]))
+	}
+	if properties.hasValues(MfaTypeKey) {
+		lr.Attributes().PutStr(MfaTypeKey, fmt.Sprint(properties[MfaTypeKey]))
+	}
+	if properties.hasValues(UserTypeKey) {
+		lr.Attributes().PutStr(UserTypeKey, fmt.Sprint(properties[UserTypeKey]))
+	}
+	if properties.hasValues(FailureReasonKey) {
+		lr.Attributes().PutStr(FailureReasonKey, fmt.Sprint(properties[FailureReasonKey]))
 	}
 	if properties.hasValues(DppKey) {
 		lr.Attributes().PutStr(DppKey, fmt.Sprint(properties[DppKey]))
