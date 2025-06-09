@@ -1777,27 +1777,32 @@ func TestCmkEvents(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := NewCmkCreateEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewCmkCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			_, err = NewCmkDeleteEvent(tt.args.metadata, tt.args.cmkID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCmkDeleteEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			_, err = NewCmkDisableEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewCmkDisableEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			_, err = NewCmkEnableEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewCmkEnableEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			_, err = NewCmkRestoreEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewCmkRestoreEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			_, err = NewCmkRotateEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewCmkRotateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 		})
@@ -1863,7 +1868,7 @@ func TestCmkBoardingEvents(t *testing.T) {
 			}
 			_, err = NewCmkOffboardingEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCmkOnboardingEvent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewCmkOffboardingEvent() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
