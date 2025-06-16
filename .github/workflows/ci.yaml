@@ -20,6 +20,14 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Fetch Tags
+        run: git fetch --tags --force
+
+      - name: Create the VERSION file
+        run: |
+          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.0.0")
+          echo "$latest_tag" > VERSION
+
       - name: Set up Go
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
