@@ -1,21 +1,16 @@
-name: Versioned Release
+name: Release
 
 on:
   pull_request:
-    types: [ labeled ]
-
-concurrency:
-  group: pr-${{ github.event.pull_request.number }}-label
-  cancel-in-progress: true
+    types: [ closed ]
+    branches:
+      - main
 
 jobs:
-  release_tag:
-    name: Release version
+  release-tag:
+    if: ${{ (github.event.pull_request.merged == true) && (contains(github.event.pull_request.labels.*.name, 'release')) }}
     runs-on: ubuntu-24.04
     steps:
-      - name: Short delay to group multiple label events
-        run: sleep 5
-
       - name: Generate token from GitHub App
         id: generate-token
         uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
@@ -31,84 +26,47 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Fetch Tags
-        run: git fetch --tags
-
-      - name: Check if Release Label is Set
-        id: check_label
-        run: |
-          release_label_set=false
-          
-           # Only check labels if the event is a pull request
-          if jq -e '.pull_request != null' "$GITHUB_EVENT_PATH" > /dev/null; then
-            labels=$(jq -r '.pull_request.labels // [] | .[].name' "$GITHUB_EVENT_PATH")
-            if echo "$labels" | grep -q "release"; then
-              release_label_set=true
-            fi
-          fi
-          
-          echo "release_label_set=$release_label_set" >> $GITHUB_ENV
-          echo "release_label_set=$release_label_set"
-
-      - name: Determine Next Version
-        run: |
-          if [[ "${{ env.release_label_set }}" == "true" ]]; then
-            latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.0.0")
-            echo "Latest tag: $latest_tag"
-
-            # Extract version components
-            major=$(echo $latest_tag | cut -d. -f1 | tr -d 'v')
-            minor=$(echo $latest_tag | cut -d. -f2)
-            patch=$(echo $latest_tag | cut -d. -f3)
-
-            echo "Current version: $major.$minor.$patch"
-
-            if [[ $GITHUB_EVENT_NAME == "pull_request" ]]; then
-              
-              if jq -e '.pull_request != null' "$GITHUB_EVENT_PATH" > /dev/null; then
-                labels=$(jq -r '.pull_request.labels // [] | .[].name' "$GITHUB_EVENT_PATH")
-                if echo "$labels" | grep -q "major"; then
-                  major=$((major + 1))
-                  minor=0
-                  patch=0
-                elif echo "$labels" | grep -q "minor"; then
-                  minor=$((minor + 1))
-                  patch=0
-                else
-                  patch=$((patch + 1))
-                fi
-              fi
-              
-            fi
-
-            next_version="v$major.$minor.$patch"
-
-            echo "Next version: $next_version"
-
-            echo "next_version=$next_version" >> $GITHUB_ENV
-            echo "version=$next_version" >> $GITHUB_ENV
-
-            if git rev-parse "refs/tags/$version" >/dev/null 2>&1; then
-              echo "Tag $version already exists. Skipping release."
-              echo "SKIP=true" >> $GITHUB_ENV
-              exit 0
-            fi
-          fi
-
-
       - name: Checkout build (taskfiles) repo
-        if: ${{ env.SKIP != 'true' }}
         run: |
           git clone https://github.com/openkcm/build.git ./hack/common
 
       - name: Install Task
-        if: ${{ env.SKIP != 'true' }}
         uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611 #v2.0.0
         with:
           version: 3.x
 
+      - name: Set up environment
+        run: |
+          echo "version=$(task next-release-version)" >> $GITHUB_ENV
+
+      - name: Generate SBOM
+        run: |
+          task cyclonedxgomod:app --verbose
+
+      - name: Run Trivy sbom vulnerability scanner
+        uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37 #v0.31.0
+        with:
+          scan-type: 'sbom'
+          scan-ref: "sbom.json"
+          format: 'json'
+          output: 'trivy-sbom-vuln.json'
+
+      - name: Run trivy repository security scanner
+        uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37 #v0.31.0
+        with:
+          token-setup-trivy: ${{ steps.generate-token.outputs.token }}
+          scan-type: repository
+          format: json
+          output: trivy-repository-vuln.json
+          severity: CRITICAL,HIGH,MEDIUM
+
+      - name: Run tfsec security scanner
+        uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6 #v1.0.3
+        with:
+          github_token: ${{ steps.generate-token.outputs.token }}
+          format: json
+
       - name: Import GPG key
-        if: ${{ env.SKIP != 'true' }}
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
         run: |
@@ -124,16 +82,7 @@ jobs:
           git config --global tag.gpgSign true
           git config --global gpg.program gpg
 
-      - name: Create Git tag
-        if: ${{ env.SKIP != 'true' }}
-        run: |
-          git tag -a "${{ env.version }}" -m "Release ${{ env.version }}" --local-user "$(git config user.signingkey)"
-          git push origin "${{ env.version }}"
-        env:
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
-
       - name: Build Changelog
-        if: ${{ env.SKIP != 'true' }}
         id: github_release
         uses: mikepenz/release-changelog-builder-action@5fb6e51e44d4aea73f66549f425aa3ed5008109e # v5
         with:
@@ -165,19 +114,23 @@ jobs:
               ]
             }
 
-      - name: Generate SBOM
-        if: ${{ env.SKIP != 'true' }}
+      - name: Create signed tag from main
         run: |
-          task cyclonedxgomod:mod-library --verbose
+          git fetch origin main --tags
+          git tag -a "${{ env.version }}" origin/main -m "Release ${{ env.version }}" --local-user "$(git config user.signingkey)"
+          git push origin "refs/tags/${{ env.version }}"
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
 
       - name: Create GitHub release
-        if: ${{ env.SKIP != 'true' }}
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
           tag_name: ${{ env.version }}
           name: Release ${{ env.version }}
           body: ${{steps.github_release.outputs.changelog}}
-          files: "sbom.json"
+          files: |
+            sbom.json
+            *vuln.json
           draft: true
           prerelease: false
         env:

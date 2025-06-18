@@ -5,13 +5,18 @@ on:
       - v*
     branches:
       - main
+    paths-ignore:
+      - 'docs/**'
+      - 'LICENSES/**'
+      - '.releases/**'
+      - '.github/**'
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  validate-and-testing:
     runs-on: ubuntu-24.04
 
     steps:
@@ -19,14 +24,6 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           submodules: recursive
-
-      - name: Fetch Tags
-        run: git fetch --tags --force
-
-      - name: Create the VERSION file
-        run: |
-          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.0.0")
-          echo "$latest_tag" > VERSION
 
       - name: Set up Go
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5

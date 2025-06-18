@@ -1,6 +1,13 @@
 name: REUSE Compliance Check
 
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - 'docs/**'
+      - 'LICENSES/**'
+      - '.releases/**'
+      - '.github/**'
+  pull_request:
 
 permissions:
   contents: read
