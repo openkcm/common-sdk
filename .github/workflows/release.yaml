@@ -26,6 +26,33 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Import GPG key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          echo RELOADAGENT | gpg-connect-agent
+          git config --global user.name "GitHub CI Bot"
+          git config --global user.email "github-ci[bot]@users.noreply.github.com"
+          git config --global user.signingkey "${{ secrets.GPG_KEY_ID }}"
+          git config --global commit.gpgsign true
+          git config --global tag.gpgSign true
+          git config --global gpg.program gpg
+
+      - name: Ensure initial tag exists
+        run: |
+          if [ -z "$(git tag)" ]; then
+            echo "No tags found. Creating v0.0.0 from main."
+            git fetch origin main --tags
+            git tag -a v0.0.0 origin/main -m "Initial tag" --local-user "$(git config user.signingkey)"
+            git push origin "refs/tags/v0.0.0"
+          else
+            echo "Tags already exist. Skipping initial tag creation."
+          fi
+
       - name: Checkout build (taskfiles) repo
         run: |
           git clone https://github.com/openkcm/build.git ./hack/common
@@ -40,8 +67,10 @@ jobs:
           echo "version=$(task next-release-version)" >> $GITHUB_ENV
 
       - name: Generate SBOM
-        run: |
-          task cyclonedxgomod:app --verbose
+        uses: CycloneDX/gh-gomod-generate-sbom@efc74245d6802c8cefd925620515442756c70d8f #v2.0.0
+        with:
+          version: v1
+          args: mod -type library -json -licenses -output sbom.json
 
       - name: Run Trivy sbom vulnerability scanner
         uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37 #v0.31.0
@@ -66,27 +95,11 @@ jobs:
           github_token: ${{ steps.generate-token.outputs.token }}
           format: json
 
-      - name: Import GPG key
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-          echo "use-agent" >> ~/.gnupg/gpg.conf
-          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
-          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-          echo RELOADAGENT | gpg-connect-agent
-          git config --global user.name "GitHub CI Bot"
-          git config --global user.email "github-ci[bot]@users.noreply.github.com"
-          git config --global user.signingkey "${{ secrets.GPG_KEY_ID }}"
-          git config --global commit.gpgsign true
-          git config --global tag.gpgSign true
-          git config --global gpg.program gpg
-
       - name: Build Changelog
         id: github_release
         uses: mikepenz/release-changelog-builder-action@5fb6e51e44d4aea73f66549f425aa3ed5008109e # v5
         with:
-          mode: "PR"
+          mode: "release"
           configurationJson: |
             {
               "template": "#{{CHANGELOG}}",
@@ -111,7 +124,11 @@ jobs:
                   "on_property": "title",
                   "target": "$1"
                 }
-              ]
+              ],
+              "exclude": {
+                "pattern": "^chore:\s*release",
+                "labels": "release"
+              }
             }
 
       - name: Create signed tag from main
