@@ -5,7 +5,7 @@ go 1.24.2
 require (
 	github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0
 	github.com/davidhoo/jsonpath v1.0.4
-	github.com/go-viper/mapstructure/v2 v2.2.1
+	github.com/go-viper/mapstructure/v2 v2.3.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/samber/oops v1.18.1
 	github.com/samber/slog-formatter v1.2.0
