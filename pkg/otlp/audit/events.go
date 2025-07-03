@@ -396,6 +396,26 @@ func NewCmkRotateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) 
 	return createEvent(m)
 }
 
+func NewUnauthorizedRequestEvent(metadata EventMetadata) (plog.Logs, error) {
+	uid, ok := metadata[UserInitiatorIDKey]
+	if !ok {
+		return plog.Logs{}, errEventCreation
+	}
+
+	m := newEventProperties(uid, UnauthorizedRequestEvent, metadata)
+	return createEvent(m)
+}
+
+func NewUnauthenticatedRequestEvent(metadata EventMetadata) (plog.Logs, error) {
+	uid, ok := metadata[UserInitiatorIDKey]
+	if !ok {
+		return plog.Logs{}, errEventCreation
+	}
+
+	m := newEventProperties(uid, UnauthenticatedRequestEvent, metadata)
+	return createEvent(m)
+}
+
 func newKeyEvent(keyEventType string, metadata EventMetadata, objectID string, systemID string, cmkID string, t KeyType) (eventProperties, error) {
 	if !hasValues(systemID, cmkID) || !t.IsValid() {
 		return nil, errEventCreation

@@ -74,45 +74,47 @@ auditLogger.SendEvent(ctx, event)
 ```
 
 ## Event catalog
-| Event type              |                                                       Function signature                                                        |  
-|-------------------------|:-------------------------------------------------------------------------------------------------------------------------------:|
-| `keyCreate`             |                    `NewKeyCreateEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                     | 
-| `keyDelete`             |                    `NewKeyDeleteEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                     | 
-| `keyRestore`            |                    `NewKeyRestoreEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                    | 
-| `keyPurge`              |                     `NewKeyPurgeEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                     | 
-| `keyRotate`             |                    `NewKeyRotateEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                     | 
-| `keyEnable`             |                    `NewKeyEnableEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                     | 
-| `keyDisable`            |                    `NewKeyDisableEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                    | 
-| `workflowStart`         |          `NewWorkflowStartEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool)`          |      
-| `workflowUpdate`        |               `NewWorkflowUpdateEvent(metadata EventMetadata, objectID string, oldValue, newValue any, dpp bool)`               |      
-| `workflowExecute`       |         `NewWorkflowExecuteEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool)`         |      
-| `workflowTerminate`     |        `NewWorkflowTerminateEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool)`        |      
-| `groupCreate`           |                       `NewGroupCreateEvent(metadata EventMetadata, objectID string, value any, dpp bool)`                       |        
-| `groupRead`             |            `NewGroupReadEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool)`            |        
-| `groupDelete`           |                       `NewGroupDeleteEvent(metadata EventMetadata, objectID string, value any, dpp bool)`                       |        
-| `groupUpdate`           |         `NewGroupUpdateEvent(metadata EventMetadata, objectID, propertyName string, oldValue, newValue any, dpp bool)`          |     
-| `userLoginSuccess`      |      `NewUserLoginSuccessEvent(metadata EventMetadata, objectID string, l LoginMethod, t MfaType, u UserType, value any)`       |  
-| `userLoginFailure`      |           `NewUserLoginFailureEvent(metadata EventMetadata, objectID string, l LoginMethod, f FailReason, value any)`           | 
-| `tenantOnboarding`      |                               `NewTenantOnboardingEvent(metadata EventMetadata, tenantID string)`                               |
-| `tenantOffboarding`     |                              `NewTenantOffboardingEvent(metadata EventMetadata, tenantID string)`                               | 
-| `tenantUpdate`          | `NewTenantUpdateEvent(metadata EventMetadata, objectID, propertyName string, t TenantUpdateActionType, oldValue, newValue any)` | 
-| `configurationCreate`   |                        `NewConfigurationCreateEvent(metadata EventMetadata, objectID string, value any)`                        | 
-| `configurationRead`     |            `NewConfigurationUpdateEvent(metadata EventMetadata, objectID string, oldValue, newValue any)`         `             |
-| `configurationDelete`   |                        `NewConfigurationDeleteEvent(metadata EventMetadata, objectID string, value any)`                        |
-| `configurationUpdate`   |             `NewConfigurationReadEvent(metadata EventMetadata, objectID, channelType, channelID string, value any)`             |
-| `credentialCreate`      |                    `NewCredentialCreateEvent(metadata EventMetadata, credentialID string, c CredentialType)`                    |
-| `credentialExpiration`  |                  `NewCredentialExpirationEvent(metadata EventMetadata, credentialID string, c CredentialType)`                  |
-| `credentialDelete`      |                    `NewCredentialDeleteEvent(metadata EventMetadata, credentialID string, c CredentialType)`                    |
-| `credentialRevokation`  |                  `NewCredentialRevokationEvent(metadata EventMetadata, credentialID string, c CredentialType)`                  |
-| `cmkOnboarding`         |                             `NewCmkOnboardingEvent(metadata EventMetadata, cmkID, systemID string)`                             |
-| `cmkOffboarding`        |                            `NewCmkOffboardingEvent(metadata EventMetadata, cmkID, systemID string)`                             |
-| `cmkSwitch`             |                          `NewCmkSwitchEvent(metadata EventMetadata, cmkID, cmkIDOld, cmkIDNew string)`                          |
-| `cmkTenantModification` |                  `NewCmkTenantModificationEvent(metadata EventMetadata, cmkID, systemID string, c CmkAction)`                   |
-| `cmkCreate`             |                          `NewCmkCreateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
-| `cmkDelete`             |                          `NewCmkDeleteEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
-| `cmkRestore`            |                          `NewCmkRestoreEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                          |
-| `cmkEnable`             |                          `NewCmkEnableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
-| `cmkDisable`            |                                   `NewCmkDisableEvent(metadata EventMetadata, cmkID string)`                                    |
-| `cmkRotate`             |                                    `NewCmkRotateEvent(metadata EventMetadata, cmkID string)`                                    |
+| Event type               |                                                       Function signature                                                        |  
+|--------------------------|:-------------------------------------------------------------------------------------------------------------------------------:|
+| `keyCreate`              |                    `NewKeyCreateEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                     | 
+| `keyDelete`              |                    `NewKeyDeleteEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                     | 
+| `keyRestore`             |                    `NewKeyRestoreEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                    | 
+| `keyPurge`               |                     `NewKeyPurgeEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                     | 
+| `keyRotate`              |                    `NewKeyRotateEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                     | 
+| `keyEnable`              |                    `NewKeyEnableEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                     | 
+| `keyDisable`             |                    `NewKeyDisableEvent(metadata EventMetadata, objectID, systemID, cmkID string, t KeyType)`                    | 
+| `workflowStart`          |          `NewWorkflowStartEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool)`          |      
+| `workflowUpdate`         |               `NewWorkflowUpdateEvent(metadata EventMetadata, objectID string, oldValue, newValue any, dpp bool)`               |      
+| `workflowExecute`        |         `NewWorkflowExecuteEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool)`         |      
+| `workflowTerminate`      |        `NewWorkflowTerminateEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool)`        |      
+| `groupCreate`            |                       `NewGroupCreateEvent(metadata EventMetadata, objectID string, value any, dpp bool)`                       |        
+| `groupRead`              |            `NewGroupReadEvent(metadata EventMetadata, objectID, channelID, channelType string, value any, dpp bool)`            |        
+| `groupDelete`            |                       `NewGroupDeleteEvent(metadata EventMetadata, objectID string, value any, dpp bool)`                       |        
+| `groupUpdate`            |         `NewGroupUpdateEvent(metadata EventMetadata, objectID, propertyName string, oldValue, newValue any, dpp bool)`          |     
+| `userLoginSuccess`       |      `NewUserLoginSuccessEvent(metadata EventMetadata, objectID string, l LoginMethod, t MfaType, u UserType, value any)`       |  
+| `userLoginFailure`       |           `NewUserLoginFailureEvent(metadata EventMetadata, objectID string, l LoginMethod, f FailReason, value any)`           | 
+| `tenantOnboarding`       |                               `NewTenantOnboardingEvent(metadata EventMetadata, tenantID string)`                               |
+| `tenantOffboarding`      |                              `NewTenantOffboardingEvent(metadata EventMetadata, tenantID string)`                               | 
+| `tenantUpdate`           | `NewTenantUpdateEvent(metadata EventMetadata, objectID, propertyName string, t TenantUpdateActionType, oldValue, newValue any)` | 
+| `configurationCreate`    |                        `NewConfigurationCreateEvent(metadata EventMetadata, objectID string, value any)`                        | 
+| `configurationRead`      |            `NewConfigurationUpdateEvent(metadata EventMetadata, objectID string, oldValue, newValue any)`         `             |
+| `configurationDelete`    |                        `NewConfigurationDeleteEvent(metadata EventMetadata, objectID string, value any)`                        |
+| `configurationUpdate`    |             `NewConfigurationReadEvent(metadata EventMetadata, objectID, channelType, channelID string, value any)`             |
+| `credentialCreate`       |                    `NewCredentialCreateEvent(metadata EventMetadata, credentialID string, c CredentialType)`                    |
+| `credentialExpiration`   |                  `NewCredentialExpirationEvent(metadata EventMetadata, credentialID string, c CredentialType)`                  |
+| `credentialDelete`       |                    `NewCredentialDeleteEvent(metadata EventMetadata, credentialID string, c CredentialType)`                    |
+| `credentialRevokation`   |                  `NewCredentialRevokationEvent(metadata EventMetadata, credentialID string, c CredentialType)`                  |
+| `cmkOnboarding`          |                             `NewCmkOnboardingEvent(metadata EventMetadata, cmkID, systemID string)`                             |
+| `cmkOffboarding`         |                            `NewCmkOffboardingEvent(metadata EventMetadata, cmkID, systemID string)`                             |
+| `cmkSwitch`              |                          `NewCmkSwitchEvent(metadata EventMetadata, cmkID, cmkIDOld, cmkIDNew string)`                          |
+| `cmkTenantModification`  |                  `NewCmkTenantModificationEvent(metadata EventMetadata, cmkID, systemID string, c CmkAction)`                   |
+| `cmkCreate`              |                          `NewCmkCreateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
+| `cmkDelete`              |                          `NewCmkDeleteEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
+| `cmkRestore`             |                          `NewCmkRestoreEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                          |
+| `cmkEnable`              |                          `NewCmkEnableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
+| `cmkDisable`             |                                   `NewCmkDisableEvent(metadata EventMetadata, cmkID string)`                                    |
+| `cmkRotate`              |                                    `NewCmkRotateEvent(metadata EventMetadata, cmkID string)`                                    |
+| `unauthenticatedRequest` |                                    `NewUnauthenticatedRequestEvent(metadata EventMetadata)`                                     |
+| `unauthorizedRequest`    |                                      `NewUnauthorizedRequestEvent(metadata EventMetadata)`                                      |
 
-All the enums in the functions above are provided within this library. For every enum values can be empty (it will be set to `UNSPECIFIED`), but if they are provided they must match the enums defined in this library, otherwise there will be an error. All `*value` properties are optional with the exception of ones present in event types: `tenantUpdate`, `configurationCreate`, `configurationRead`, `configurationDelete` and `configurationUpdate`. All other properties are considered required
+All the enums in the functions above are provided within this library. For every enum values can be empty (it will be set to `UNSPECIFIED`), but if they are provided they must match the enums defined in this library, otherwise there will be an error. All `*value` properties are optional with the exception of ones present in event types: `tenantUpdate`, `configurationCreate`, `configurationRead`, `configurationDelete` and `configurationUpdate`. All other properties are considered required.

@@ -1,6 +1,7 @@
 package otlpaudit
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -1994,7 +1995,7 @@ func TestNewCmkTenantModificationEvent(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "T2800_NewCmkTenantModificationEvent_WrongCMKAction_Fail",
+			name: "T2802_NewCmkTenantModificationEvent_WrongCMKAction_Fail",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -2008,7 +2009,7 @@ func TestNewCmkTenantModificationEvent(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "T2800_NewCmkTenantModificationEvent_CorrectData_Success",
+			name: "T2803_NewCmkTenantModificationEvent_CorrectData_Success",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
@@ -2027,6 +2028,79 @@ func TestNewCmkTenantModificationEvent(t *testing.T) {
 			_, err := NewCmkTenantModificationEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkTenantModificationEvent() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRequestEvents(t *testing.T) {
+	type args struct {
+		metadata EventMetadata
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "T2900_NewUnauthorizedRequestEvent_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "T2901_NewUnauthorizedRequestEvent_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "",
+					TenantIDKey:           "",
+					EventCorrelationIDKey: "",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "T2902_NewUnauthenticatedRequestEvent_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "T2903_NewUnauthenticatedRequestEvent_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "",
+					TenantIDKey:           "",
+					EventCorrelationIDKey: "",
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if strings.Contains(tt.name, "NewUnauthorizedRequest") {
+				_, err := NewUnauthorizedRequestEvent(tt.args.metadata)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("NewUnauthorizedRequestEvent() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			} else if strings.Contains(tt.name, "NewUnauthenticatedRequest") {
+				_, err := NewUnauthenticatedRequestEvent(tt.args.metadata)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("NewUnauthenticatedRequestEvent() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			} else {
+				t.Errorf("tests arrangement invalid")
 			}
 		})
 	}
