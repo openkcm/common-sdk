@@ -1878,7 +1878,7 @@ func TestCmkBoardingEvents(t *testing.T) {
 func TestNewCmkSwitchEvent(t *testing.T) {
 	type args struct {
 		metadata EventMetadata
-		cmkID    string
+		systemID string
 		cmkIDOld string
 		cmkIDNew string
 	}
@@ -1895,7 +1895,7 @@ func TestNewCmkSwitchEvent(t *testing.T) {
 					TenantIDKey:           "tenantID",
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
-				cmkID:    "",
+				systemID: "",
 				cmkIDOld: "123123",
 				cmkIDNew: "123123",
 			},
@@ -1909,7 +1909,7 @@ func TestNewCmkSwitchEvent(t *testing.T) {
 					TenantIDKey:           "tenantID",
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
-				cmkID:    "123123",
+				systemID: "123123",
 				cmkIDOld: "",
 				cmkIDNew: "123123",
 			},
@@ -1923,7 +1923,7 @@ func TestNewCmkSwitchEvent(t *testing.T) {
 					TenantIDKey:           "tenantID",
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
-				cmkID:    "12333",
+				systemID: "12333",
 				cmkIDOld: "123123",
 				cmkIDNew: "",
 			},
@@ -1937,7 +1937,7 @@ func TestNewCmkSwitchEvent(t *testing.T) {
 					TenantIDKey:           "tenantID",
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
-				cmkID:    "12333",
+				systemID: "12333",
 				cmkIDOld: "123123",
 				cmkIDNew: "123123",
 			},
@@ -1946,7 +1946,7 @@ func TestNewCmkSwitchEvent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewCmkSwitchEvent(tt.args.metadata, tt.args.cmkID, tt.args.cmkIDOld, tt.args.cmkIDNew)
+			_, err := NewCmkSwitchEvent(tt.args.metadata, tt.args.systemID, tt.args.cmkIDOld, tt.args.cmkIDNew)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkSwitchEvent() error = %v, wantErr %v", err, tt.wantErr)
 			}

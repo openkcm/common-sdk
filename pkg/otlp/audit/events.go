@@ -343,12 +343,12 @@ func NewCmkOffboardingEvent(metadata EventMetadata, cmkID, systemID string) (plo
 	return createEvent(m)
 }
 
-func NewCmkSwitchEvent(metadata EventMetadata, cmkID, cmkIDOld, cmkIDNew string) (plog.Logs, error) {
+func NewCmkSwitchEvent(metadata EventMetadata, systemID, cmkIDOld, cmkIDNew string) (plog.Logs, error) {
 	if !hasValues(cmkIDOld, cmkIDNew) {
 		return plog.Logs{}, errEventCreation
 	}
 
-	m := newEventProperties(cmkID, CmkSwitchEvent, metadata)
+	m := newEventProperties(systemID, CmkSwitchEvent, metadata)
 	m[CmkIDOldKey] = cmkIDOld
 	m[CmkIDNewKey] = cmkIDNew
 
