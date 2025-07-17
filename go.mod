@@ -5,7 +5,7 @@ go 1.24.2
 require (
 	github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0
 	github.com/davidhoo/jsonpath v1.0.4
-	github.com/go-viper/mapstructure/v2 v2.3.0
+	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/samber/oops v1.19.0
 	github.com/samber/slog-formatter v1.2.0
@@ -14,7 +14,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/veqryn/slog-context v0.8.0
 	github.com/veqryn/slog-context/otel v0.8.0
-	go.opentelemetry.io/collector/pdata v1.35.0
+	go.opentelemetry.io/collector/pdata v1.36.0
 	go.opentelemetry.io/contrib/bridges/otelslog v0.12.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.62.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.62.0
