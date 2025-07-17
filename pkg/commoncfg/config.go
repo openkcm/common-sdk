@@ -40,6 +40,7 @@ const (
 	InsecureSecretType SecretType = "insecure"
 	MTLSSecretType     SecretType = "mtls"
 	ApiTokenSecretType SecretType = "api-token"
+	BasicSecretType    SecretType = "basic"
 
 	EmbeddedSourceValue SourceValueType = "embedded"
 	EnvSourceValue      SourceValueType = "env"
@@ -158,6 +159,7 @@ type SecretRef struct {
 	Type     SecretType `yaml:"type" json:"type"`
 	MTLS     MTLS       `yaml:"mtls" json:"mtls"`
 	APIToken SourceRef  `yaml:"apiToken" json:"apiToken"`
+	Basic    BasicAuth  `yaml:"basic" json:"basic"`
 }
 
 // MTLS holds mTLS configuration for audit library.
