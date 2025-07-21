@@ -5,6 +5,7 @@ package commoncfg
 import (
 	"encoding/json"
 	"runtime/debug"
+	"time"
 )
 
 // LoggerFormat is used to specify the logging format.
@@ -78,16 +79,16 @@ type Status struct {
 // Logger holds the configuration for logging.
 type Logger struct {
 	Source    bool            `yaml:"source" json:"source"`
-	Format    LoggerFormat    `yaml:"format" json:"format"`
-	Level     string          `yaml:"level" json:"level"`
+	Format    LoggerFormat    `yaml:"format" json:"format" default:"json"`
+	Level     string          `yaml:"level" json:"level" default:"info"`
 	Formatter LoggerFormatter `yaml:"formatter" json:"formatter"`
 }
 
 // LoggerTime holds configuration for the time formatting in logs.
 type LoggerTime struct {
-	Type      LoggerTimeType `yaml:"type" json:"type"`
-	Pattern   string         `yaml:"pattern" json:"pattern"`
-	Precision string         `yaml:"precision" json:"precision"`
+	Type      LoggerTimeType `yaml:"type" json:"type" default:"unix"`
+	Pattern   string         `yaml:"pattern" json:"pattern" default:"Mon Jan 02 15:04:05 -0700 2006"`
+	Precision string         `yaml:"precision" json:"precision" default:"1us"`
 }
 
 // LoggerFormatter holds the logger formatter configuration.
@@ -98,16 +99,16 @@ type LoggerFormatter struct {
 
 // LoggerOtel holds configuration for the OpenTelemetry fields.
 type LoggerOTel struct {
-	TraceID string `yaml:"traceId" json:"traceId"`
-	SpanID  string `yaml:"spanId" json:"spanId"`
+	TraceID string `yaml:"traceId" json:"traceId" default:"traceId"`
+	SpanID  string `yaml:"spanId" json:"spanId" default:"spanId"`
 }
 
 // LoggerFields holds the mapping of log attributes.
 type LoggerFields struct {
-	Time    string              `yaml:"time" json:"time"`
-	Error   string              `yaml:"error" json:"error"`
-	Level   string              `yaml:"level" json:"level"`
-	Message string              `yaml:"message" json:"message"`
+	Time    string              `yaml:"time" json:"time" default:"time"`
+	Error   string              `yaml:"error" json:"error" default:"error"`
+	Level   string              `yaml:"level" json:"level" default:"info"`
+	Message string              `yaml:"message" json:"message" default:"msg"`
 	OTel    LoggerOTel          `yaml:"otel" json:"otel"`
 	Masking LoggerFieldsMasking `yaml:"masking" json:"masking"`
 }
@@ -209,19 +210,19 @@ type Prometheus struct {
 // GRPCServer specifies the gRPC server configuration e.g. used by the
 // business gRPC server if any.
 type GRPCServer struct {
-	Address                  string               `yaml:"address" json:"address"`
-	MaxRecvMsgSize           int                  `yaml:"maxRecvMsgSize" json:"maxRecvMsgSize"`
-	EfPolMinTime             int                  `yaml:"efPolMinTime" json:"efPolMinTime"`
-	EfPolPermitWithoutStream bool                 `yaml:"efPolPermitWithoutStream" json:"efPolPermitWithoutStream"`
+	Address                  string               `yaml:"address" json:"address" default:":9092"`
+	MaxRecvMsgSize           int                  `yaml:"maxRecvMsgSize" json:"maxRecvMsgSize" default:"125829120"`
+	EfPolMinTime             time.Duration        `yaml:"efPolMinTime" json:"efPolMinTime" default:"180s"`
+	EfPolPermitWithoutStream bool                 `yaml:"efPolPermitWithoutStream" json:"efPolPermitWithoutStream" default:"true"`
 	Attributes               GRPCServerAttributes `yaml:"attributes" json:"attributes"`
 }
 
 type GRPCServerAttributes struct {
-	MaxConnectionIdle     int `yaml:"maxConnectionIdle" json:"maxConnectionIdle"`
-	MaxConnectionAge      int `yaml:"maxConnectionAge" json:"maxConnectionAge"`
-	MaxConnectionAgeGrace int `yaml:"maxConnectionAgeGrace" json:"maxConnectionAgeGrace"`
-	Time                  int `yaml:"time" json:"time"`
-	Timeout               int `yaml:"timeout" json:"timeout"`
+	MaxConnectionIdle     time.Duration `yaml:"maxConnectionIdle" json:"maxConnectionIdle" default:"1800s"`
+	MaxConnectionAge      time.Duration `yaml:"maxConnectionAge" json:"maxConnectionAge" default:"1800s"`
+	MaxConnectionAgeGrace time.Duration `yaml:"maxConnectionAgeGrace" json:"maxConnectionAgeGrace" default:"300s"`
+	Time                  time.Duration `yaml:"time" json:"time" default:"120m"`
+	Timeout               time.Duration `yaml:"timeout" json:"timeout" default:"20s"`
 }
 
 // GRPCClient specifies the gRPC client configuration e.g. used by the
@@ -232,8 +233,18 @@ type GRPCClient struct {
 }
 
 type GRPCClientAttributes struct {
-	KeepaliveTimeSec    int `yaml:"keepaliveTimeSec" json:"keepaliveTimeSec"`
-	KeepaliveTimeoutSec int `yaml:"keepaliveTimeoutSec" json:"keepaliveTimeoutSec"`
+	//  GRPC Client connection KeepaliveTime option
+	//
+	// Deprecated: Field KeepaliveTime to be used
+	KeepaliveTimeSec int `yaml:"keepaliveTimeSec" json:"keepaliveTimeSec" default:"80"`
+	//  GRPC Client connection KeepaliveTimeout option
+	//
+	// Deprecated: Field KeepaliveTimeout to be used
+	KeepaliveTimeoutSec int `yaml:"keepaliveTimeoutSec" json:"keepaliveTimeoutSec" default:"40"`
+	//  GRPC KeepaliveTime option
+	KeepaliveTime time.Duration `yaml:"keepaliveTime" json:"keepaliveTime" default:"80s"`
+	//  GRPC KeepaliveTimeout option
+	KeepaliveTimeout time.Duration `yaml:"keepaliveTimeout" json:"keepaliveTimeout" default:"40s"`
 }
 
 // BuildInfo holds metadata about the build
