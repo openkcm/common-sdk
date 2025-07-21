@@ -210,19 +210,54 @@ type Prometheus struct {
 // GRPCServer specifies the gRPC server configuration e.g. used by the
 // business gRPC server if any.
 type GRPCServer struct {
-	Address                  string               `yaml:"address" json:"address" default:":9092"`
-	MaxRecvMsgSize           int                  `yaml:"maxRecvMsgSize" json:"maxRecvMsgSize" default:"125829120"`
-	EfPolMinTime             time.Duration        `yaml:"efPolMinTime" json:"efPolMinTime" default:"180s"`
-	EfPolPermitWithoutStream bool                 `yaml:"efPolPermitWithoutStream" json:"efPolPermitWithoutStream" default:"true"`
+	Address string `yaml:"address" json:"address" default:":9092"`
+	Flags   Flags  `yaml:"flags" json:"flags"`
+	// MaxSendMsgSize returns a ServerOption to set the max message size in bytes the server can send.
+	// If this is not set, gRPC uses the default `2147483647`.
+	MaxSendMsgSize int `yaml:"maxSendMsgSize" json:"maxSendMsgSize" default:"2147483647"`
+	// MaxRecvMsgSize returns a ServerOption to set the max message size in bytes the server can receive.
+	// If this is not set, gRPC uses the default 4MB.
+	MaxRecvMsgSize int `yaml:"maxRecvMsgSize" json:"maxRecvMsgSize" default:"125829120"`
+	// MinTime is the minimum amount of time a client should wait before sending
+	// a keepalive ping.
+	EfPolMinTime time.Duration `yaml:"efPolMinTime" json:"efPolMinTime" default:"180s"` // The current default value is 5 minutes.
+	// If true, server allows keepalive pings even when there are no active
+	// streams(RPCs). If false, and client sends ping when there are no active
+	// streams, server will send GOAWAY and close the connection.
+	EfPolPermitWithoutStream bool                 `yaml:"efPolPermitWithoutStream" json:"efPolPermitWithoutStream"` // false by default.
 	Attributes               GRPCServerAttributes `yaml:"attributes" json:"attributes"`
 }
 
+type Flags struct {
+	// Reflection is a protocol that gRPC servers can use to declare the protobuf-defined APIs.
+	// Reflection is used by debugging tools like grpcurl or grpcui.
+	// See https://grpc.io/docs/guides/reflection/.
+	Reflection bool `yaml:"reflection" json:"reflection"`
+	Health     bool `yaml:"health" json:"health"`
+}
+
 type GRPCServerAttributes struct {
-	MaxConnectionIdle     time.Duration `yaml:"maxConnectionIdle" json:"maxConnectionIdle" default:"1800s"`
-	MaxConnectionAge      time.Duration `yaml:"maxConnectionAge" json:"maxConnectionAge" default:"1800s"`
-	MaxConnectionAgeGrace time.Duration `yaml:"maxConnectionAgeGrace" json:"maxConnectionAgeGrace" default:"300s"`
-	Time                  time.Duration `yaml:"time" json:"time" default:"120m"`
-	Timeout               time.Duration `yaml:"timeout" json:"timeout" default:"20s"`
+	// MaxConnectionIdle is a duration for the amount of time after which an
+	// idle connection would be closed by sending a GoAway. Idleness duration is
+	// defined since the most recent time the number of outstanding RPCs became
+	// zero or the connection establishment.
+	MaxConnectionIdle time.Duration `yaml:"maxConnectionIdle" json:"maxConnectionIdle" default:"1800s"` // The current default value is infinity.
+	// MaxConnectionAge is a duration for the maximum amount of time a
+	// connection may exist before it will be closed by sending a GoAway. A
+	// random jitter of +/-10% will be added to MaxConnectionAge to spread out
+	// connection storms.
+	MaxConnectionAge time.Duration `yaml:"maxConnectionAge" json:"maxConnectionAge" default:"1800s"` // The current default value is infinity.
+	// MaxConnectionAgeGrace is an additive period after MaxConnectionAge after
+	// which the connection will be forcibly closed.
+	MaxConnectionAgeGrace time.Duration `yaml:"maxConnectionAgeGrace" json:"maxConnectionAgeGrace" default:"300s"` // The current default value is infinity.
+	// After a duration of this time if the server doesn't see any activity it
+	// pings the client to see if the transport is still alive.
+	// If set below 1s, a minimum value of 1s will be used instead.
+	Time time.Duration `yaml:"time" json:"time" default:"120m"` // The current default value is 2 hours.
+	// After having pinged for keepalive check, the server waits for a duration
+	// of Timeout and if no activity is seen even after that the connection is
+	// closed.
+	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"20s"` // The current default value is 20 seconds.
 }
 
 // GRPCClient specifies the gRPC client configuration e.g. used by the
