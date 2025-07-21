@@ -71,7 +71,7 @@ type Application struct {
 type Status struct {
 	Enabled bool `yaml:"enabled" json:"enabled"`
 	// Status.Address is the address to listen on for status reporting
-	Address string `yaml:"address" json:"address"`
+	Address string `yaml:"address" json:"address" default:":8888"`
 	// Status.Profiling enables profiling on the status server
 	Profiling bool `yaml:"profiling" json:"profiling"`
 }
