@@ -11,6 +11,8 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/samber/oops"
 	"github.com/spf13/viper"
+
+	"github.com/mcuadros/go-defaults"
 )
 
 // Loader is used to load configuration from a `config.yaml` file.
@@ -103,6 +105,7 @@ func (l *Loader) LoadConfig() error {
 			In("Config Loader").
 			Wrapf(err, "Unable to unmarshall configuration")
 	}
+	defaults.SetDefaults(l.cfg)
 	return nil
 }
 

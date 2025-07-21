@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -55,8 +54,8 @@ func NewGRPCHealthClient(grpcClientCfg *commoncfg.GRPCClient, dialOptions ...grp
 	dialOptions = append(dialOptions,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			Time:    time.Duration(grpcClientCfg.Attributes.KeepaliveTimeSec) * time.Second,
-			Timeout: time.Duration(grpcClientCfg.Attributes.KeepaliveTimeoutSec) * time.Second,
+			Time:    grpcClientCfg.Attributes.KeepaliveTime,
+			Timeout: grpcClientCfg.Attributes.KeepaliveTimeout,
 		}),
 	)
 
@@ -69,10 +68,10 @@ func NewGRPCHealthClient(grpcClientCfg *commoncfg.GRPCClient, dialOptions ...grp
 	if !ok {
 		fac := createGRPCFactory(client, dialOptions...)
 		clientPool, err = grpcpool.New(fac,
-			grpcpool.WithInitialCapacity(1),
-			grpcpool.WithMaxCapacity(3),
-			grpcpool.WithIdleTimeout(5*time.Second),
-			grpcpool.WithMaxLifeDuration(60*time.Second),
+			grpcpool.WithInitialCapacity(grpcClientCfg.Pool.InitialCapacity),
+			grpcpool.WithMaxCapacity(grpcClientCfg.Pool.MaxCapacity),
+			grpcpool.WithIdleTimeout(grpcClientCfg.Pool.IdleTimeout),
+			grpcpool.WithMaxLifeDuration(grpcClientCfg.Pool.MaxLifeDuration),
 		)
 		if err != nil {
 			return nil, err

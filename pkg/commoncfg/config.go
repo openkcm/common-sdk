@@ -230,6 +230,14 @@ type GRPCServerAttributes struct {
 type GRPCClient struct {
 	Address    string               `yaml:"address" json:"address"`
 	Attributes GRPCClientAttributes `yaml:"attributes" json:"attributes"`
+	Pool       GRPCPool             `yaml:"pool" json:"pool"`
+}
+
+type GRPCPool struct {
+	InitialCapacity int           `yaml:"initialCapacity" json:"initialCapacity" default:"1"`
+	MaxCapacity     int           `yaml:"maxCapacity" json:"maxCapacity" default:"1"`
+	IdleTimeout     time.Duration `yaml:"idleTimeout" json:"idleTimeout" default:"5s"`
+	MaxLifeDuration time.Duration `yaml:"maxLifeDuration" json:"maxLifeDuration" default:"60s"`
 }
 
 type GRPCClientAttributes struct {
