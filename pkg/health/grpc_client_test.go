@@ -3,6 +3,7 @@ package health_test
 import (
 	"net"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -41,8 +42,17 @@ func TestCheckGRPCServerHealth(t *testing.T) {
 			grpcCfg:   &commoncfg.GRPCClient{Address: "localhost:9999"},
 			wantError: true,
 		}, {
-			name:    "gRPC server listening",
-			grpcCfg: &commoncfg.GRPCClient{Address: listener.Addr().String()},
+			name: "gRPC server listening",
+			grpcCfg: func() *commoncfg.GRPCClient {
+				cfg := &commoncfg.GRPCClient{Address: listener.Addr().String()}
+				cfg.Pool = commoncfg.GRPCPool{
+					InitialCapacity: 1,
+					MaxCapacity:     3,
+					IdleTimeout:     3 * time.Second,
+					MaxLifeDuration: 60 * time.Second,
+				}
+				return cfg
+			}(),
 		},
 	}
 
