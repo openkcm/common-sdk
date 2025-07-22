@@ -276,14 +276,6 @@ type GRPCPool struct {
 }
 
 type GRPCClientAttributes struct {
-	//  GRPC Client connection KeepaliveTime option
-	//
-	// Deprecated: Field KeepaliveTime to be used
-	KeepaliveTimeSec int `yaml:"keepaliveTimeSec" json:"keepaliveTimeSec" default:"80"`
-	//  GRPC Client connection KeepaliveTimeout option
-	//
-	// Deprecated: Field KeepaliveTimeout to be used
-	KeepaliveTimeoutSec int `yaml:"keepaliveTimeoutSec" json:"keepaliveTimeoutSec" default:"40"`
 	//  GRPC KeepaliveTime option
 	KeepaliveTime time.Duration `yaml:"keepaliveTime" json:"keepaliveTime" default:"80s"`
 	//  GRPC KeepaliveTimeout option
