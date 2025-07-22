@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/veqryn/slog-context v0.8.0
 	github.com/veqryn/slog-context/otel v0.8.0
-	go.opentelemetry.io/collector/pdata v1.36.0
+	go.opentelemetry.io/collector/pdata v1.36.1
 	go.opentelemetry.io/contrib/bridges/otelslog v0.12.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.62.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.62.0
