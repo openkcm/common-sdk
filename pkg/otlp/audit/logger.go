@@ -7,11 +7,14 @@ import (
 	"net/http"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
 
 type AuditLogger struct {
-	client otlpClient
+	client          otlpClient
+	additionalProps map[string]string
 }
 
 type otlpClient struct {
@@ -43,6 +46,10 @@ func NewLogger(config *commoncfg.Audit) (*AuditLogger, error) {
 			return nil, err
 		}
 	}
+	var m map[string]string
+	if err := yaml.Unmarshal([]byte(config.AdditionalProperties), &m); err != nil {
+		return nil, err
+	}
 
 	return &AuditLogger{
 		client: otlpClient{
@@ -53,6 +60,7 @@ func NewLogger(config *commoncfg.Audit) (*AuditLogger, error) {
 			},
 			BasicAuth: &b,
 		},
+		additionalProps: m,
 	}, nil
 }
 
