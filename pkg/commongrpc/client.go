@@ -3,24 +3,25 @@ package commongrpc
 import (
 	"errors"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
+
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/grpcpool"
 	"github.com/openkcm/common-sdk/pkg/otlp"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
 )
 
 var (
-	EmptyAddressErr = errors.New("grpc address is empty")
+	ErrEmptyAddress = errors.New("grpc address is empty")
 )
 
 type PooledClient interface {
-	SetPool(*grpcpool.Pool)
+	SetPool(pool *grpcpool.Pool)
 }
 
 func NewPooledClient(client PooledClient, cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOption) error {
 	if cfg.Address == "" {
-		return EmptyAddressErr
+		return ErrEmptyAddress
 	}
 	opts := make([]grpc.DialOption, 0)
 	opts = append(opts,
@@ -49,7 +50,7 @@ func createFactory(address string, dialOptions ...grpc.DialOption) grpcpool.Clie
 
 func NewClient(cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOption) (*grpc.ClientConn, error) {
 	if cfg.Address == "" {
-		return nil, EmptyAddressErr
+		return nil, ErrEmptyAddress
 	}
 	opts := make([]grpc.DialOption, 0)
 	opts = append(opts,

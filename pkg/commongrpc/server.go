@@ -1,20 +1,22 @@
 package commongrpc
 
 import (
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/reflection"
+
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/health"
 	"github.com/openkcm/common-sdk/pkg/otlp"
-	"google.golang.org/grpc"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/reflection"
 )
 
 // NewServer create the grpc server
-func NewServer(cfg *commoncfg.GRPCServer, opts ...grpc.ServerOption) *grpc.Server {
-	var options []grpc.ServerOption
+func NewServer(cfg *commoncfg.GRPCServer, serverOptions ...grpc.ServerOption) *grpc.Server {
+	opts := make([]grpc.ServerOption, 0)
 
-	options = append(options,
+	opts = append(opts,
 		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
 			MinTime:             cfg.EfPolMinTime,             // If a client pings more than once every 15 sec, terminate the connection
 			PermitWithoutStream: cfg.EfPolPermitWithoutStream, // Allow pings even when there are no active streams
@@ -30,7 +32,7 @@ func NewServer(cfg *commoncfg.GRPCServer, opts ...grpc.ServerOption) *grpc.Serve
 		grpc.StatsHandler(otlp.NewServerHandler()),
 	)
 
-	opts = append(opts, opts...)
+	opts = append(opts, serverOptions...)
 
 	grpcServer := grpc.NewServer(opts...)
 
