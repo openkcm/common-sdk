@@ -1,6 +1,9 @@
 package commongrpc
 
 import (
+	"context"
+
+	slogctx "github.com/veqryn/slog-context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
@@ -13,7 +16,7 @@ import (
 )
 
 // NewServer create the grpc server
-func NewServer(cfg *commoncfg.GRPCServer, serverOptions ...grpc.ServerOption) *grpc.Server {
+func NewServer(ctx context.Context, cfg *commoncfg.GRPCServer, serverOptions ...grpc.ServerOption) *grpc.Server {
 	opts := make([]grpc.ServerOption, 0)
 
 	opts = append(opts,
@@ -38,10 +41,12 @@ func NewServer(cfg *commoncfg.GRPCServer, serverOptions ...grpc.ServerOption) *g
 
 	if cfg.Flags.Reflection {
 		reflection.Register(grpcServer)
+		slogctx.Info(ctx, "grpc server reflection enabled")
 	}
 
 	if cfg.Flags.Health {
 		healthpb.RegisterHealthServer(grpcServer, &health.GRPCServer{})
+		slogctx.Info(ctx, "grpc server health enabled")
 	}
 
 	return grpcServer
