@@ -6,7 +6,7 @@ test:
 
 .PHONY: lint
 lint:
-	golangci-lint run ./...
+	golangci-lint run ./... --fix
 
 .PHONY: reuse-lint
 reuse-lint:
