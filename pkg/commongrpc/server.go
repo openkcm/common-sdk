@@ -3,11 +3,11 @@ package commongrpc
 import (
 	"context"
 
-	slogctx "github.com/veqryn/slog-context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
+	slogctx "github.com/veqryn/slog-context"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
