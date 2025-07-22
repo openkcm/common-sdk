@@ -80,7 +80,7 @@ func TestSend(t *testing.T) {
 			logs := plog.NewLogs()
 			logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
 			auditLogger, _ := NewLogger(&cfg.Audit)
-			err = auditLogger.SendEvent(t.Context(), &cfg.Audit, logs)
+			err = auditLogger.SendEvent(t.Context(), logs)
 
 			if (tt.expectError != nil && !errors.Is(err, tt.expectError)) || (err == nil && tt.expectError != nil) {
 				t.Errorf("Expected error '%v', got '%v'", tt.expectError, err)
@@ -155,7 +155,8 @@ func Test_EnrichLogs(t *testing.T) {
 	logs := plog.NewLogs()
 	logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
 
-	err := enrichLogs(&auditCfg, &logs)
+	auditLogger, _ := NewLogger(&auditCfg)
+	err := auditLogger.enrichLogs(&logs)
 	if err != nil {
 		t.Errorf("Unexpected error '%v'", err)
 	}

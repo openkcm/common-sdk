@@ -8,9 +8,6 @@ import (
 	"net/http"
 
 	"go.opentelemetry.io/collector/pdata/plog"
-	"gopkg.in/yaml.v3"
-
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
 
 func (o *otlpClient) send(ctx context.Context, payload string) error {
@@ -41,8 +38,8 @@ func (o *otlpClient) send(ctx context.Context, payload string) error {
 	return err
 }
 
-func (auditLogger *AuditLogger) SendEvent(ctx context.Context, auditCfg *commoncfg.Audit, logs plog.Logs) error {
-	err := enrichLogs(auditCfg, &logs)
+func (auditLogger *AuditLogger) SendEvent(ctx context.Context, logs plog.Logs) error {
+	err := auditLogger.enrichLogs(&logs)
 	if err != nil {
 		return err
 	}
@@ -59,16 +56,12 @@ func (auditLogger *AuditLogger) SendEvent(ctx context.Context, auditCfg *commonc
 	return nil
 }
 
-func enrichLogs(auditCfg *commoncfg.Audit, logs *plog.Logs) error {
+func (auditLogger *AuditLogger) enrichLogs(logs *plog.Logs) error {
 	logRecord, err := getFirstLogRecord(*logs)
 	if err != nil {
 		return err
 	}
-	var m map[string]string
-	if err = yaml.Unmarshal([]byte(auditCfg.AdditionalProperties), &m); err != nil {
-		return err
-	}
-	for k, v := range m {
+	for k, v := range auditLogger.additionalProps {
 		logRecord.Attributes().PutStr(k, v)
 	}
 
