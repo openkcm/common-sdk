@@ -4,9 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"gopkg.in/yaml.v3"
 	"net/http"
 	"time"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
