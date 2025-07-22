@@ -33,7 +33,13 @@ func NewPooledClient(client PooledClient, cfg *commoncfg.GRPCClient, dialOptions
 	)
 	opts = append(opts, dialOptions...)
 
-	clientPool, err := grpcpool.New(createFactory(cfg.Address, opts...))
+	clientPool, err := grpcpool.New(
+		createFactory(cfg.Address, opts...),
+		grpcpool.WithInitialCapacity(cfg.Pool.InitialCapacity),
+		grpcpool.WithMaxCapacity(cfg.Pool.MaxCapacity),
+		grpcpool.WithIdleTimeout(cfg.Pool.IdleTimeout),
+		grpcpool.WithMaxLifeDuration(cfg.Pool.MaxLifeDuration),
+	)
 	if err != nil {
 		return err
 	}
