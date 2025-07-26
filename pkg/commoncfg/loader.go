@@ -130,11 +130,11 @@ func LoadValueFromSourceRef(cred SourceRef) ([]byte, error) {
 	case EmbeddedSourceValue:
 		return []byte(cred.Value), nil
 	case EnvSourceValue:
-		envSourceVal := os.Getenv(strings.TrimSpace(cred.Env))
-		if envSourceVal == "" {
+		result := env(cred.Value, cred.Env)
+		if result == "" {
 			return nil, errors.New("environment variable not set")
 		}
-		return []byte(envSourceVal), nil
+		return []byte(result), nil
 	case FileSourceValue:
 		data, err := os.ReadFile(cred.File.Path)
 		if err != nil {
@@ -160,4 +160,14 @@ func LoadValueFromSourceRef(cred SourceRef) ([]byte, error) {
 	}
 
 	return nil, errors.New("no credential found, based on given credentials source")
+}
+
+func env(names ...string) string {
+	for _, name := range names {
+		val := os.Getenv(strings.TrimSpace(name))
+		if val != "" {
+			return val
+		}
+	}
+	return ""
 }
