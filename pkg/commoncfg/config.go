@@ -4,6 +4,7 @@ package commoncfg
 
 import (
 	"encoding/json"
+	"errors"
 	"runtime/debug"
 	"time"
 )
@@ -51,6 +52,10 @@ const (
 	BinaryFileFormat FileFormat = "binary"
 )
 
+var (
+	ErrFeatureNotFound = errors.New("feature not found")
+)
+
 type BaseConfig struct {
 	Application Application `yaml:"application" json:"application"`
 	Status      Status      `yaml:"status" json:"status"`
@@ -64,8 +69,21 @@ type Application struct {
 	Name             string            `yaml:"name" json:"name"`
 	Environment      string            `yaml:"environment" json:"environment"`
 	Labels           map[string]string `yaml:"labels" json:"labels"`
+	FeatureGates     map[string]bool   `yaml:"featureGates" json:"featureGates"`
 	BuildInfo        BuildInfo
 	RuntimeBuildInfo *debug.BuildInfo
+}
+
+func (c *Application) IsFeatureEnabled(feature string) bool {
+	v, ok := c.FeatureGates[feature]
+	return ok && v
+}
+func (c *Application) Feature(feature string) (bool, error) {
+	if v, ok := c.FeatureGates[feature]; !ok {
+		return false, ErrFeatureNotFound
+	} else {
+		return v, nil
+	}
 }
 
 type Status struct {
