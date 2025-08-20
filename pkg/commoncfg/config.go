@@ -43,6 +43,7 @@ const (
 	MTLSSecretType     SecretType = "mtls"
 	ApiTokenSecretType SecretType = "api-token"
 	BasicSecretType    SecretType = "basic"
+	OAuth2SecretType   SecretType = "oauth2"
 
 	EmbeddedSourceValue SourceValueType = "embedded"
 	EnvSourceValue      SourceValueType = "env"
@@ -181,6 +182,7 @@ type SecretRef struct {
 	Type     SecretType `yaml:"type" json:"type"`
 	MTLS     MTLS       `yaml:"mtls" json:"mtls"`
 	APIToken SourceRef  `yaml:"apiToken" json:"apiToken"`
+	OAuth2   OAuth2     `yaml:"oauth2" json:"oauth2"`
 	Basic    BasicAuth  `yaml:"basic" json:"basic"`
 }
 
@@ -206,6 +208,12 @@ type Audit struct {
 type BasicAuth struct {
 	Username SourceRef `yaml:"username" json:"username"`
 	Password SourceRef `yaml:"password" json:"password"`
+}
+
+// OAuth2 holds client id and secret auth configuration
+type OAuth2 struct {
+	ClientID     SourceRef `yaml:"clientID" json:"clientID"`
+	ClientSecret SourceRef `yaml:"clientSecret" json:"clientSecret"`
 }
 
 // SourceRef defines a reference to a source for retrieving a value.

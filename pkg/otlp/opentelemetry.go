@@ -3,7 +3,6 @@ package otlp
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"log/slog"
 	"os"
 	"sync"
@@ -68,6 +67,7 @@ func WithLogger(log *slog.Logger) Option {
 		if log == nil {
 			return
 		}
+
 		reg.logger = log
 	}
 }
@@ -78,6 +78,7 @@ func WithShutdownComplete(shutdownComplete chan struct{}) Option {
 		if shutdownComplete == nil {
 			return
 		}
+
 		reg.shutdownComplete = shutdownComplete
 	}
 }
@@ -95,32 +96,38 @@ func Init(ctx context.Context,
 		telCfg: telCfg,
 		logCfg: logCfg,
 	}
+
 	for _, opt := range options {
 		if opt != nil {
 			opt(reg)
 		}
 	}
+
 	return reg.init(ctx)
 }
 
 // init initializes resource, trace, metrics and logger based on the given configs.
 func (reg *registry) init(ctx context.Context) error {
-	if err := reg.initResource(ctx); err != nil {
+	err := reg.initResource(ctx)
+	if err != nil {
 		return reg.abortInit(err)
 	}
 
 	// Tracing configuration
-	if err := reg.initTrace(ctx); err != nil {
+	err := reg.initTrace(ctx)
+	if err != nil {
 		return reg.abortInit(err)
 	}
 
 	// Metrics configuration
-	if err := reg.initMetric(ctx); err != nil {
+	err := reg.initMetric(ctx)
+	if err != nil {
 		return reg.abortInit(err)
 	}
 
 	// Logs Configuration
-	if err := reg.initLogger(ctx); err != nil {
+	err := reg.initLogger(ctx)
+	if err != nil {
 		return reg.abortInit(err)
 	}
 
@@ -142,6 +149,7 @@ func (reg *registry) init(ctx context.Context) error {
 			// flush and shutdown all telemetry providers within a timeout
 			shutdownCtx, shutdownRelease := context.WithTimeout(ctx, DefShutdownTimeout)
 			defer shutdownRelease()
+
 			reg.forceFlush(shutdownCtx)
 
 			slogctx.Info(ctx, "Completed graceful shutdown of telemetries")
@@ -166,6 +174,7 @@ func (reg *registry) abortInit(err error) error {
 	if reg.shutdownComplete != nil {
 		close(reg.shutdownComplete)
 	}
+
 	return err
 }
 
@@ -216,6 +225,7 @@ func (reg *registry) initResource(ctx context.Context) error {
 		semconv.ServiceName(reg.appCfg.Name),
 	)
 	attrs = append(attrs, CreateAttributesFrom(*reg.appCfg)...)
+
 	res, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL, attrs...),
@@ -248,6 +258,7 @@ func (reg *registry) initResource(ctx context.Context) error {
 	}
 
 	reg.res = res
+
 	return nil
 }
 
@@ -304,12 +315,12 @@ func initTraceGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 
 		sec = otlptracegrpc.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := loadMTLSClientCertificate(cfg.Traces.SecretRef.MTLS)
+		cert, err := commoncfg.LoadMTLSClientCertificate(cfg.Traces.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := loadMTLSCACertPool(cfg.Traces.SecretRef.MTLS)
+		caCertPool, err := commoncfg.LoadMTLSCACertPool(cfg.Traces.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
@@ -354,12 +365,12 @@ func initTraceHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 
 		sec = otlptracehttp.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := loadMTLSClientCertificate(cfg.Traces.SecretRef.MTLS)
+		cert, err := commoncfg.LoadMTLSClientCertificate(cfg.Traces.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := loadMTLSCACertPool(cfg.Traces.SecretRef.MTLS)
+		caCertPool, err := commoncfg.LoadMTLSCACertPool(cfg.Traces.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
@@ -429,6 +440,7 @@ func (reg *registry) initMetric(ctx context.Context) error {
 	}
 
 	var opts []metric.Option
+
 	opts = append(opts,
 		metric.WithResource(reg.res),
 		metric.WithReader(periodicReader),
@@ -439,7 +451,8 @@ func (reg *registry) initMetric(ctx context.Context) error {
 	otel.SetMeterProvider(reg.meterProvider)
 
 	// Start collecting Go runtime metrics (GC, heap, CPU)
-	if err := runtime.Start(runtime.WithMeterProvider(reg.meterProvider)); err != nil {
+	err := runtime.Start(runtime.WithMeterProvider(reg.meterProvider))
+	if err != nil {
 		return err
 	}
 
@@ -462,12 +475,12 @@ func initMetricGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 		sec = otlpmetricgrpc.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := loadMTLSClientCertificate(cfg.Metrics.SecretRef.MTLS)
+		cert, err := commoncfg.LoadMTLSClientCertificate(cfg.Metrics.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := loadMTLSCACertPool(cfg.Metrics.SecretRef.MTLS)
+		caCertPool, err := commoncfg.LoadMTLSCACertPool(cfg.Metrics.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
@@ -488,6 +501,7 @@ func initMetricGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 	}
 
 	var options []otlpmetricgrpc.Option
+
 	options = append(options, sec)
 	options = append(options, otlpmetricgrpc.WithEndpoint(string(host)))
 
@@ -512,12 +526,12 @@ func initMetricHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 		sec = otlpmetrichttp.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := loadMTLSClientCertificate(cfg.Metrics.SecretRef.MTLS)
+		cert, err := commoncfg.LoadMTLSClientCertificate(cfg.Metrics.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := loadMTLSCACertPool(cfg.Metrics.SecretRef.MTLS)
+		caCertPool, err := commoncfg.LoadMTLSCACertPool(cfg.Metrics.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
@@ -586,6 +600,7 @@ func (reg *registry) initLogger(ctx context.Context) error {
 		slog.String(commoncfg.AttrEnvironment, reg.appCfg.Environment),
 		slog.String(commoncfg.AttrName, reg.appCfg.Name),
 	)
+
 	labels := logger.CreateAttributes(reg.appCfg.Labels)
 	if len(labels) > 0 {
 		otelLogger = otelLogger.WithGroup(commoncfg.AttrLabels).With(labels...)
@@ -619,12 +634,12 @@ func initLoggerGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 		sec = otlploggrpc.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := loadMTLSClientCertificate(cfg.Logs.SecretRef.MTLS)
+		cert, err := commoncfg.LoadMTLSClientCertificate(cfg.Logs.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := loadMTLSCACertPool(cfg.Logs.SecretRef.MTLS)
+		caCertPool, err := commoncfg.LoadMTLSCACertPool(cfg.Logs.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
@@ -667,12 +682,12 @@ func initLoggerHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 		sec = otlploghttp.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := loadMTLSClientCertificate(cfg.Logs.SecretRef.MTLS)
+		cert, err := commoncfg.LoadMTLSClientCertificate(cfg.Logs.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := loadMTLSCACertPool(cfg.Logs.SecretRef.MTLS)
+		caCertPool, err := commoncfg.LoadMTLSCACertPool(cfg.Logs.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
@@ -698,35 +713,4 @@ func initLoggerHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 		otlploghttp.WithURLPath(cfg.Logs.URL),
 		sec,
 	)
-}
-
-func loadMTLSClientCertificate(cfg commoncfg.MTLS) (*tls.Certificate, error) {
-	certPEMBlock, err := commoncfg.LoadValueFromSourceRef(cfg.Cert)
-	if err != nil {
-		return nil, err
-	}
-
-	keyPEMBlock, err := commoncfg.LoadValueFromSourceRef(cfg.CertKey)
-	if err != nil {
-		return nil, err
-	}
-
-	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	return &cert, nil
-}
-
-func loadMTLSCACertPool(cfg commoncfg.MTLS) (*x509.CertPool, error) {
-	caCert, err := commoncfg.LoadValueFromSourceRef(cfg.ServerCA)
-	if err != nil {
-		return nil, err
-	}
-
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	return caCertPool, nil
 }
