@@ -23,6 +23,7 @@ func Test_OTLP_Init_Log(t *testing.T) {
 	minimalLogger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	appCfg := &config.Application{Name: "test-service", BuildInfo: config.BuildInfo{Version: "1.0.0"}}
 	logCfg := &config.Logger{}
+
 	tests := []struct {
 		name     string
 		secRef   config.SecretRef
@@ -124,6 +125,7 @@ func Test_OTLP_Init_Log(t *testing.T) {
 			if tt.secRef.Type == config.MTLSSecretType {
 				certPEM, keyPEM, caPEM, err := generatePEMs()
 				require.NoError(t, err)
+
 				tt.secRef.MTLS = config.MTLS{
 					Cert: config.SourceRef{
 						Source: config.EmbeddedSourceValue,
@@ -170,6 +172,7 @@ func Test_OTLP_Init_Log(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+
 			slog.Info("Test log") // To see if it isn't looping on logging
 		})
 	}
@@ -178,8 +181,10 @@ func Test_OTLP_Init_Log(t *testing.T) {
 func Test_OTLP_Init_Trace(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
+
 	appCfg := &config.Application{Name: "test-service", BuildInfo: config.BuildInfo{Version: "1.0.0"}}
 	logCfg := &config.Logger{}
+
 	tests := []struct {
 		name     string
 		secRef   config.SecretRef
@@ -273,6 +278,7 @@ func Test_OTLP_Init_Trace(t *testing.T) {
 			if tt.secRef.Type == config.MTLSSecretType {
 				certPEM, keyPEM, caPEM, err := generatePEMs()
 				require.NoError(t, err)
+
 				tt.secRef.MTLS = config.MTLS{
 					Cert: config.SourceRef{
 						Source: config.EmbeddedSourceValue,
@@ -306,6 +312,7 @@ func Test_OTLP_Init_Trace(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+
 			slog.Info("Test log") // To see if it isn't looping on logging
 		})
 	}
@@ -314,8 +321,10 @@ func Test_OTLP_Init_Trace(t *testing.T) {
 func Test_OTLP_Init_Metric(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
+
 	appCfg := &config.Application{Name: "test-service", BuildInfo: config.BuildInfo{Version: "1.0.0"}}
 	logCfg := &config.Logger{}
+
 	tests := []struct {
 		name     string
 		secRef   config.SecretRef
@@ -409,6 +418,7 @@ func Test_OTLP_Init_Metric(t *testing.T) {
 			if tt.secRef.Type == config.MTLSSecretType {
 				certPEM, keyPEM, caPEM, err := generatePEMs()
 				require.NoError(t, err)
+
 				tt.secRef.MTLS = config.MTLS{
 					Cert: config.SourceRef{
 						Source: config.EmbeddedSourceValue,
@@ -442,6 +452,7 @@ func Test_OTLP_Init_Metric(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+
 			slog.Info("Test log") // To see if it isn't looping on logging
 		})
 	}
@@ -450,10 +461,12 @@ func Test_OTLP_Init_Metric(t *testing.T) {
 // generatePEMs generates cert, key, and CA in PEM format.
 func generatePEMs() ([]byte, []byte, []byte, error) {
 	var certPEM, keyPEM, caPEM []byte
+
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	serial, _ := rand.Int(rand.Reader, big.NewInt(1<<62))
 
 	template := &x509.Certificate{

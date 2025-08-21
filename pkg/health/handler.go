@@ -52,9 +52,11 @@ func (rw *JSONResultWriter) Write(result *Result, statusCode int, w http.Respons
 	if err != nil {
 		return fmt.Errorf("cannot marshal response: %w", err)
 	}
+
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(statusCode)
 	_, err = w.Write(jsonResp)
+
 	return err
 }
 
@@ -66,6 +68,7 @@ func NewJSONResultWriter() *JSONResultWriter {
 // NewHandler creates a new health check http.Handler.
 func NewHandler(checker Checker, options ...HandlerOption) http.HandlerFunc {
 	cfg := createConfig(options)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Do the check (with configured middleware)
 		result := withMiddleware(cfg.middleware, func(r *http.Request) Result {
@@ -74,6 +77,7 @@ func NewHandler(checker Checker, options ...HandlerOption) http.HandlerFunc {
 
 		// Write HTTP response
 		disableResponseCache(w)
+
 		statusCode := mapHTTPStatusCode(result.Status, cfg.statusCodeUp, cfg.statusCodeDown)
 
 		err := cfg.resultWriter.Write(&result, statusCode, w, r)
@@ -94,6 +98,7 @@ func mapHTTPStatusCode(status AvailabilityStatus, statusCodeUp int, statusCodeDo
 	if status == StatusDown || status == StatusUnknown {
 		return statusCodeDown
 	}
+
 	return statusCodeUp
 }
 
@@ -120,5 +125,6 @@ func withMiddleware(interceptors []Middleware, target MiddlewareFunc) Middleware
 	for idx := len(interceptors) - 1; idx >= 0; idx-- {
 		chain = interceptors[idx](chain)
 	}
+
 	return chain
 }

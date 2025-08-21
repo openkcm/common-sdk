@@ -55,6 +55,7 @@ func TestWithChecksConfig(t *testing.T) {
 
 	// Assert
 	require.Len(t, cfg.checks, 2)
+
 	for i, name := range expectedNames {
 		assert.True(t, reflect.DeepEqual(&checks[i], cfg.checks[name]))
 	}

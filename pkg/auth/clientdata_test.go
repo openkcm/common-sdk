@@ -15,6 +15,7 @@ func TestEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not generate RSA key: %s", err)
 	}
+
 	rsaPublicKey := &rsaPrivateKey.PublicKey
 
 	defClientData := &auth.ClientData{

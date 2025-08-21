@@ -10,6 +10,7 @@ func (p *Pool) Capacity() int {
 	if p.IsClosed() {
 		return 0
 	}
+
 	return cap(p.clientWrappers)
 }
 
@@ -18,5 +19,6 @@ func (p *Pool) Available() int {
 	if p.IsClosed() {
 		return 0
 	}
+
 	return len(p.clientWrappers)
 }

@@ -94,13 +94,14 @@ func (l *Loader) LoadConfig() error {
 		v.AutomaticEnv()
 	}
 
-	if err := v.ReadInConfig(); err != nil {
+	err := v.ReadInConfig()
+	if err != nil {
 		return oops.
 			In("Config Loader").
 			Wrapf(err, "Failed reading config file")
 	}
 
-	err := v.Unmarshal(l.cfg,
+	err = v.Unmarshal(l.cfg,
 		func(c *mapstructure.DecoderConfig) {
 			c.ErrorUnused = true // error if there are unknown keys in the config
 		},

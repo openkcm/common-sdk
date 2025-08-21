@@ -26,9 +26,11 @@ func TestGDPRMiddleware(t *testing.T) {
 			},
 		},
 	}
+
 	t.Run("masking works for ", func(t *testing.T) {
 		t.Run("group fields that are masked", func(t *testing.T) {
 			var buf bytes.Buffer
+
 			loggerCfg.Formatter.Fields.Masking = commoncfg.LoggerFieldsMasking{
 				PII:   []string{"email"},
 				Other: map[string]string{"credit_card": "****"},
@@ -55,6 +57,7 @@ func TestGDPRMiddleware(t *testing.T) {
 
 		t.Run("PII mask field", func(t *testing.T) {
 			var buf bytes.Buffer
+
 			loggerCfg.Formatter.Fields.Masking = commoncfg.LoggerFieldsMasking{
 				PII:   []string{"masked"},
 				Other: nil,
@@ -74,6 +77,7 @@ func TestGDPRMiddleware(t *testing.T) {
 
 		t.Run("other mask field", func(t *testing.T) {
 			var buf bytes.Buffer
+
 			loggerCfg.Formatter.Fields.Masking = commoncfg.LoggerFieldsMasking{
 				PII:   nil,
 				Other: map[string]string{"masked": "*custom_mask*"},
@@ -93,6 +97,7 @@ func TestGDPRMiddleware(t *testing.T) {
 
 		t.Run("other not masked fields", func(t *testing.T) {
 			var buf bytes.Buffer
+
 			loggerCfg.Formatter.Fields.Masking = commoncfg.LoggerFieldsMasking{
 				PII:   []string{"pii_masked"},
 				Other: map[string]string{"other_masked": "*custom_mask*"},

@@ -181,6 +181,7 @@ func TestCapacity(t *testing.T) {
 					if p.Available() != tc.wantInitCap {
 						t.Errorf("expected init cap %d, but got %d", tc.wantInitCap, p.Available())
 					}
+
 					if p.Capacity() != tc.wantMaxCap {
 						t.Errorf("expected max cap %d, but got %d", tc.wantMaxCap, p.Capacity())
 					}
@@ -242,7 +243,8 @@ func TestMaxLifeDuration(t *testing.T) {
 
 	// The max life of the connection was very low (1ns), so when we close
 	// the connection it should get marked as unhealthy
-	if err := c.Close(); err != nil {
+	err = c.Close()
+	if err != nil {
 		t.Errorf("Close returned an error: %s", err.Error())
 	}
 
@@ -273,7 +275,8 @@ func TestMaxLifeDuration(t *testing.T) {
 
 		// The max life of the connection is high, so when we close
 		// the connection it shouldn't be marked as unhealthy
-		if err := c.Close(); err != nil {
+		err := c.Close()
+		if err != nil {
 			t.Errorf("Close returned an error: %s", err.Error())
 		}
 
@@ -298,12 +301,14 @@ func TestClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("The pool returned an error: %s", err.Error())
 	}
+
 	err = p.Close()
 	if err != nil {
 		t.Fatalf("Close returned an error: %s", err.Error())
 	}
 
 	p = &grpcpool.Pool{}
+
 	err = p.Close()
 	if err != nil {
 		t.Fatalf("Close returned an error: %s", err.Error())
@@ -370,6 +375,7 @@ func TestMarkUnhealthy(t *testing.T) {
 	}
 
 	cw.MarkUnhealthy()
+
 	if cw.IsHealthy() {
 		t.Fatalf("the connection should've been marked as unhealthy")
 	}

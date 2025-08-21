@@ -83,5 +83,6 @@ func isOneOf[T comparable](val T, trgts ...T) bool {
 			return true
 		}
 	}
+
 	return false
 }

@@ -23,6 +23,7 @@ func NewPooledClient(client PooledClient, cfg *commoncfg.GRPCClient, dialOptions
 	if cfg.Address == "" {
 		return ErrEmptyAddress
 	}
+
 	opts := make([]grpc.DialOption, 0)
 	opts = append(opts,
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
@@ -45,6 +46,7 @@ func NewPooledClient(client PooledClient, cfg *commoncfg.GRPCClient, dialOptions
 	}
 
 	client.SetPool(clientPool)
+
 	return nil
 }
 
@@ -58,6 +60,7 @@ func NewClient(cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOption) (*grpc
 	if cfg.Address == "" {
 		return nil, ErrEmptyAddress
 	}
+
 	opts := make([]grpc.DialOption, 0)
 	opts = append(opts,
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{

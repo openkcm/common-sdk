@@ -105,13 +105,16 @@ func TestLoadConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Arrange
 			cfg := &MyConfig{}
+
 			file := filepath.Join(tmpdir, "config.yaml")
-			if err := os.WriteFile(file, []byte(tc.cfg), 0644); err != nil {
+
+			err := os.WriteFile(file, []byte(tc.cfg), 0644)
+			if err != nil {
 				t.Fatalf("failed to create config file: %v", err)
 			}
 
 			// Act
-			err := commoncfg.LoadConfig(cfg, tc.defaults, tc.paths...)
+			err = commoncfg.LoadConfig(cfg, tc.defaults, tc.paths...)
 
 			// Assert
 			if tc.wantError {
@@ -125,6 +128,7 @@ func TestLoadConfig(t *testing.T) {
 					if cfg.Key1 != tc.wantKey1 {
 						t.Errorf("expected Key1 to be %s, but got %s", tc.wantKey1, cfg.Key1)
 					}
+
 					if cfg.Key2 != tc.wantKey2 {
 						t.Errorf("expected Key2 to be %d, but got %d", tc.wantKey2, cfg.Key2)
 					}
@@ -139,8 +143,11 @@ func TestWithEnvOverride(t *testing.T) {
 	config := "key1: value1\nkey2: 42\nsub:\n  key3: value3"
 	tmpdir := t.TempDir()
 	cfg := &MyConfig{}
+
 	file := filepath.Join(tmpdir, "config.yaml")
-	if err := os.WriteFile(file, []byte(config), 0644); err != nil {
+
+	err := os.WriteFile(file, []byte(config), 0644)
+	if err != nil {
 		t.Fatalf("failed to create config file: %v", err)
 	}
 
@@ -212,6 +219,7 @@ func TestLoadValueFromSourceRef(t *testing.T) {
 
 	t.Run("loads value from env", func(t *testing.T) {
 		t.Setenv("MY_SECRET", "env-secret")
+
 		ref := commoncfg.SourceRef{
 			Source: commoncfg.EnvSourceValue,
 			Env:    "MY_SECRET",
@@ -232,10 +240,12 @@ func TestLoadValueFromSourceRef(t *testing.T) {
 
 	t.Run("loads JSON value from file", func(t *testing.T) {
 		tmpFile := createTempFile(t, `{"token": "json-secret"}`)
+
 		defer func() {
 			err := os.Remove(tmpFile)
 			require.NoError(t, err)
 		}()
+
 		ref := commoncfg.SourceRef{
 			Source: commoncfg.FileSourceValue,
 			File: commoncfg.CredentialFile{
@@ -264,6 +274,7 @@ func TestLoadValueFromSourceRef(t *testing.T) {
 
 	t.Run("loads binary data from file", func(t *testing.T) {
 		tmpFile := createTempFile(t, "binary-data")
+
 		defer func() {
 			err := os.Remove(tmpFile)
 			require.NoError(t, err)

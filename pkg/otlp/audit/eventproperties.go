@@ -15,6 +15,7 @@ func (m eventProperties) hasValues(keys ...string) bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -24,6 +25,7 @@ func hasValues(values ...any) bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -32,8 +34,10 @@ func isZeroVal[T comparable](v T) bool {
 	if valueType == nil {
 		return true
 	}
+
 	zeroValue := reflect.Zero(valueType).Interface()
 	comparableZero, _ := zeroValue.(T)
+
 	return v == comparableZero
 }
 
@@ -41,6 +45,7 @@ func NewEventMetadata(userInitiatorID, tenantID, eventCorrelationID string) (Eve
 	if userInitiatorID == "" || tenantID == "" {
 		return nil, errEventCreation
 	}
+
 	return EventMetadata{
 		UserInitiatorIDKey:    userInitiatorID,
 		TenantIDKey:           tenantID,
