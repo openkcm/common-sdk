@@ -114,19 +114,19 @@ func (reg *registry) init(ctx context.Context) error {
 	}
 
 	// Tracing configuration
-	err := reg.initTrace(ctx)
+	err = reg.initTrace(ctx)
 	if err != nil {
 		return reg.abortInit(err)
 	}
 
 	// Metrics configuration
-	err := reg.initMetric(ctx)
+	err = reg.initMetric(ctx)
 	if err != nil {
 		return reg.abortInit(err)
 	}
 
 	// Logs Configuration
-	err := reg.initLogger(ctx)
+	err = reg.initLogger(ctx)
 	if err != nil {
 		return reg.abortInit(err)
 	}
