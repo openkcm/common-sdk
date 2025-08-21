@@ -42,6 +42,7 @@ func CheckGRPCServerHealth(ctx context.Context, grpcCfg *commoncfg.GRPCClient) e
 	if err != nil {
 		return err
 	}
+
 	if grpcServerHealthResp.GetStatus() != healthgrpc.HealthCheckResponse_SERVING {
 		return fmt.Errorf("GRPC Server serving on address %s is not in servig state", grpcCfg.Address)
 	}
@@ -64,9 +65,11 @@ func NewGRPCHealthClient(grpcClientCfg *commoncfg.GRPCClient, dialOptions ...grp
 	}
 
 	var err error
+
 	clientPool, ok := globalGRPCClientPool.Load(grpcClientCfg.Address)
 	if !ok {
 		fac := createGRPCFactory(client, dialOptions...)
+
 		clientPool, err = grpcpool.New(fac,
 			grpcpool.WithInitialCapacity(grpcClientCfg.Pool.InitialCapacity),
 			grpcpool.WithMaxCapacity(grpcClientCfg.Pool.MaxCapacity),
@@ -76,6 +79,7 @@ func NewGRPCHealthClient(grpcClientCfg *commoncfg.GRPCClient, dialOptions ...grp
 		if err != nil {
 			return nil, err
 		}
+
 		globalGRPCClientPool.Store(grpcClientCfg.Address, clientPool)
 	}
 
@@ -83,6 +87,7 @@ func NewGRPCHealthClient(grpcClientCfg *commoncfg.GRPCClient, dialOptions ...grp
 	if !ok {
 		return nil, ErrIsNotGrpcPool
 	}
+
 	return client, nil
 }
 

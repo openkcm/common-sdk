@@ -167,7 +167,9 @@ func (cr CheckResult) MarshalJSON() ([]byte, error) {
 
 func (cr *CheckResult) UnmarshalJSON(data []byte) error {
 	var result jsonCheckResult
-	if err := json.Unmarshal(data, &result); err != nil {
+
+	err := json.Unmarshal(data, &result)
+	if err != nil {
 		return err
 	}
 
@@ -253,6 +255,7 @@ func (ck *defaultChecker) Stop() {
 func (ck *defaultChecker) GetRunningPeriodicCheckCount() int {
 	ck.mtx.Lock()
 	defer ck.mtx.Unlock()
+
 	return ck.periodicCheckCount
 }
 
@@ -260,6 +263,7 @@ func (ck *defaultChecker) GetRunningPeriodicCheckCount() int {
 func (ck *defaultChecker) IsStarted() bool {
 	ck.mtx.Lock()
 	defer ck.mtx.Unlock()
+
 	return ck.started
 }
 
@@ -326,7 +330,6 @@ func (ck *defaultChecker) startPeriodicChecks(ctx context.Context) {
 			// ALSO:
 			//  - The check state itself is never synchronized on, since the only place where values can be changed are
 			//    within this goroutine.
-
 			ck.periodicCheckCount++
 			ck.wg.Add(1)
 
@@ -396,6 +399,7 @@ func (ck *defaultChecker) mapStateToCheckerResult() Result {
 
 	if numChecks > 0 && !ck.cfg.detailsDisabled {
 		checkResults = make(map[string]CheckResult, numChecks)
+
 		for _, check := range ck.cfg.checks {
 			checkState := ck.state.CheckState[check.Name]
 			checkResults[check.Name] = CheckResult{
@@ -434,6 +438,7 @@ func withCheckContext(ctx context.Context, check *Check, f func(checkCtx context
 		ctx, cancel = context.WithTimeout(ctx, check.Timeout)
 	}
 	defer cancel()
+
 	f(ctx)
 }
 
@@ -484,6 +489,7 @@ func executeCheckFunc(ctx context.Context, check *Check) error {
 						err = fmt.Errorf("%v", r)
 						res <- err
 					}
+
 					if check.PanicHandler != nil {
 						check.PanicHandler(ctx, err)
 					}
@@ -575,6 +581,7 @@ func refreshInfoMap(infoMap map[string]interface{}, infoFuncs []func(map[string]
 	for _, infoFunc := range infoFuncs {
 		infoFunc(target)
 	}
+
 	for k, v := range target {
 		if _, ok := infoMap[k]; !ok {
 			infoMap[k] = v

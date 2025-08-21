@@ -53,8 +53,10 @@ func InitAsDefaultWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app common
 	if err != nil {
 		return err
 	}
+
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
+
 	return nil
 }
 
@@ -78,6 +80,7 @@ func InitHandlerWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app commoncf
 		if precision == 0 {
 			precision = time.Microsecond
 		}
+
 		formatters = append(formatters, slogformatter.UnixTimestampFormatter(precision))
 	case commoncfg.PatternTimeLogger:
 		formatters = append(formatters, slogformatter.TimeFormatter(cfgLogger.Formatter.Time.Pattern, time.UTC))
@@ -87,22 +90,26 @@ func InitHandlerWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app commoncf
 		switch a.Key {
 		case TimeAttribute:
 			v, _ := formatters[0](groups, a)
+
 			timeKey := strings.TrimSpace(cfgLogger.Formatter.Fields.Time)
 			if timeKey == "" {
 				timeKey = a.Key
 			}
+
 			return slog.Attr{Key: timeKey, Value: v}
 		case LevelAttribute:
 			levelKey := strings.TrimSpace(cfgLogger.Formatter.Fields.Level)
 			if levelKey == "" {
 				levelKey = a.Key
 			}
+
 			return slog.Attr{Key: levelKey, Value: a.Value}
 		case MessageAttribute:
 			msgKey := strings.TrimSpace(cfgLogger.Formatter.Fields.Message)
 			if msgKey == "" {
 				msgKey = a.Key
 			}
+
 			return slog.Attr{Key: msgKey, Value: a.Value}
 		default:
 			return a
@@ -115,12 +122,14 @@ func InitHandlerWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app commoncf
 			slog.String(commoncfg.AttrEnvironment, app.Environment),
 		),
 	}
+
 	labels := CreateAttributes(app.Labels)
 	if len(labels) > 0 {
 		attrs = append(attrs, slog.Group(commoncfg.AttrLabels, labels...))
 	}
 
 	var handler slog.Handler
+
 	switch cfgLogger.Format {
 	case commoncfg.TextLoggerFormat:
 		handler = slog.NewTextHandler(w, &slog.HandlerOptions{
@@ -151,6 +160,7 @@ func InitHandlerWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app commoncf
 	if strings.TrimSpace(cfgLogger.Formatter.Fields.Error) != "" {
 		errorField = strings.TrimSpace(cfgLogger.Formatter.Fields.Error)
 	}
+
 	formatters = append(formatters, slogformatter.ErrorFormatter(errorField))
 
 	if strings.TrimSpace(cfgLogger.Formatter.Fields.OTel.TraceID) != "" {
@@ -185,6 +195,7 @@ func CreateAttributes(m map[string]string, attrs ...slog.Attr) []any {
 	for k, v := range m {
 		attributes = append(attributes, slog.String(k, v))
 	}
+
 	for _, attr := range attrs {
 		attributes = append(attributes, attr)
 	}

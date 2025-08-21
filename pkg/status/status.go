@@ -49,6 +49,7 @@ func WithCustom(name string, handler func(http.ResponseWriter, *http.Request)) P
 		if handler == nil {
 			return
 		}
+
 		c.handlers[name] = handler
 	}
 }
@@ -58,7 +59,9 @@ func WithCustom(name string, handler func(http.ResponseWriter, *http.Request)) P
 func versionHandlerFunc(buildVersion string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if _, err := w.Write([]byte(buildVersion)); err != nil {
+
+		_, err := w.Write([]byte(buildVersion))
+		if err != nil {
 			return
 		}
 	}
@@ -112,6 +115,7 @@ func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption
 	prCfg := &probesConfig{
 		handlers: make(map[string]func(http.ResponseWriter, *http.Request)),
 	}
+
 	for _, pr := range probes {
 		if pr != nil {
 			pr(prCfg)
@@ -122,7 +126,9 @@ func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption
 
 	slogctx.Info(ctx, "Starting status listener", "address", server.Addr)
 
-	listener, err := net.Listen("tcp", server.Addr)
+	var lc net.ListenConfig
+
+	listener, err := lc.Listen(ctx, "tcp", server.Addr)
 	if err != nil {
 		return oops.In("Status Server").
 			WithContext(ctx).
@@ -145,7 +151,8 @@ func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption
 	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), DefShutdownTimeout)
 	defer shutdownRelease()
 
-	if err := server.Shutdown(shutdownCtx); err != nil {
+	err = server.Shutdown(shutdownCtx)
+	if err != nil {
 		return oops.In("Status Server").
 			WithContext(ctx).
 			Wrapf(err, "Failed shutting down status server")

@@ -29,25 +29,32 @@ type basicAuth struct {
 
 func NewLogger(config *commoncfg.Audit) (*AuditLogger, error) {
 	var b basicAuth
+
 	tr := &http.Transport{
 		MaxIdleConns:    10,
 		IdleConnTimeout: 30 * time.Second,
 	}
+
 	if config.MTLS != nil {
 		tlsConfig, err := loadTLSConfig(config)
 		if err != nil {
 			return nil, err
 		}
+
 		tr.TLSClientConfig = tlsConfig
 	} else if config.BasicAuth != nil {
 		var err error
+
 		b, err = loadBasicAuth(config, b)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	var m map[string]string
-	if err := yaml.Unmarshal([]byte(config.AdditionalProperties), &m); err != nil {
+
+	err := yaml.Unmarshal([]byte(config.AdditionalProperties), &m)
+	if err != nil {
 		return nil, err
 	}
 
@@ -69,14 +76,17 @@ func loadBasicAuth(config *commoncfg.Audit, b basicAuth) (basicAuth, error) {
 	if err != nil {
 		return basicAuth{}, errors.Join(errLoadValue, err)
 	}
+
 	p, err := commoncfg.LoadValueFromSourceRef(config.BasicAuth.Password)
 	if err != nil {
 		return basicAuth{}, errors.Join(errLoadValue, err)
 	}
+
 	b = basicAuth{
 		username: string(u),
 		password: string(p),
 	}
+
 	return b, nil
 }
 
@@ -85,23 +95,28 @@ func loadTLSConfig(config *commoncfg.Audit) (*tls.Config, error) {
 	if err != nil {
 		return nil, errors.Join(errLoadMTLSConfigFailed, err)
 	}
+
 	clientKey, err := commoncfg.LoadValueFromSourceRef(config.MTLS.CertKey)
 	if err != nil {
 		return nil, err
 	}
+
 	cert, err := tls.X509KeyPair(clientCert, clientKey)
 	if err != nil {
 		return nil, errors.Join(errLoadMTLSConfigFailed, err)
 	}
+
 	serverCA, err := commoncfg.LoadValueFromSourceRef(config.MTLS.ServerCA)
 	if err != nil {
 		return nil, errors.Join(errLoadMTLSConfigFailed, err)
 	}
+
 	rootCAs := x509.NewCertPool()
 	rootCAs.AppendCertsFromPEM(serverCA)
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      rootCAs,
 	}
+
 	return tlsConfig, nil
 }

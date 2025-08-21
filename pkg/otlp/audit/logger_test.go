@@ -61,30 +61,38 @@ func TestSend(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if tt.isBasicAuth {
 					auth := r.Header.Get("Authorization")
+
 					expectedAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte("admin:admin"))
 					if auth != expectedAuth {
 						w.WriteHeader(http.StatusUnauthorized)
 						return
 					}
 				}
+
 				w.WriteHeader(http.StatusOK)
 			}))
 			defer server.Close()
+
 			err := createTempConfigFrom(tt.configPath)
+
 			defer removeTempConfig()
+
 			cfg, err := loadConfigForTests(t, err)
 			if err != nil {
 				t.Error(err)
 			}
+
 			cfg.Audit.Endpoint = server.URL
 			logs := plog.NewLogs()
 			logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+
 			auditLogger, _ := NewLogger(&cfg.Audit)
 			err = auditLogger.SendEvent(t.Context(), logs)
 
 			if (tt.expectError != nil && !errors.Is(err, tt.expectError)) || (err == nil && tt.expectError != nil) {
 				t.Errorf("Expected error '%v', got '%v'", tt.expectError, err)
 			}
+
 			if err != nil && tt.expectError == nil {
 				t.Errorf("Expected no error, got '%v'", err)
 			}
@@ -129,15 +137,19 @@ func Test_NewLogger(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := createTempConfigFrom(tt.configPath)
+
 			defer removeTempConfig()
+
 			cfg, err := loadConfigForTests(t, err)
 			if err != nil {
 				t.Error(err)
 			}
+
 			_, err = NewLogger(&cfg.Audit)
 			if (tt.expectError != nil && !errors.Is(err, tt.expectError)) || (err == nil && tt.expectError != nil) {
 				t.Errorf("Expected error '%v', got '%v'", tt.expectError, err)
 			}
+
 			if err != nil && tt.expectError == nil {
 				t.Errorf("Expected no error, got '%v'", err)
 			}
@@ -156,10 +168,12 @@ func Test_EnrichLogs(t *testing.T) {
 	logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
 
 	auditLogger, _ := NewLogger(&auditCfg)
+
 	err := auditLogger.enrichLogs(&logs)
 	if err != nil {
 		t.Errorf("Unexpected error '%v'", err)
 	}
+
 	attrs := logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Attributes()
 	if !valuesPresent(attrs, "Prop1", "Prop2") {
 		t.Errorf("Missing expected attributes")
@@ -173,6 +187,7 @@ func valuesPresent(m pcommon.Map, keys ...string) bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -180,14 +195,18 @@ func loadConfigForTests(t *testing.T, err error) (*commoncfg.BaseConfig, error) 
 	t.Helper()
 
 	defaults := map[string]interface{}{}
+
 	if err != nil {
 		t.Errorf("createTempConfigFrom() error = %v", err)
 	}
+
 	cfg := &commoncfg.BaseConfig{}
+
 	err = commoncfg.LoadConfig(cfg, defaults, envPrefix, testFilesDir)
 	if err != nil {
 		t.Errorf("Expected no error, got '%v'", err)
 	}
+
 	return cfg, err
 }
 

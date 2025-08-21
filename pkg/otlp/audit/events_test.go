@@ -11,6 +11,7 @@ func TestNewConfigurationCreateEvent(t *testing.T) {
 		objectID string
 		value    any
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -60,6 +61,7 @@ func TestNewConfigurationDeleteEvent(t *testing.T) {
 		objectID string
 		value    any
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -111,6 +113,7 @@ func TestNewConfigurationReadEvent(t *testing.T) {
 		channelID   string
 		value       any
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -208,6 +211,7 @@ func TestNewConfigurationUpdateEvent(t *testing.T) {
 		oldValue any
 		newValue any
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -288,6 +292,7 @@ func TestNewGroupCreateEvent(t *testing.T) {
 		value    any
 		dpp      bool
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -354,6 +359,7 @@ func TestNewGroupDeleteEvent(t *testing.T) {
 		value    any
 		dpp      bool
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -422,6 +428,7 @@ func TestNewGroupReadEvent(t *testing.T) {
 		value       any
 		dpp         bool
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -528,6 +535,7 @@ func TestNewGroupUpdateEvent(t *testing.T) {
 		newValue     any
 		dpp          bool
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -633,6 +641,7 @@ func TestKeyEvents(t *testing.T) {
 		systemID string
 		cmkID    string
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -721,31 +730,37 @@ func TestKeyEvents(t *testing.T) {
 				t.Errorf("NewKeyCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewKeyDeleteEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewKeyDeleteEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewKeyRotateEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewKeyRotateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewKeyPurgeEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewKeyPurgeEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewKeyEnableEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewKeyEnableEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewKeyDisableEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewKeyDisableEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewKeyRestoreEvent(tt.args.metadata, tt.args.objectID, tt.args.systemID, tt.args.cmkID, tt.args.keyType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewKeyRestoreEvent() error = %v, wantErr %v", err, tt.wantErr)
@@ -760,6 +775,7 @@ func TestNewTenantOffboardingEvent(t *testing.T) {
 		metadata EventMetadata
 		objectID string
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -806,6 +822,7 @@ func TestNewTenantOnboardingEvent(t *testing.T) {
 		metadata EventMetadata
 		objectID string
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -855,6 +872,7 @@ func TestNewTenantUpdateEvent(t *testing.T) {
 		oldValue     any
 		newValue     any
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -955,6 +973,7 @@ func TestNewUserLoginFailureEvent(t *testing.T) {
 		failReason  FailReason
 		value       any
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -1086,6 +1105,7 @@ func TestNewUserLoginSuccessEvent(t *testing.T) {
 		userType    UserType
 		value       any
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -1240,6 +1260,7 @@ func TestNewWorkflowExecuteEvent(t *testing.T) {
 		value       any
 		dpp         bool
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -1346,6 +1367,7 @@ func TestNewWorkflowStartEvent(t *testing.T) {
 		value       any
 		dpp         bool
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -1452,6 +1474,7 @@ func TestNewWorkflowTerminateEvent(t *testing.T) {
 		value       any
 		dpp         bool
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -1557,6 +1580,7 @@ func TestNewWorkflowUpdateEvent(t *testing.T) {
 		newValue any
 		dpp      bool
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -1655,6 +1679,7 @@ func TestCredentialEvents(t *testing.T) {
 		objectID string
 		c        CredentialType
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -1720,16 +1745,19 @@ func TestCredentialEvents(t *testing.T) {
 				t.Errorf("NewCredentialCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewCredentialExpirationEvent(tt.args.metadata, tt.args.objectID, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCredentialExpirationEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewCredentialDeleteEvent(tt.args.metadata, tt.args.objectID, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCredentialDeleteEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewCredentialRevokationEvent(tt.args.metadata, tt.args.objectID, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCredentialRevokationEvent() error = %v, wantErr %v", err, tt.wantErr)
@@ -1744,6 +1772,7 @@ func TestCmkEvents(t *testing.T) {
 		metadata EventMetadata
 		cmkID    string
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -1781,26 +1810,31 @@ func TestCmkEvents(t *testing.T) {
 				t.Errorf("NewCmkCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewCmkDeleteEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkDeleteEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewCmkDisableEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkDisableEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewCmkEnableEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkEnableEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewCmkRestoreEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkRestoreEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			_, err = NewCmkRotateEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkRotateEvent() error = %v, wantErr %v", err, tt.wantErr)
@@ -1816,6 +1850,7 @@ func TestCmkBoardingEvents(t *testing.T) {
 		cmkID    string
 		systemID string
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -1867,6 +1902,7 @@ func TestCmkBoardingEvents(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkOnboardingEvent() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
 			_, err = NewCmkOffboardingEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkOffboardingEvent() error = %v, wantErr %v", err, tt.wantErr)
@@ -1882,6 +1918,7 @@ func TestNewCmkSwitchEvent(t *testing.T) {
 		cmkIDOld string
 		cmkIDNew string
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -1961,6 +1998,7 @@ func TestNewCmkTenantModificationEvent(t *testing.T) {
 		systemID string
 		c        CmkAction
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -2037,6 +2075,7 @@ func TestRequestEvents(t *testing.T) {
 	type args struct {
 		metadata EventMetadata
 	}
+
 	tests := []struct {
 		name    string
 		args    args

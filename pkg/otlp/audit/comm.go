@@ -27,6 +27,7 @@ func (o *otlpClient) send(ctx context.Context, payload string) error {
 	if err != nil {
 		return errors.Join(errReqFailed, err)
 	}
+
 	defer func() {
 		err = resp.Body.Close()
 	}()
@@ -43,7 +44,9 @@ func (auditLogger *AuditLogger) SendEvent(ctx context.Context, logs plog.Logs) e
 	if err != nil {
 		return err
 	}
+
 	marshaller := plog.JSONMarshaler{}
+
 	marshaledLogs, err := marshaller.MarshalLogs(logs)
 	if err != nil {
 		return errors.Join(errMarshalingFailed, err)
@@ -53,6 +56,7 @@ func (auditLogger *AuditLogger) SendEvent(ctx context.Context, logs plog.Logs) e
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -61,6 +65,7 @@ func (auditLogger *AuditLogger) enrichLogs(logs *plog.Logs) error {
 	if err != nil {
 		return err
 	}
+
 	for k, v := range auditLogger.additionalProps {
 		logRecord.Attributes().PutStr(k, v)
 	}

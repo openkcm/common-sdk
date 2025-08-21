@@ -109,6 +109,7 @@ func (h *gdprMiddleware) anonymizeAndRename(attr slog.Attr) slog.Attr {
 		for i := range attrs {
 			attrs[i] = h.anonymizeAndRename(attrs[i])
 		}
+
 		return slog.Group(k, toAnySlice(attrs)...)
 	default:
 		mask, ok := h.maskingFields[k]
@@ -121,8 +122,10 @@ func (h *gdprMiddleware) anonymizeAndRename(attr slog.Attr) slog.Attr {
 			if mask.pii {
 				return slog.String(newKey, v.String()[0:4]+mask.mask)
 			}
+
 			return slog.String(newKey, mask.mask)
 		}
+
 		return attr
 	}
 }
@@ -132,5 +135,6 @@ func toAnySlice[T any](collection []T) []any {
 	for i := range collection {
 		result[i] = collection[i]
 	}
+
 	return result
 }

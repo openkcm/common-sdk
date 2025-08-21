@@ -42,7 +42,9 @@ func WithInitialCapacity(initCap int) Option {
 		if initCap < 1 {
 			return errors.New("grpc pool: initial capacity must be greater than 0")
 		}
+
 		p.initCap = initCap
+
 		return nil
 	}
 }
@@ -53,7 +55,9 @@ func WithMaxCapacity(maxCap int) Option {
 		if maxCap < 1 {
 			return errors.New("grpc pool: max capacity must be greater than 0")
 		}
+
 		p.maxCap = maxCap
+
 		return nil
 	}
 }
@@ -88,7 +92,8 @@ func New(factory ClientFactory, opts ...Option) (*Pool, error) {
 	// Apply the options
 	for _, opt := range opts {
 		if opt != nil {
-			if err := opt(p); err != nil {
+			err := opt(p)
+			if err != nil {
 				return nil, err
 			}
 		}
@@ -155,10 +160,13 @@ func (p *Pool) Close() error {
 		if clientWrapper.ClientConn == nil {
 			continue
 		}
-		if err := clientWrapper.closeGRPCConn(); err != nil {
+
+		err := clientWrapper.closeGRPCConn()
+		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -194,12 +202,12 @@ func (p *Pool) Get(ctx context.Context) (*PooledClientConn, error) {
 
 	// Otherwise create a new one
 	// But first make sure we close the underlying gRPC connection
-	if err := pcc.closeGRPCConn(); err != nil {
+	err := pcc.closeGRPCConn()
+	if err != nil {
 		return nil, err
 	}
 
 	// Then use the factory to create the new gRPC connection
-	var err error
 	pcc.ClientConn, err = p.factory()
 	if err != nil {
 		// Pass back an empty one
@@ -210,12 +218,14 @@ func (p *Pool) Get(ctx context.Context) (*PooledClientConn, error) {
 	// Initialize and return it
 	pcc.timeInitiated = time.Now()
 	pcc.timeLastUsed = time.Now()
+
 	return &pcc, err
 }
 
 // PooledClientConn is a wrapper for a grpc client conn
 type PooledClientConn struct {
 	*grpc.ClientConn
+
 	pool          *Pool
 	timeLastUsed  time.Time
 	timeInitiated time.Time
@@ -233,6 +243,7 @@ func (pcc *PooledClientConn) isUnhealthy() bool {
 	if pcc.unhealthy {
 		return true
 	}
+
 	if pcc.ClientConn == nil {
 		pcc.unhealthy = true
 		return true
@@ -249,6 +260,7 @@ func (pcc *PooledClientConn) isUnhealthy() bool {
 		pcc.unhealthy = true
 		return true
 	}
+
 	return false
 }
 
@@ -270,9 +282,11 @@ func (pcc *PooledClientConn) Close() error {
 	}
 
 	if pcc.pool.IsClosed() {
-		if err := pcc.closeGRPCConn(); err != nil {
+		err := pcc.closeGRPCConn()
+		if err != nil {
 			return err
 		}
+
 		return ErrClosed
 	}
 
@@ -290,9 +304,11 @@ func (pcc *PooledClientConn) Close() error {
 	case pcc.pool.clientWrappers <- newpcc:
 		// Successfully returned into the pool
 	default:
-		if err := pcc.closeGRPCConn(); err != nil {
+		err := pcc.closeGRPCConn()
+		if err != nil {
 			return err
 		}
+
 		return ErrFullPool
 	}
 
@@ -303,7 +319,9 @@ func (pcc *PooledClientConn) closeGRPCConn() error {
 	if pcc.ClientConn == nil {
 		return nil
 	}
+
 	currConn := pcc.ClientConn
 	pcc.ClientConn = nil
+
 	return currConn.Close()
 }

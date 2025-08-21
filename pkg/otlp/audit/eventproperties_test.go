@@ -10,6 +10,7 @@ func TestNewEventMetadata(t *testing.T) {
 		tenantID           string
 		eventCorrelationID string
 	}
+
 	tests := []struct {
 		name    string
 		args    args

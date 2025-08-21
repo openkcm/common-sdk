@@ -80,7 +80,8 @@ func TestStart(t *testing.T) {
 
 	// Act
 	go func() {
-		if err := status.Start(t.Context(), cfg, opts...); err != nil {
+		err := status.Start(t.Context(), cfg, opts...)
+		if err != nil {
 			t.Errorf("failed to start status server: %v", err)
 		}
 	}()
@@ -89,18 +90,22 @@ func TestStart(t *testing.T) {
 	start := time.Now()
 	for {
 		time.Sleep(100 * time.Millisecond)
+
 		if time.Since(start) > 5*time.Second {
 			t.Fatalf("status server did not start within the timeout")
 		}
+
 		resp, err := http.Get("http://localhost:8080/probe/startup")
 		if err != nil {
 			continue
 		}
 		//nolint:errcheck
 		resp.Body.Close()
+
 		if resp.StatusCode != http.StatusOK {
 			continue
 		}
+
 		break
 	}
 
@@ -120,6 +125,7 @@ func TestStart(t *testing.T) {
 		}
 		//nolint:errcheck
 		resp.Body.Close()
+
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("expected status OK for %s, got %v", endpoint, resp.Status)
 		}

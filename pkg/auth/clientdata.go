@@ -65,7 +65,9 @@ func DecodeFrom(b64data string) (*ClientData, error) {
 	clientData := &ClientData{
 		b64data: b64data,
 	}
-	if err := json.Unmarshal(jsonString, clientData); err != nil {
+
+	err = json.Unmarshal(jsonString, clientData)
+	if err != nil {
 		return nil, errors.Join(ErrInvalidClientData, err)
 	}
 
@@ -80,13 +82,17 @@ func (c *ClientData) Verify(publicKey any, b64sig string) error {
 		if err != nil {
 			return errors.Join(ErrInvalidClientDataSignature, err)
 		}
+
 		hashedData := sha256.Sum256([]byte(c.b64data))
+
 		rsaPublicKey, ok := publicKey.(*rsa.PublicKey)
 		if !ok {
 			return ErrInvalidPublicKey
 		}
+
 		return rsa.VerifyPKCS1v15(rsaPublicKey, crypto.SHA256, hashedData[:], signature)
 	}
+
 	return ErrInvalidClientDataSignatureAlgorithm
 }
 
@@ -97,20 +103,27 @@ func (c *ClientData) Encode(privateKey any) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+
 	b64data := base64.RawURLEncoding.EncodeToString(jsonString)
+
 	switch c.SignatureAlgorithm {
 	case SignatureAlgorithmRS256:
 		hashedData := sha256.Sum256([]byte(b64data))
+
 		rsaPrivateKey, ok := privateKey.(*rsa.PrivateKey)
 		if !ok {
 			return "", "", ErrInvalidPrivateKey
 		}
+
 		signature, err := rsa.SignPKCS1v15(nil, rsaPrivateKey, crypto.SHA256, hashedData[:])
 		if err != nil {
 			return "", "", err
 		}
+
 		b64sig := base64.RawURLEncoding.EncodeToString(signature)
+
 		return b64data, b64sig, nil
 	}
+
 	return "", "", ErrInvalidClientDataSignatureAlgorithm
 }

@@ -259,6 +259,7 @@ func TestInitAsDefaultWithWriter(t *testing.T) {
 				} else {
 					if tc.test != nil && tc.check != nil {
 						tc.test()
+
 						got := buf.String()
 						if !tc.check(got) {
 							t.Errorf("output does not match expectation: %s", got)
