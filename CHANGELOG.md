@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/openkcm/common-sdk/compare/v1.1.1...v1.2.0) (2025-08-21)
+
+
+### Features
+
+* add new type of credentials oauth2 based on client id and clien… ([#76](https://github.com/openkcm/common-sdk/issues/76)) ([280d260](https://github.com/openkcm/common-sdk/commit/280d26008c571dee968e60d32769f42d7893b609))
+
+
+### Bug Fixes
+
+* adjusts the lints ([#77](https://github.com/openkcm/common-sdk/issues/77)) ([0a0906b](https://github.com/openkcm/common-sdk/commit/0a0906bc306ee1a7474719eec915aa625544f7f5))
+* stop error on created status ([3f523cd](https://github.com/openkcm/common-sdk/commit/3f523cdba6db1ec59fd6dc6b094e211da6d1821b))
+* stop error on created status ([#74](https://github.com/openkcm/common-sdk/issues/74)) ([3f523cd](https://github.com/openkcm/common-sdk/commit/3f523cdba6db1ec59fd6dc6b094e211da6d1821b))
+
 ## [1.1.1](https://github.com/openkcm/common-sdk/compare/v1.1.0...v1.1.1) (2025-07-29)
 
 
