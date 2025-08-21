@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/openkcm/common-sdk/compare/v1.2.0...v1.2.1) (2025-08-21)
+
+
+### Bug Fixes
+
+* include the mtls into the oauth2 secret type ([#79](https://github.com/openkcm/common-sdk/issues/79)) ([a88d9f8](https://github.com/openkcm/common-sdk/commit/a88d9f8f41beb3995e897f753d45ed6cc690b0b9))
+
 ## [1.2.0](https://github.com/openkcm/common-sdk/compare/v1.1.1...v1.2.0) (2025-08-21)
 
 
