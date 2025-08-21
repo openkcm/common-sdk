@@ -1,6 +1,8 @@
 package commoncfg
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"os"
@@ -36,6 +38,7 @@ func NewLoader(cfg any, options ...Option) *Loader {
 			o(loader)
 		}
 	}
+
 	return loader
 }
 
@@ -77,8 +80,10 @@ func (l *Loader) LoadConfig() error {
 	for key, val := range l.defaults {
 		v.SetDefault(key, val)
 	}
+
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
+
 	for _, path := range l.paths {
 		v.AddConfigPath(path)
 	}
@@ -94,6 +99,7 @@ func (l *Loader) LoadConfig() error {
 			In("Config Loader").
 			Wrapf(err, "Failed reading config file")
 	}
+
 	err := v.Unmarshal(l.cfg,
 		func(c *mapstructure.DecoderConfig) {
 			c.ErrorUnused = true // error if there are unknown keys in the config
@@ -104,7 +110,9 @@ func (l *Loader) LoadConfig() error {
 			In("Config Loader").
 			Wrapf(err, "Unable to unmarshall configuration")
 	}
+
 	defaults.SetDefaults(l.cfg)
+
 	return nil
 }
 
@@ -134,6 +142,7 @@ func LoadValueFromSourceRef(cred SourceRef) ([]byte, error) {
 		if result == "" {
 			return nil, errors.New("environment variable not set")
 		}
+
 		return []byte(result), nil
 	case FileSourceValue:
 		data, err := os.ReadFile(cred.File.Path)
@@ -162,6 +171,37 @@ func LoadValueFromSourceRef(cred SourceRef) ([]byte, error) {
 	return nil, errors.New("no credential found, based on given credentials source")
 }
 
+func LoadMTLSClientCertificate(cfg MTLS) (*tls.Certificate, error) {
+	certPEMBlock, err := LoadValueFromSourceRef(cfg.Cert)
+	if err != nil {
+		return nil, err
+	}
+
+	keyPEMBlock, err := LoadValueFromSourceRef(cfg.CertKey)
+	if err != nil {
+		return nil, err
+	}
+
+	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cert, nil
+}
+
+func LoadMTLSCACertPool(cfg MTLS) (*x509.CertPool, error) {
+	caCert, err := LoadValueFromSourceRef(cfg.ServerCA)
+	if err != nil {
+		return nil, err
+	}
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	return caCertPool, nil
+}
+
 func env(names ...string) string {
 	for _, name := range names {
 		val := os.Getenv(strings.TrimSpace(name))
@@ -169,5 +209,6 @@ func env(names ...string) string {
 			return val
 		}
 	}
+
 	return ""
 }
