@@ -7,7 +7,7 @@ require (
 	github.com/davidhoo/jsonpath v1.0.4
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/mcuadros/go-defaults v1.2.0
-	github.com/prometheus/client_golang v1.22.0
+	github.com/prometheus/client_golang v1.23.0
 	github.com/samber/oops v1.19.0
 	github.com/samber/slog-formatter v1.2.0
 	github.com/samber/slog-multi v1.4.1
