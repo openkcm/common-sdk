@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/openkcm/common-sdk/compare/v1.2.1...v1.2.2) (2025-08-21)
+
+
+### Bug Fixes
+
+* add the oauth2 base url for fetching the tokens ([#81](https://github.com/openkcm/common-sdk/issues/81)) ([0a139be](https://github.com/openkcm/common-sdk/commit/0a139be660ba60995cde72b80a2a0ba278e80575))
+
 ## [1.2.1](https://github.com/openkcm/common-sdk/compare/v1.2.0...v1.2.1) (2025-08-21)
 
 
