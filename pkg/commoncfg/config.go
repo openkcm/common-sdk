@@ -212,10 +212,14 @@ type BasicAuth struct {
 
 // OAuth2 holds client id and secret auth configuration
 type OAuth2 struct {
-	URL          SourceRef  `yaml:"url" json:"url"`
+	URL         SourceRef         `yaml:"url" json:"url"`
+	Credentials OAuth2Credentials `yaml:"credentials" json:"credentials"`
+	MTLS        *MTLS             `yaml:"mtls" json:"mtls"`
+}
+
+type OAuth2Credentials struct {
 	ClientID     SourceRef  `yaml:"clientID" json:"clientID"`
 	ClientSecret *SourceRef `yaml:"clientSecret" json:"clientSecret"`
-	MTLS         *MTLS      `yaml:"mtls" json:"mtls"`
 }
 
 // SourceRef defines a reference to a source for retrieving a value.
