@@ -11,6 +11,7 @@ func Value[T any](p *T) T {
 		var zero T
 		return zero
 	}
+
 	return *p
 }
 
