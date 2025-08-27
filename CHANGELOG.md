@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/openkcm/common-sdk/compare/v1.2.2...v1.2.3) (2025-08-27)
+
+
+### Bug Fixes
+
+* refactor the oauth2 credentials and add the pointers set of func… ([#85](https://github.com/openkcm/common-sdk/issues/85)) ([4ff75d0](https://github.com/openkcm/common-sdk/commit/4ff75d0f0b36d0269cd52e69b8b6b6c04702494b))
+
 ## [1.2.2](https://github.com/openkcm/common-sdk/compare/v1.2.1...v1.2.2) (2025-08-21)
 
 
