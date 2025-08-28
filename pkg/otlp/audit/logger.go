@@ -72,12 +72,12 @@ func NewLogger(config *commoncfg.Audit) (*AuditLogger, error) {
 }
 
 func loadBasicAuth(config *commoncfg.Audit, b basicAuth) (basicAuth, error) {
-	u, err := commoncfg.LoadValueFromSourceRef(config.BasicAuth.Username)
+	u, err := commoncfg.ExtractValueFromSourceRef(&config.BasicAuth.Username)
 	if err != nil {
 		return basicAuth{}, errors.Join(errLoadValue, err)
 	}
 
-	p, err := commoncfg.LoadValueFromSourceRef(config.BasicAuth.Password)
+	p, err := commoncfg.ExtractValueFromSourceRef(&config.BasicAuth.Password)
 	if err != nil {
 		return basicAuth{}, errors.Join(errLoadValue, err)
 	}
@@ -91,12 +91,12 @@ func loadBasicAuth(config *commoncfg.Audit, b basicAuth) (basicAuth, error) {
 }
 
 func loadTLSConfig(config *commoncfg.Audit) (*tls.Config, error) {
-	clientCert, err := commoncfg.LoadValueFromSourceRef(config.MTLS.Cert)
+	clientCert, err := commoncfg.ExtractValueFromSourceRef(&config.MTLS.Cert)
 	if err != nil {
 		return nil, errors.Join(errLoadMTLSConfigFailed, err)
 	}
 
-	clientKey, err := commoncfg.LoadValueFromSourceRef(config.MTLS.CertKey)
+	clientKey, err := commoncfg.ExtractValueFromSourceRef(&config.MTLS.CertKey)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func loadTLSConfig(config *commoncfg.Audit) (*tls.Config, error) {
 		return nil, errors.Join(errLoadMTLSConfigFailed, err)
 	}
 
-	serverCA, err := commoncfg.LoadValueFromSourceRef(config.MTLS.ServerCA)
+	serverCA, err := commoncfg.ExtractValueFromSourceRef(&config.MTLS.ServerCA)
 	if err != nil {
 		return nil, errors.Join(errLoadMTLSConfigFailed, err)
 	}

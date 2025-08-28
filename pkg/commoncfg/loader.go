@@ -134,7 +134,7 @@ func UpdateConfigVersion(cfg *BaseConfig, buildInfo string) error {
 	return nil
 }
 
-func LoadValueFromSourceRef(cred SourceRef) ([]byte, error) {
+func ExtractValueFromSourceRef(cred *SourceRef) ([]byte, error) {
 	switch cred.Source {
 	case EmbeddedSourceValue:
 		return []byte(cred.Value), nil
@@ -172,13 +172,17 @@ func LoadValueFromSourceRef(cred SourceRef) ([]byte, error) {
 	return nil, errors.New("no credential found, based on given credentials source")
 }
 
-func LoadMTLSClientCertificate(cfg MTLS) (*tls.Certificate, error) {
-	certPEMBlock, err := LoadValueFromSourceRef(cfg.Cert)
+func LoadValueFromSourceRef(cred SourceRef) ([]byte, error) {
+	return ExtractValueFromSourceRef(&cred)
+}
+
+func LoadMTLSClientCertificate(cfg *MTLS) (*tls.Certificate, error) {
+	certPEMBlock, err := ExtractValueFromSourceRef(&cfg.Cert)
 	if err != nil {
 		return nil, err
 	}
 
-	keyPEMBlock, err := LoadValueFromSourceRef(cfg.CertKey)
+	keyPEMBlock, err := ExtractValueFromSourceRef(&cfg.CertKey)
 	if err != nil {
 		return nil, err
 	}
@@ -191,8 +195,8 @@ func LoadMTLSClientCertificate(cfg MTLS) (*tls.Certificate, error) {
 	return &cert, nil
 }
 
-func LoadMTLSCACertPool(cfg MTLS) (*x509.CertPool, error) {
-	caCert, err := LoadValueFromSourceRef(cfg.ServerCA)
+func LoadMTLSCACertPool(cfg *MTLS) (*x509.CertPool, error) {
+	caCert, err := ExtractValueFromSourceRef(&cfg.ServerCA)
 	if err != nil {
 		return nil, err
 	}

@@ -212,7 +212,7 @@ func TestLoadValueFromSourceRef(t *testing.T) {
 			Source: commoncfg.EmbeddedSourceValue,
 			Value:  "secret-value",
 		}
-		val, err := commoncfg.LoadValueFromSourceRef(ref)
+		val, err := commoncfg.ExtractValueFromSourceRef(&ref)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("secret-value"), val)
 	})
@@ -224,7 +224,7 @@ func TestLoadValueFromSourceRef(t *testing.T) {
 			Source: commoncfg.EnvSourceValue,
 			Env:    "MY_SECRET",
 		}
-		val, err := commoncfg.LoadValueFromSourceRef(ref)
+		val, err := commoncfg.ExtractValueFromSourceRef(&ref)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("env-secret"), val)
 	})
@@ -234,7 +234,7 @@ func TestLoadValueFromSourceRef(t *testing.T) {
 			Source: commoncfg.EnvSourceValue,
 			Env:    "UNDEFINED_ENV",
 		}
-		_, err := commoncfg.LoadValueFromSourceRef(ref)
+		_, err := commoncfg.ExtractValueFromSourceRef(&ref)
 		assert.Error(t, err)
 	})
 
@@ -254,7 +254,7 @@ func TestLoadValueFromSourceRef(t *testing.T) {
 				JSONPath: "$.token",
 			},
 		}
-		val, err := commoncfg.LoadValueFromSourceRef(ref)
+		val, err := commoncfg.ExtractValueFromSourceRef(&ref)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("json-secret"), val)
 	})
@@ -268,7 +268,7 @@ func TestLoadValueFromSourceRef(t *testing.T) {
 				JSONPath: "$.missing",
 			},
 		}
-		_, err := commoncfg.LoadValueFromSourceRef(ref)
+		_, err := commoncfg.ExtractValueFromSourceRef(&ref)
 		assert.Error(t, err)
 	})
 
@@ -287,7 +287,7 @@ func TestLoadValueFromSourceRef(t *testing.T) {
 				Format: commoncfg.BinaryFileFormat,
 			},
 		}
-		val, err := commoncfg.LoadValueFromSourceRef(ref)
+		val, err := commoncfg.ExtractValueFromSourceRef(&ref)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("binary-data"), val)
 	})
@@ -296,7 +296,7 @@ func TestLoadValueFromSourceRef(t *testing.T) {
 		ref := commoncfg.SourceRef{
 			Source: "unknown",
 		}
-		_, err := commoncfg.LoadValueFromSourceRef(ref)
+		_, err := commoncfg.ExtractValueFromSourceRef(&ref)
 		assert.Error(t, err)
 	})
 }
