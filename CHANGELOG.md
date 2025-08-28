@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.4](https://github.com/openkcm/common-sdk/compare/v1.2.3...v1.2.4) (2025-08-28)
+
+
+### Bug Fixes
+
+* change the value to reference for couple functions ([#88](https://github.com/openkcm/common-sdk/issues/88)) ([73cd706](https://github.com/openkcm/common-sdk/commit/73cd706bbaaf6e8569e937b0a90f8e26ff7064f1))
+
 ## [1.2.3](https://github.com/openkcm/common-sdk/compare/v1.2.2...v1.2.3) (2025-08-27)
 
 
