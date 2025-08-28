@@ -196,15 +196,42 @@ func LoadMTLSClientCertificate(cfg *MTLS) (*tls.Certificate, error) {
 }
 
 func LoadMTLSCACertPool(cfg *MTLS) (*x509.CertPool, error) {
+	if cfg.ServerCA.Source == "" {
+		// Returns nil instead of NewCertPool if no CA is provided, which means using the system CA pool
+		return nil, nil //nolint:nilnil
+	}
+
+	caCertPool := x509.NewCertPool()
+
 	caCert, err := ExtractValueFromSourceRef(&cfg.ServerCA)
 	if err != nil {
 		return nil, err
 	}
 
-	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
 	return caCertPool, nil
+}
+
+func LoadMTLSConfig(cfg *MTLS) (*tls.Config, error) {
+	cert, err := LoadMTLSClientCertificate(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	caCertPool, err := LoadMTLSCACertPool(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{*cert},
+		RootCAs:      caCertPool,
+		MinVersion:   tls.VersionTLS12,
+		MaxVersion:   tls.VersionTLS13,
+	}
+
+	return tlsConfig, nil
 }
 
 func env(names ...string) string {
