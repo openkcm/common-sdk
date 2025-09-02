@@ -559,6 +559,7 @@ func (reg *registry) initLogger(ctx context.Context) error {
 			slog.String(commoncfg.AttrEnvironment, reg.appCfg.Environment),
 			slog.String(commoncfg.AttrServiceName, reg.appCfg.Name),
 		)
+
 	labels := logger.CreateAttributes(reg.appCfg.Labels)
 	if len(labels) > 0 {
 		otelLogger = otelLogger.WithGroup(commoncfg.AttrLabels).With(labels...)
