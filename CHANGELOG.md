@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/openkcm/common-sdk/compare/v1.2.4...v1.3.0) (2025-09-02)
+
+
+### Features
+
+* combine load mtls config ([#90](https://github.com/openkcm/common-sdk/issues/90)) ([f9cf635](https://github.com/openkcm/common-sdk/commit/f9cf6355e2157deeccb898dc955afa79569b171f))
+
 ## [1.2.4](https://github.com/openkcm/common-sdk/compare/v1.2.3...v1.2.4) (2025-08-28)
 
 
