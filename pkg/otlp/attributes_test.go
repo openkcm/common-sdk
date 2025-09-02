@@ -20,7 +20,7 @@ func TestCreateAttributesFrom(t *testing.T) {
 		attrs := otlp.CreateAttributesFrom(appCfg)
 
 		assert.Contains(t, attrs, attribute.String(commoncfg.AttrEnvironment, "prod"))
-		assert.Contains(t, attrs, attribute.String(commoncfg.AttrService, "test-service"))
+		assert.Contains(t, attrs, attribute.String(commoncfg.AttrServiceName, "test-service"))
 	})
 
 	t.Run("adds labels as attributes", func(t *testing.T) {

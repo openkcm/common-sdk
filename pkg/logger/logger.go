@@ -117,10 +117,8 @@ func InitHandlerWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app commoncf
 	}
 
 	attrs := []slog.Attr{
-		slog.Group(commoncfg.AttrService,
-			slog.String(commoncfg.AttrName, app.Name),
-			slog.String(commoncfg.AttrEnvironment, app.Environment),
-		),
+		slog.String(commoncfg.AttrServiceName, app.Name),
+		slog.String(commoncfg.AttrEnvironment, app.Environment),
 	}
 
 	labels := CreateAttributes(app.Labels)
