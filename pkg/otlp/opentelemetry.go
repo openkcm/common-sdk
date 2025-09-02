@@ -33,7 +33,7 @@ import (
 	dtsdk "github.com/Dynatrace/OneAgent-SDK-for-Go/sdk"
 	slogmulti "github.com/samber/slog-multi"
 	slogctx "github.com/veqryn/slog-context"
-	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/logger"
