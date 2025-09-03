@@ -23,12 +23,16 @@ const (
 	TimeAttribute    = "time"
 	LevelAttribute   = "level"
 	MessageAttribute = "msg"
+	// LevelTrace is a custom log level for trace logging with value -8
+	LevelTrace = slog.Level(-8)
 )
 
 // setLogLevel converts the level string used in the config to a slog.LevelVar
 // and sets the levelVar to the corresponding level.
 func setLogLevel(levelVar *slog.LevelVar, level string) {
 	switch strings.ToLower(level) {
+	case "trace":
+		levelVar.Set(LevelTrace)
 	case "debug":
 		levelVar.Set(slog.LevelDebug)
 	case "info":
@@ -101,6 +105,11 @@ func InitHandlerWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app commoncf
 			levelKey := strings.TrimSpace(cfgLogger.Formatter.Fields.Level)
 			if levelKey == "" {
 				levelKey = a.Key
+			}
+
+			// Handle custom LevelTrace to display as "TRACE" instead of "DEBUG-4"
+			if level, ok := a.Value.Any().(slog.Level); ok && level == LevelTrace {
+				return slog.Attr{Key: levelKey, Value: slog.StringValue("TRACE")}
 			}
 
 			return slog.Attr{Key: levelKey, Value: a.Value}
