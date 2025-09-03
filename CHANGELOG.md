@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/openkcm/common-sdk/compare/v1.2.4...v1.3.0) (2025-09-03)
+
+
+### Features
+
+* Add log level trace ([#106](https://github.com/openkcm/common-sdk/issues/106)) ([e24c3a4](https://github.com/openkcm/common-sdk/commit/e24c3a47d785573d37dda5cdc138f7d3c58acbf4))
+* combine load mtls config ([#90](https://github.com/openkcm/common-sdk/issues/90)) ([f9cf635](https://github.com/openkcm/common-sdk/commit/f9cf6355e2157deeccb898dc955afa79569b171f))
+
+
+### Bug Fixes
+
+* remove grouping for service environment and name ([#101](https://github.com/openkcm/common-sdk/issues/101)) ([d224657](https://github.com/openkcm/common-sdk/commit/d22465758151309e72500f7d2ed740fae1d186eb))
+
 ## [1.2.4](https://github.com/openkcm/common-sdk/compare/v1.2.3...v1.2.4) (2025-08-28)
 
 
