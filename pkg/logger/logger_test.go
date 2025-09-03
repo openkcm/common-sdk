@@ -2,6 +2,7 @@ package logger_test
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"regexp"
 	"strings"
@@ -63,55 +64,41 @@ func TestInitAsDefaultWithWriter(t *testing.T) {
 			appConfig:    appConfigMutator(),
 			loggerConfig: loggerConfigMutator(),
 		}, {
-			name:      "loglegel debug",
-			appConfig: appConfigMutator(),
-			loggerConfig: loggerConfigMutator(func(cfg *commoncfg.Logger) {
-				cfg.Level = "debug"
-			}),
-			test: func() {
-				slog.Debug("=debug=")
-				slog.Info("=info=")
-				slog.Warn("=warn=")
-				slog.Error("=error=")
-			},
-			check: func(got string) bool {
-				return strings.Contains(got, "=debug=") &&
-					strings.Contains(got, "=info=") &&
-					strings.Contains(got, "=warn=") &&
-					strings.Contains(got, "=error=")
-			},
-		}, {
-			name:      "invalid loglegel = info",
+			name:      "invalid loglevel, default to info",
 			appConfig: appConfigMutator(),
 			loggerConfig: loggerConfigMutator(func(cfg *commoncfg.Logger) {
 				cfg.Level = "adbsfgbd"
 			}),
 			test: func() {
+				slog.Log(context.Background(), logger.LevelTrace, "=trace=")
 				slog.Debug("=debug=")
 				slog.Info("=info=")
 				slog.Warn("=warn=")
 				slog.Error("=error=")
 			},
 			check: func(got string) bool {
-				return !strings.Contains(got, "=debug=") &&
+				return !strings.Contains(got, "=trace=") &&
+					!strings.Contains(got, "=debug=") &&
 					strings.Contains(got, "=info=") &&
 					strings.Contains(got, "=warn=") &&
 					strings.Contains(got, "=error=")
 			},
 		}, {
-			name:      "loglegel info",
+			name:      "loglevel info",
 			appConfig: appConfigMutator(),
 			loggerConfig: loggerConfigMutator(func(cfg *commoncfg.Logger) {
 				cfg.Level = "info"
 			}),
 			test: func() {
+				slog.Log(context.Background(), logger.LevelTrace, "=trace=")
 				slog.Debug("=debug=")
 				slog.Info("=info=")
 				slog.Warn("=warn=")
 				slog.Error("=error=")
 			},
 			check: func(got string) bool {
-				return !strings.Contains(got, "=debug=") &&
+				return !strings.Contains(got, "=trace=") &&
+					!strings.Contains(got, "=debug=") &&
 					strings.Contains(got, "=info=") &&
 					strings.Contains(got, "=warn=") &&
 					strings.Contains(got, "=error=")
@@ -123,13 +110,15 @@ func TestInitAsDefaultWithWriter(t *testing.T) {
 				cfg.Level = "warn"
 			}),
 			test: func() {
+				slog.Log(context.Background(), logger.LevelTrace, "=trace=")
 				slog.Debug("=debug=")
 				slog.Info("=info=")
 				slog.Warn("=warn=")
 				slog.Error("=error=")
 			},
 			check: func(got string) bool {
-				return !strings.Contains(got, "=debug=") &&
+				return !strings.Contains(got, "=trace=") &&
+					!strings.Contains(got, "=debug=") &&
 					!strings.Contains(got, "=info=") &&
 					strings.Contains(got, "=warn=") &&
 					strings.Contains(got, "=error=")
@@ -141,15 +130,57 @@ func TestInitAsDefaultWithWriter(t *testing.T) {
 				cfg.Level = "error"
 			}),
 			test: func() {
+				slog.Log(context.Background(), logger.LevelTrace, "=trace=")
 				slog.Debug("=debug=")
 				slog.Info("=info=")
 				slog.Warn("=warn=")
 				slog.Error("=error=")
 			},
 			check: func(got string) bool {
-				return !strings.Contains(got, "=debug=") &&
+				return !strings.Contains(got, "=trace=") &&
+					!strings.Contains(got, "=debug=") &&
 					!strings.Contains(got, "=info=") &&
 					!strings.Contains(got, "=warn=") &&
+					strings.Contains(got, "=error=")
+			},
+		}, {
+			name:      "loglevel debug",
+			appConfig: appConfigMutator(),
+			loggerConfig: loggerConfigMutator(func(cfg *commoncfg.Logger) {
+				cfg.Level = "debug"
+			}),
+			test: func() {
+				slog.Log(context.Background(), logger.LevelTrace, "=trace=")
+				slog.Debug("=debug=")
+				slog.Info("=info=")
+				slog.Warn("=warn=")
+				slog.Error("=error=")
+			},
+			check: func(got string) bool {
+				return !strings.Contains(got, "=trace=") &&
+					strings.Contains(got, "=debug=") &&
+					strings.Contains(got, "=info=") &&
+					strings.Contains(got, "=warn=") &&
+					strings.Contains(got, "=error=")
+			},
+		}, {
+			name:      "loglevel trace",
+			appConfig: appConfigMutator(),
+			loggerConfig: loggerConfigMutator(func(cfg *commoncfg.Logger) {
+				cfg.Level = "trace"
+			}),
+			test: func() {
+				slog.Log(context.Background(), logger.LevelTrace, "=trace=")
+				slog.Debug("=debug=")
+				slog.Info("=info=")
+				slog.Warn("=warn=")
+				slog.Error("=error=")
+			},
+			check: func(got string) bool {
+				return strings.Contains(got, "=trace=") &&
+					strings.Contains(got, "=debug=") &&
+					strings.Contains(got, "=info=") &&
+					strings.Contains(got, "=warn=") &&
 					strings.Contains(got, "=error=")
 			},
 		}, {
@@ -249,24 +280,30 @@ func TestInitAsDefaultWithWriter(t *testing.T) {
 			err := logger.InitAsDefaultWithWriter(&buf, tc.loggerConfig, tc.appConfig)
 
 			// Assert
-			if tc.wantError {
-				if err == nil {
-					t.Error("expected error, but got nil")
-				}
-			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %s", err)
-				} else {
-					if tc.test != nil && tc.check != nil {
-						tc.test()
+			if !wantErrorMatches(tc.wantError, err) {
+				t.Errorf("error expectation mismatch. wantError: %v, got: %v", tc.wantError, err)
+			}
 
-						got := buf.String()
-						if !tc.check(got) {
-							t.Errorf("output does not match expectation: %s", got)
-						}
-					}
+			if tc.test != nil && tc.check != nil {
+				tc.test()
+
+				got := buf.String()
+				if !tc.check(got) {
+					t.Errorf("output does not match expectation: %s", got)
 				}
 			}
 		})
 	}
+}
+
+func wantErrorMatches(wantError bool, err error) bool {
+	if wantError && err == nil {
+		return false
+	}
+
+	if !wantError && err != nil {
+		return false
+	}
+
+	return true
 }
