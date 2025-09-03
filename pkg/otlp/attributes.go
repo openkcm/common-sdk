@@ -12,7 +12,7 @@ func CreateAttributesFrom(appCfg commoncfg.Application, attrs ...attribute.KeyVa
 
 	attributes = append(attributes,
 		attribute.String(commoncfg.AttrEnvironment, appCfg.Environment),
-		attribute.String(commoncfg.AttrService, appCfg.Name),
+		attribute.String(commoncfg.AttrServiceName, appCfg.Name),
 	)
 	for k, v := range appCfg.Labels {
 		attributes = append(attributes, attribute.String(k, v))
