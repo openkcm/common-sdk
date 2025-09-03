@@ -2,7 +2,6 @@ package otlp
 
 import (
 	"context"
-	"crypto/tls"
 	"log/slog"
 	"os"
 	"sync"
@@ -33,7 +32,7 @@ import (
 	dtsdk "github.com/Dynatrace/OneAgent-SDK-for-Go/sdk"
 	slogmulti "github.com/samber/slog-multi"
 	slogctx "github.com/veqryn/slog-context"
-	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/logger"
@@ -315,22 +314,12 @@ func initTraceGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 
 		sec = otlptracegrpc.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := commoncfg.LoadMTLSClientCertificate(&cfg.Traces.SecretRef.MTLS)
+		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Traces.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := commoncfg.LoadMTLSCACertPool(&cfg.Traces.SecretRef.MTLS)
-		if err != nil {
-			return nil, err
-		}
-
-		sec = otlptracegrpc.WithTLSCredentials(credentials.NewTLS(&tls.Config{
-			Certificates: []tls.Certificate{*cert},
-			RootCAs:      caCertPool,
-			MinVersion:   tls.VersionTLS12,
-			MaxVersion:   tls.VersionTLS13,
-		}))
+		sec = otlptracegrpc.WithTLSCredentials(credentials.NewTLS(tlsConfig))
 	case commoncfg.InsecureSecretType:
 		sec = otlptracegrpc.WithInsecure()
 	}
@@ -365,22 +354,12 @@ func initTraceHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 
 		sec = otlptracehttp.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := commoncfg.LoadMTLSClientCertificate(&cfg.Traces.SecretRef.MTLS)
+		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Traces.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := commoncfg.LoadMTLSCACertPool(&cfg.Traces.SecretRef.MTLS)
-		if err != nil {
-			return nil, err
-		}
-
-		sec = otlptracehttp.WithTLSClientConfig(&tls.Config{
-			Certificates: []tls.Certificate{*cert},
-			RootCAs:      caCertPool,
-			MinVersion:   tls.VersionTLS12,
-			MaxVersion:   tls.VersionTLS13,
-		})
+		sec = otlptracehttp.WithTLSClientConfig(tlsConfig)
 	case commoncfg.InsecureSecretType:
 		sec = otlptracehttp.WithInsecure()
 	}
@@ -475,22 +454,12 @@ func initMetricGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 		sec = otlpmetricgrpc.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := commoncfg.LoadMTLSClientCertificate(&cfg.Metrics.SecretRef.MTLS)
+		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Metrics.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := commoncfg.LoadMTLSCACertPool(&cfg.Metrics.SecretRef.MTLS)
-		if err != nil {
-			return nil, err
-		}
-
-		sec = otlpmetricgrpc.WithTLSCredentials(credentials.NewTLS(&tls.Config{
-			Certificates: []tls.Certificate{*cert},
-			RootCAs:      caCertPool,
-			MinVersion:   tls.VersionTLS12,
-			MaxVersion:   tls.VersionTLS13,
-		}))
+		sec = otlpmetricgrpc.WithTLSCredentials(credentials.NewTLS(tlsConfig))
 	case commoncfg.InsecureSecretType:
 		sec = otlpmetricgrpc.WithInsecure()
 	}
@@ -526,22 +495,12 @@ func initMetricHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 		sec = otlpmetrichttp.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := commoncfg.LoadMTLSClientCertificate(&cfg.Metrics.SecretRef.MTLS)
+		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Metrics.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := commoncfg.LoadMTLSCACertPool(&cfg.Metrics.SecretRef.MTLS)
-		if err != nil {
-			return nil, err
-		}
-
-		sec = otlpmetrichttp.WithTLSClientConfig(&tls.Config{
-			Certificates: []tls.Certificate{*cert},
-			RootCAs:      caCertPool,
-			MinVersion:   tls.VersionTLS12,
-			MaxVersion:   tls.VersionTLS13,
-		})
+		sec = otlpmetrichttp.WithTLSClientConfig(tlsConfig)
 	case commoncfg.InsecureSecretType:
 		sec = otlpmetrichttp.WithInsecure()
 	}
@@ -634,22 +593,12 @@ func initLoggerGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 		sec = otlploggrpc.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := commoncfg.LoadMTLSClientCertificate(&cfg.Logs.SecretRef.MTLS)
+		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Logs.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := commoncfg.LoadMTLSCACertPool(&cfg.Logs.SecretRef.MTLS)
-		if err != nil {
-			return nil, err
-		}
-
-		sec = otlploggrpc.WithTLSCredentials(credentials.NewTLS(&tls.Config{
-			Certificates: []tls.Certificate{*cert},
-			RootCAs:      caCertPool,
-			MinVersion:   tls.VersionTLS12,
-			MaxVersion:   tls.VersionTLS13,
-		}))
+		sec = otlploggrpc.WithTLSCredentials(credentials.NewTLS(tlsConfig))
 	case commoncfg.InsecureSecretType:
 		sec = otlploggrpc.WithInsecure()
 	}
@@ -682,22 +631,12 @@ func initLoggerHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 		sec = otlploghttp.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
 	case commoncfg.MTLSSecretType:
-		cert, err := commoncfg.LoadMTLSClientCertificate(&cfg.Logs.SecretRef.MTLS)
+		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Logs.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
 
-		caCertPool, err := commoncfg.LoadMTLSCACertPool(&cfg.Logs.SecretRef.MTLS)
-		if err != nil {
-			return nil, err
-		}
-
-		sec = otlploghttp.WithTLSClientConfig(&tls.Config{
-			Certificates: []tls.Certificate{*cert},
-			RootCAs:      caCertPool,
-			MinVersion:   tls.VersionTLS12,
-			MaxVersion:   tls.VersionTLS13,
-		})
+		sec = otlploghttp.WithTLSClientConfig(tlsConfig)
 	case commoncfg.InsecureSecretType:
 		sec = otlploghttp.WithInsecure()
 	}
