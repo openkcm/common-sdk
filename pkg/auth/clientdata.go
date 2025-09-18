@@ -5,6 +5,7 @@
 // - the client type (e.g. user or technical user)
 // - the client email
 // - the client region (e.g. x509 client certificates representing a remote service)
+// - the client issuer
 // - the client groups (e.g. user groups or service groups)
 // At the gateway, the client data is encoded and signed using a private key.
 // Consuming services can decode the client data and verify the signature using a public key.
@@ -43,6 +44,7 @@ type ClientData struct {
 	Type    string   `json:"type"`
 	Email   string   `json:"mail"`
 	Region  string   `json:"reg"`
+	Issuer  string   `json:"issuer"`
 	Groups  []string `json:"groups,omitempty"`
 
 	// KeyID is a unique identifier for the key used to sign the client data.
