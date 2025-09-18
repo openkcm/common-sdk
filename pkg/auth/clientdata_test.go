@@ -23,6 +23,7 @@ func TestEndToEnd(t *testing.T) {
 		Type:               "test-type",
 		Email:              "test-email",
 		Region:             "test-region",
+		Issuer:             "test-issuer",
 		SignatureAlgorithm: auth.SignatureAlgorithmRS256,
 	}
 
