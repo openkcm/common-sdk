@@ -10,7 +10,7 @@ require (
 	github.com/prometheus/client_golang v1.23.0
 	github.com/samber/oops v1.19.0
 	github.com/samber/slog-formatter v1.2.0
-	github.com/samber/slog-multi v1.4.1
+	github.com/samber/slog-multi v1.5.0
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.11.1
 	github.com/veqryn/slog-context v0.8.0
