@@ -75,6 +75,7 @@ func NewFSWatcher(opts ...Option) (*NotifyWrapper, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	w.watcher = watcher
 
 	return w, nil
@@ -89,15 +90,18 @@ func (w *NotifyWrapper) AddPath(path string) error {
 	if err != nil {
 		return err
 	}
+
 	exist, err := exists(absPath)
 	if err != nil {
 		return err
 	}
+
 	if !exist {
 		return fmt.Errorf("path does not exist: %s", absPath)
 	}
 
 	w.paths = append(w.paths, absPath)
+
 	return nil
 }
 
@@ -112,10 +116,13 @@ func (w *NotifyWrapper) Start() error {
 			return err
 		}
 	}
+
 	defer func() {
 		w.started = true
 	}()
+
 	go w.eventProcessor()
+
 	return nil
 }
 
@@ -126,6 +133,7 @@ func (w *NotifyWrapper) eventProcessor() {
 			if !ok {
 				return
 			}
+
 			if w.handler != nil {
 				w.handler(event)
 			}
@@ -133,6 +141,7 @@ func (w *NotifyWrapper) eventProcessor() {
 			if !ok {
 				return
 			}
+
 			if w.handler != nil {
 				w.errorHandler(err)
 			}
@@ -153,8 +162,10 @@ func exists(path string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
+
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	}
+
 	return false, err
 }

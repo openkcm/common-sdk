@@ -12,9 +12,10 @@ import (
 	"github.com/davidhoo/jsonpath"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/mcuadros/go-defaults"
-	"github.com/openkcm/common-sdk/pkg/utils"
 	"github.com/samber/oops"
 	"github.com/spf13/viper"
+
+	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 // Loader is used to load configuration from a `config.yaml` file.

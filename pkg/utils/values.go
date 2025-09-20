@@ -15,9 +15,10 @@ func ExtractFromComplexValue(value string) (string, error) {
 
 	for {
 		matches := re.FindStringSubmatch(value)
-		if matches == nil || len(matches) < 3 {
+		if len(matches) < 3 {
 			return value, nil
 		}
+
 		outer := matches[1]
 		payload := matches[2]
 
@@ -27,6 +28,7 @@ func ExtractFromComplexValue(value string) (string, error) {
 			if err != nil {
 				return "", err
 			}
+
 			value = string(decoded)
 		default:
 			return value, nil
