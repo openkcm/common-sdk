@@ -1,34 +1,40 @@
 package fs_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+
 	"github.com/openkcm/common-sdk/pkg/fs"
 )
 
 func TestAddPathAndStart(t *testing.T) {
 	tmpDir := t.TempDir()
+
 	w, err := fs.NewFSWatcher()
 	if err != nil {
 		t.Fatalf("failed to create watcher: %v", err)
 	}
 
 	// Should add path successfully
-	if err := w.AddPath(tmpDir); err != nil {
+	err = w.AddPath(tmpDir)
+	if err != nil {
 		t.Fatalf("expected AddPath to succeed, got error: %v", err)
 	}
 
 	// Should start successfully
-	if err := w.Start(); err != nil {
+	err = w.Start()
+	if err != nil {
 		t.Fatalf("expected Start to succeed, got error: %v", err)
 	}
 
 	// Adding path after start should fail
-	if err := w.AddPath(tmpDir); err != fs.ErrFSWatcherStartedNotAllowingNewPath {
+	err = w.AddPath(tmpDir)
+	if !errors.Is(err, fs.ErrFSWatcherStartedNotAllowingNewPath) {
 		t.Errorf("expected ErrFSWatcherStartedNotAllowingNewPath, got: %v", err)
 	}
 
@@ -42,7 +48,7 @@ func TestStartNoPaths(t *testing.T) {
 	}
 
 	err = w.Start()
-	if err != fs.ErrFSWatcherHasNoPathsConfigured {
+	if !errors.Is(err, fs.ErrFSWatcherHasNoPathsConfigured) {
 		t.Errorf("expected ErrFSWatcherHasNoPathsConfigured, got: %v", err)
 	}
 }
@@ -69,12 +75,14 @@ func TestEventHandlerReceivesEvents(t *testing.T) {
 		}
 	}(w)
 
-	if err := w.Start(); err != nil {
+	err = w.Start()
+	if err != nil {
 		t.Fatalf("failed to start watcher: %v", err)
 	}
 
 	// Trigger an event: write a file
-	if err := os.WriteFile(tmpFile, []byte("hello"), 0644); err != nil {
+	err = os.WriteFile(tmpFile, []byte("hello"), 0644)
+	if err != nil {
 		t.Fatalf("failed to write file: %v", err)
 	}
 
@@ -95,8 +103,40 @@ func TestAddPathNonexistent(t *testing.T) {
 	}
 
 	nonexistent := filepath.Join(t.TempDir(), "does-not-exist")
+
 	err = w.AddPath(nonexistent)
 	if err == nil {
 		t.Errorf("expected error for nonexistent path, got nil")
+	}
+}
+
+func TestCloseIsSafeToCallMultipleTimes(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	w, err := fs.NewFSWatcher(fs.OnPath(tmpDir))
+	if err != nil {
+		t.Fatalf("failed to create watcher: %v", err)
+	}
+
+	err = w.Start()
+	if err != nil {
+		t.Fatalf("failed to start watcher: %v", err)
+	}
+
+	// Call Close() multiple times in different goroutines
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for range 5 {
+			_ = w.Close() // should not panic
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Error("timeout: Close() may have deadlocked")
 	}
 }
