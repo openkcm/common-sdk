@@ -10,6 +10,11 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
+var (
+	ErrFSWatcherStartedNotAllowingNewPath = errors.New("watcher already started, cannot add new path")
+	ErrFSWatcherHasNoPathsConfigured      = errors.New("watcher has no paths")
+)
+
 type NotifyWrapper struct {
 	started bool
 	paths   []string
@@ -83,7 +88,7 @@ func NewFSWatcher(opts ...Option) (*NotifyWrapper, error) {
 
 func (w *NotifyWrapper) AddPath(path string) error {
 	if w.started {
-		return errors.New("watcher already started, cannot add new path")
+		return ErrFSWatcherStartedNotAllowingNewPath
 	}
 
 	absPath, err := filepath.Abs(path)
@@ -107,7 +112,7 @@ func (w *NotifyWrapper) AddPath(path string) error {
 
 func (w *NotifyWrapper) Start() error {
 	if len(w.paths) == 0 {
-		return errors.New("watcher has no paths")
+		return ErrFSWatcherHasNoPathsConfigured
 	}
 
 	for _, path := range w.paths {
