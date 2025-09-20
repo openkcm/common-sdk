@@ -321,15 +321,13 @@ type GRPCClientAttributes struct {
 type BuildInfo struct {
 	rawJSON json.RawMessage
 
-	Branch          string `json:"branch"`
-	BuildWorkflowId string `json:"buildWorkflowId"`
-	Org             string `json:"org"`
-	Product         string `json:"product"`
-	ReleaseMetadata string `json:"releaseMetadata"`
-	Repo            string `json:"repo"`
-	SHA             string `json:"sha"`
-	SecurityScan    string `json:"securityScan"`
-	Version         string `json:"version"`
+	Branch    string `json:"branch"`
+	Org       string `json:"org"`
+	Product   string `json:"product"`
+	Repo      string `json:"repo"`
+	SHA       string `json:"sha"`
+	Version   string `json:"version"`
+	BuildTime string `json:"buildTime"`
 }
 
 func (bi *BuildInfo) String() string {
