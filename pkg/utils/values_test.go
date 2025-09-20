@@ -61,6 +61,7 @@ func TestExtractFromComplexValue(t *testing.T) {
 			if (err != nil) != tt.wantError {
 				t.Fatalf("ExtractFromComplexValue() error = %v, wantError %v", err, tt.wantError)
 			}
+
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ExtractFromComplexValue() = %v, want %v", got, tt.want)
 			}
