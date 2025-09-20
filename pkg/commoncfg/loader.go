@@ -12,6 +12,7 @@ import (
 	"github.com/davidhoo/jsonpath"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/mcuadros/go-defaults"
+	"github.com/openkcm/common-sdk/pkg/utils"
 	"github.com/samber/oops"
 	"github.com/spf13/viper"
 )
@@ -126,7 +127,12 @@ func UpdateConfigVersion(cfg *BaseConfig, buildInfo string) error {
 		cfg.Application.RuntimeBuildInfo = bi
 	}
 
-	err := json.Unmarshal([]byte(buildInfo), &cfg.Application.BuildInfo)
+	buildInfo, err := utils.ExtractFromComplexValue(buildInfo)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal([]byte(buildInfo), &cfg.Application.BuildInfo)
 	if err != nil {
 		return err
 	}
