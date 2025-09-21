@@ -96,6 +96,49 @@ func TestEventHandlerReceivesEvents(t *testing.T) {
 	}
 }
 
+func TestEvenChainReceivesEvents(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "test.txt")
+
+	eventsCh := make(chan fsnotify.Event, 1)
+	errorsCh := make(chan error, 1)
+
+	w, err := fs.NewFSWatcher(
+		fs.OnPath(tmpDir),
+		fs.WithEventChainAsHandler(eventsCh),
+		fs.WithErrorChainAsHandler(errorsCh),
+	)
+	if err != nil {
+		t.Fatalf("failed to create watcher: %v", err)
+	}
+	defer func(w *fs.NotifyWrapper) {
+		err := w.Close()
+		if err != nil {
+			t.Fatalf("failed to close watcher: %v", err)
+		}
+	}(w)
+
+	err = w.Start()
+	if err != nil {
+		t.Fatalf("failed to start watcher: %v", err)
+	}
+
+	// Trigger an event: write a file
+	err = os.WriteFile(tmpFile, []byte("hello"), 0644)
+	if err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	select {
+	case ev := <-eventsCh:
+		if ev.Name != tmpFile {
+			t.Errorf("expected event for %s, got %s", tmpFile, ev.Name)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("timeout waiting for file event")
+	}
+}
+
 func TestAddPathNonexistent(t *testing.T) {
 	w, err := fs.NewFSWatcher()
 	if err != nil {

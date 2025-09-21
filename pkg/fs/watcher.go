@@ -53,11 +53,19 @@ func WithEventHandler(handler func(fsnotify.Event)) Option {
 	}
 }
 
+func WithEventChainAsHandler(eventsCh chan<- fsnotify.Event) Option {
+	return WithEventHandler(func(e fsnotify.Event) { eventsCh <- e })
+}
+
 func WithErrorEventHandler(handler func(error)) Option {
 	return func(w *NotifyWrapper) error {
 		w.errorHandler = handler
 		return nil
 	}
+}
+
+func WithErrorChainAsHandler(eventsCh chan<- error) Option {
+	return WithErrorEventHandler(func(e error) { eventsCh <- e })
 }
 
 func NewFSWatcher(opts ...Option) (*NotifyWrapper, error) {
