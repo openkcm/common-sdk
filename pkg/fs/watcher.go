@@ -83,14 +83,6 @@ func NewFSWatcher(opts ...Option) (*NotifyWrapper, error) {
 		}
 	}
 
-	// Create new watcher.
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return nil, err
-	}
-
-	w.watcher = watcher
-
 	return w, nil
 }
 
@@ -122,6 +114,21 @@ func (w *NotifyWrapper) Start() error {
 	if len(w.paths) == 0 {
 		return ErrFSWatcherHasNoPathsConfigured
 	}
+
+	if w.watcher != nil {
+		err := w.watcher.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	// Create new watcher.
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+
+	w.watcher = watcher
 
 	for _, path := range w.paths {
 		err := w.watcher.Add(path)
