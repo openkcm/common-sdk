@@ -14,6 +14,8 @@ import (
 	"github.com/mcuadros/go-defaults"
 	"github.com/samber/oops"
 	"github.com/spf13/viper"
+
+	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 // Loader is used to load configuration from a `config.yaml` file.
@@ -126,7 +128,12 @@ func UpdateConfigVersion(cfg *BaseConfig, buildInfo string) error {
 		cfg.Application.RuntimeBuildInfo = bi
 	}
 
-	err := json.Unmarshal([]byte(buildInfo), &cfg.Application.BuildInfo)
+	buildInfo, err := utils.ExtractFromComplexValue(buildInfo)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal([]byte(buildInfo), &cfg.Application.BuildInfo)
 	if err != nil {
 		return err
 	}
