@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/openkcm/common-sdk/compare/v1.3.0...v1.4.0) (2025-09-22)
+
+
+### Features
+
+* add filesystem watcher and notify which file was modified over the handlers ([#121](https://github.com/openkcm/common-sdk/issues/121)) ([39b341e](https://github.com/openkcm/common-sdk/commit/39b341e8baa5c1cda0df9652ca7c88e03f183ce3))
+* add issuer to clientdata ([#118](https://github.com/openkcm/common-sdk/issues/118)) ([510ca0c](https://github.com/openkcm/common-sdk/commit/510ca0cdfec22ae71ae27f959a9ed438fd5e70e8))
+
+
+### Bug Fixes
+
+* build information is passed as base64(&lt;encoded value&gt;) ([#120](https://github.com/openkcm/common-sdk/issues/120)) ([e905671](https://github.com/openkcm/common-sdk/commit/e905671f12e1f7ffae0fffb34e82d9fafdb6f84b))
+
 ## [1.3.0](https://github.com/openkcm/common-sdk/compare/v1.2.4...v1.3.0) (2025-09-03)
 
 
