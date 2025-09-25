@@ -100,7 +100,7 @@ func Create(location string, opts ...Option) (*Loader, error) {
 		location:  location,
 		extension: "",
 		keyIDType: FileFullPath,
-		storage:   keyvalue.NewMemoryStorage(),
+		storage:   keyvalue.NewMemoryKeyStringStorage[[]byte](),
 	}
 
 	defaultWatcher, err := watcher.NewFSWatcher(
@@ -181,6 +181,10 @@ func (dl *Loader) loadAllResources(path string) error {
 	}
 
 	return nil
+}
+
+func (dl *Loader) Storage() keyvalue.ReadStorage[string, []byte] {
+	return dl.storage
 }
 
 func (dl *Loader) loadSigningKey(event fsnotify.Event) {

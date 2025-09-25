@@ -1,42 +1,42 @@
 package keyvalue
 
-type MemoryStorage struct {
-	data map[string][]byte
+type MemoryKeyStringStorage[V any] struct {
+	data map[string]V
 }
 
-func NewMemoryStorage() *MemoryStorage {
-	return &MemoryStorage{
-		data: make(map[string][]byte),
+func NewMemoryKeyStringStorage[V any]() *MemoryKeyStringStorage[V] {
+	return &MemoryKeyStringStorage[V]{
+		data: make(map[string]V),
 	}
 }
 
-func (ms *MemoryStorage) AsReadStorage() ReadStorage[string, []byte] {
+func (ms *MemoryKeyStringStorage[V]) AsReadStorage() ReadStorage[string, V] {
 	return ms
 }
 
-func (ms *MemoryStorage) Store(key string, value []byte) {
+func (ms *MemoryKeyStringStorage[V]) Store(key string, value V) {
 	ms.data[key] = value
 }
 
-func (ms *MemoryStorage) Clean() bool {
-	hasdata := len(ms.data) > 0
+func (ms *MemoryKeyStringStorage[V]) Clean() bool {
+	exists := len(ms.data) > 0
 	for k := range ms.data {
 		delete(ms.data, k)
 	}
 
-	return hasdata
+	return exists
 }
 
-func (ms *MemoryStorage) IsEmpty() bool {
+func (ms *MemoryKeyStringStorage[V]) IsEmpty() bool {
 	return len(ms.data) == 0
 }
 
-func (ms *MemoryStorage) Get(key string) ([]byte, bool) {
+func (ms *MemoryKeyStringStorage[V]) Get(key string) (V, bool) {
 	value, exist := ms.data[key]
 	return value, exist
 }
 
-func (ms *MemoryStorage) Remove(key string) bool {
+func (ms *MemoryKeyStringStorage[V]) Remove(key string) bool {
 	_, exist := ms.data[key]
 	if exist {
 		delete(ms.data, key)

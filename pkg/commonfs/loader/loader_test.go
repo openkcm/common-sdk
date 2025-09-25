@@ -26,10 +26,10 @@ const (
 
 // --- Helpers ---
 
-func newTestLoader(t *testing.T, dir string) (*loader.Loader, *keyvalue.MemoryStorage) {
+func newTestLoader(t *testing.T, dir string) (*loader.Loader, *keyvalue.MemoryKeyStringStorage[[]byte]) {
 	t.Helper()
 
-	st := keyvalue.NewMemoryStorage()
+	st := keyvalue.NewMemoryKeyStringStorage[[]byte]()
 	l, err := loader.Create(dir,
 		loader.WithStorage(st),
 		loader.WithExtension("pem"),
@@ -120,7 +120,7 @@ func TestLoaderKeyIDTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			st := keyvalue.NewMemoryStorage()
+			st := keyvalue.NewMemoryKeyStringStorage[[]byte]()
 			l, err := loader.Create(tt.location,
 				loader.WithStorage(st),
 				loader.WithExtension("pem"),
@@ -146,7 +146,7 @@ func TestNewLoaderWithOptions(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	t.Run("valid loader with storage + extension", func(t *testing.T) {
-		st := keyvalue.NewMemoryStorage()
+		st := keyvalue.NewMemoryKeyStringStorage[[]byte]()
 		l, err := loader.Create(tmpDir,
 			loader.WithStorage(st),
 			loader.WithExtension(".pem"),
