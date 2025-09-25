@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/openkcm/common-sdk/compare/v1.4.0...v1.4.1) (2025-09-25)
+
+
+### Bug Fixes
+
+* refactor the common file system watcher ([#124](https://github.com/openkcm/common-sdk/issues/124)) ([8d1dbf4](https://github.com/openkcm/common-sdk/commit/8d1dbf4a547ec07a98f8e0d0d905b3827aab57aa))
+
 ## [1.4.0](https://github.com/openkcm/common-sdk/compare/v1.3.0...v1.4.0) (2025-09-22)
 
 
