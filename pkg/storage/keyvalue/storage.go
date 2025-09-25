@@ -1,6 +1,6 @@
 package keyvalue
 
-type Storage[K any, V any] interface {
+type Storage[K comparable, V any] interface {
 	ReadStorage[K, V]
 
 	Store(key K, value V)
@@ -8,7 +8,7 @@ type Storage[K any, V any] interface {
 	Clean() bool
 }
 
-type ReadStorage[K any, V any] interface {
+type ReadStorage[K comparable, V any] interface {
 	Get(key K) (V, bool)
 	IsEmpty() bool
 }
