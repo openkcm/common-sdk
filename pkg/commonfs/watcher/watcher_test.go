@@ -1,4 +1,4 @@
-package fs_test
+package watcher_test
 
 import (
 	"errors"
@@ -9,13 +9,13 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/openkcm/common-sdk/pkg/fs"
+	"github.com/openkcm/common-sdk/pkg/commonfs/watcher"
 )
 
 func TestAddPathAndStart(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	w, err := fs.NewFSWatcher()
+	w, err := watcher.NewFSWatcher()
 	if err != nil {
 		t.Fatalf("failed to create watcher: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestAddPathAndStart(t *testing.T) {
 
 	// Adding path after start should fail
 	err = w.AddPath(tmpDir)
-	if !errors.Is(err, fs.ErrFSWatcherStartedNotAllowingNewPath) {
+	if !errors.Is(err, watcher.ErrFSWatcherStartedNotAllowingNewPath) {
 		t.Errorf("expected ErrFSWatcherStartedNotAllowingNewPath, got: %v", err)
 	}
 
@@ -42,13 +42,13 @@ func TestAddPathAndStart(t *testing.T) {
 }
 
 func TestStartNoPaths(t *testing.T) {
-	w, err := fs.NewFSWatcher()
+	w, err := watcher.NewFSWatcher()
 	if err != nil {
 		t.Fatalf("failed to create watcher: %v", err)
 	}
 
 	err = w.Start()
-	if !errors.Is(err, fs.ErrFSWatcherHasNoPathsConfigured) {
+	if !errors.Is(err, watcher.ErrFSWatcherHasNoPathsConfigured) {
 		t.Errorf("expected ErrFSWatcherHasNoPathsConfigured, got: %v", err)
 	}
 }
@@ -60,15 +60,15 @@ func TestEventHandlerReceivesEvents(t *testing.T) {
 	eventsCh := make(chan fsnotify.Event, 1)
 	errorsCh := make(chan error, 1)
 
-	w, err := fs.NewFSWatcher(
-		fs.OnPath(tmpDir),
-		fs.WithEventHandler(func(e fsnotify.Event) { eventsCh <- e }),
-		fs.WithErrorEventHandler(func(e error) { errorsCh <- e }),
+	w, err := watcher.NewFSWatcher(
+		watcher.OnPath(tmpDir),
+		watcher.WithEventHandler(func(e fsnotify.Event) { eventsCh <- e }),
+		watcher.WithErrorEventHandler(func(e error) { errorsCh <- e }),
 	)
 	if err != nil {
 		t.Fatalf("failed to create watcher: %v", err)
 	}
-	defer func(w *fs.NotifyWrapper) {
+	defer func(w *watcher.NotifyWrapper) {
 		err := w.Close()
 		if err != nil {
 			t.Fatalf("failed to close watcher: %v", err)
@@ -97,7 +97,7 @@ func TestEventHandlerReceivesEvents(t *testing.T) {
 }
 
 func TestAddPathNonexistent(t *testing.T) {
-	w, err := fs.NewFSWatcher()
+	w, err := watcher.NewFSWatcher()
 	if err != nil {
 		t.Fatalf("failed to create watcher: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestAddPathNonexistent(t *testing.T) {
 func TestCloseIsSafeToCallMultipleTimes(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	w, err := fs.NewFSWatcher(fs.OnPath(tmpDir))
+	w, err := watcher.NewFSWatcher(watcher.OnPath(tmpDir))
 	if err != nil {
 		t.Fatalf("failed to create watcher: %v", err)
 	}

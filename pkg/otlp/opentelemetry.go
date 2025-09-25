@@ -105,7 +105,7 @@ func Init(ctx context.Context,
 	return reg.init(ctx)
 }
 
-// init initializes resource, trace, metrics and logger based on the given configs.
+// init initializes loader, trace, metrics and logger based on the given configs.
 func (reg *registry) init(ctx context.Context) error {
 	err := reg.initResource(ctx)
 	if err != nil {
@@ -216,7 +216,7 @@ func (reg *registry) forceFlush(ctx context.Context) {
 	wg.Wait()
 }
 
-// initResource creates and sets a merged OpenTelemetry resource.
+// initResource creates and sets a merged OpenTelemetry loader.
 func (reg *registry) initResource(ctx context.Context) error {
 	attrs := make([]attribute.KeyValue, 0)
 	attrs = append(attrs,
