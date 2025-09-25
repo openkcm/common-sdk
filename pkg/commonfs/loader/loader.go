@@ -141,7 +141,7 @@ func (dl *Loader) onError(err error) {
 func (dl *Loader) StartWatching() error {
 	errStart := dl.watcher.Start()
 
-	err := dl.loadAllResources()
+	err := dl.loadAllResources(dl.location)
 	if err != nil {
 		return fmt.Errorf("failed to load signing keys %w", err)
 	}
@@ -155,22 +155,29 @@ func (dl *Loader) StopWatching() error {
 }
 
 // loadAllResources loads signing keys from the in config specified directory.
-func (dl *Loader) loadAllResources() error {
-	_, err := os.Stat(dl.location)
+func (dl *Loader) loadAllResources(path string) error {
+	_, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
 
-	keys, err := os.ReadDir(dl.location)
+	keys, err := os.ReadDir(path)
 	if err != nil {
 		return err
 	}
 
 	for _, keyFile := range keys {
-		dl.loadSigningKey(fsnotify.Event{
-			Name: filepath.Join(dl.location, keyFile.Name()),
-			Op:   fsnotify.Write,
-		})
+		if keyFile.IsDir() {
+			err = dl.loadAllResources(filepath.Join(path, keyFile.Name()))
+			if err != nil {
+				return err
+			}
+		} else {
+			dl.loadSigningKey(fsnotify.Event{
+				Name: filepath.Join(path, keyFile.Name()),
+				Op:   fsnotify.Write,
+			})
+		}
 	}
 
 	return nil
@@ -194,6 +201,9 @@ func (dl *Loader) loadSigningKey(event fsnotify.Event) {
 		}
 	case FileFullPathRelativeToLocation:
 		keyID = strings.TrimPrefix(filePath, dl.location)
+		if !strings.HasPrefix(keyID, string(os.PathSeparator)) {
+			keyID = string(os.PathSeparator) + keyID
+		}
 	case FileFullPath:
 		keyID = filePath
 	}
