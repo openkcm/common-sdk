@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/openkcm/common-sdk/compare/v1.4.1...v1.4.2) (2025-09-25)
+
+
+### Bug Fixes
+
+* make generic the key value memory storage ([#126](https://github.com/openkcm/common-sdk/issues/126)) ([6679b97](https://github.com/openkcm/common-sdk/commit/6679b97afa097b8a9d7983fa6d08799c29f5ffa8))
+
 ## [1.4.1](https://github.com/openkcm/common-sdk/compare/v1.4.0...v1.4.1) (2025-09-25)
 
 
