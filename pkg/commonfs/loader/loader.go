@@ -100,7 +100,7 @@ func Create(location string, opts ...Option) (*Loader, error) {
 		location:  location,
 		extension: "",
 		keyIDType: FileFullPath,
-		storage:   keyvalue.NewMemoryKeyStringStorage[[]byte](),
+		storage:   keyvalue.NewMemoryStorage[string, []byte](),
 	}
 
 	defaultWatcher, err := watcher.NewFSWatcher(

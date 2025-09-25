@@ -9,13 +9,13 @@ import (
 )
 
 func TestNewMemoryStorage(t *testing.T) {
-	st := keyvalue.NewMemoryKeyStringStorage[[]byte]()
+	st := keyvalue.NewMemoryStorage[string, []byte]()
 	require.NotNil(t, st)
 	require.True(t, st.IsEmpty())
 }
 
 func TestStoreAndGet(t *testing.T) {
-	st := keyvalue.NewMemoryKeyStringStorage[[]byte]()
+	st := keyvalue.NewMemoryStorage[string, []byte]()
 
 	// Store a key
 	st.Store("foo", []byte("bar"))
@@ -32,7 +32,7 @@ func TestStoreAndGet(t *testing.T) {
 }
 
 func TestRemove(t *testing.T) {
-	st := keyvalue.NewMemoryKeyStringStorage[[]byte]()
+	st := keyvalue.NewMemoryStorage[string, []byte]()
 
 	// Remove non-existing
 	ok := st.Remove("ghost")
@@ -49,7 +49,7 @@ func TestRemove(t *testing.T) {
 }
 
 func TestClean(t *testing.T) {
-	st := keyvalue.NewMemoryKeyStringStorage[[]byte]()
+	st := keyvalue.NewMemoryStorage[string, []byte]()
 
 	// Clean on empty storage
 	ok := st.Clean()
@@ -70,7 +70,7 @@ func TestClean(t *testing.T) {
 }
 
 func TestAsReadStorage(t *testing.T) {
-	st := keyvalue.NewMemoryKeyStringStorage[[]byte]()
+	st := keyvalue.NewMemoryStorage[string, []byte]()
 
 	// AsReadStorage should not panic and return same storage
 	readOnly := st.AsReadStorage()

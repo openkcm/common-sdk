@@ -1,24 +1,24 @@
 package keyvalue
 
-type MemoryKeyStringStorage[V any] struct {
-	data map[string]V
+type MemoryStorage[K comparable, V any] struct {
+	data map[K]V
 }
 
-func NewMemoryKeyStringStorage[V any]() *MemoryKeyStringStorage[V] {
-	return &MemoryKeyStringStorage[V]{
-		data: make(map[string]V),
+func NewMemoryStorage[K comparable, V any]() *MemoryStorage[K, V] {
+	return &MemoryStorage[K, V]{
+		data: make(map[K]V),
 	}
 }
 
-func (ms *MemoryKeyStringStorage[V]) AsReadStorage() ReadStorage[string, V] {
+func (ms *MemoryStorage[K, V]) AsReadStorage() ReadStorage[K, V] {
 	return ms
 }
 
-func (ms *MemoryKeyStringStorage[V]) Store(key string, value V) {
+func (ms *MemoryStorage[K, V]) Store(key K, value V) {
 	ms.data[key] = value
 }
 
-func (ms *MemoryKeyStringStorage[V]) Clean() bool {
+func (ms *MemoryStorage[K, V]) Clean() bool {
 	exists := len(ms.data) > 0
 	for k := range ms.data {
 		delete(ms.data, k)
@@ -27,16 +27,16 @@ func (ms *MemoryKeyStringStorage[V]) Clean() bool {
 	return exists
 }
 
-func (ms *MemoryKeyStringStorage[V]) IsEmpty() bool {
+func (ms *MemoryStorage[K, V]) IsEmpty() bool {
 	return len(ms.data) == 0
 }
 
-func (ms *MemoryKeyStringStorage[V]) Get(key string) (V, bool) {
+func (ms *MemoryStorage[K, V]) Get(key K) (V, bool) {
 	value, exist := ms.data[key]
 	return value, exist
 }
 
-func (ms *MemoryKeyStringStorage[V]) Remove(key string) bool {
+func (ms *MemoryStorage[K, V]) Remove(key K) bool {
 	_, exist := ms.data[key]
 	if exist {
 		delete(ms.data, key)
