@@ -1,4 +1,4 @@
-package fs_test
+package watcher_test
 
 import (
 	"errors"
@@ -9,46 +9,69 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/openkcm/common-sdk/pkg/fs"
+	"github.com/openkcm/common-sdk/pkg/commonfs/watcher"
 )
 
-func TestAddPathAndStart(t *testing.T) {
-	tmpDir := t.TempDir()
+// --- Helpers ---
 
-	w, err := fs.NewFSWatcher()
+func newWatcher(t *testing.T, opts ...watcher.Option) *watcher.NotifyWrapper {
+	t.Helper()
+
+	w, err := watcher.NewFSWatcher(opts...)
 	if err != nil {
 		t.Fatalf("failed to create watcher: %v", err)
 	}
 
+	return w
+}
+
+func startWatcher(t *testing.T, w *watcher.NotifyWrapper) {
+	t.Helper()
+
+	err := w.Start()
+	if err != nil {
+		t.Fatalf("failed to start watcher: %v", err)
+	}
+}
+
+func closeWatcher(t *testing.T, w *watcher.NotifyWrapper) {
+	t.Helper()
+
+	err := w.Close()
+	if err != nil {
+		t.Fatalf("failed to close watcher: %v", err)
+	}
+}
+
+// --- Tests ---
+
+func TestAddPathAndStart(t *testing.T) {
+	tmpDir := t.TempDir()
+	w := newWatcher(t)
+
 	// Should add path successfully
-	err = w.AddPath(tmpDir)
+	err := w.AddPath(tmpDir)
 	if err != nil {
 		t.Fatalf("expected AddPath to succeed, got error: %v", err)
 	}
 
 	// Should start successfully
-	err = w.Start()
-	if err != nil {
-		t.Fatalf("expected Start to succeed, got error: %v", err)
-	}
+	startWatcher(t, w)
 
 	// Adding path after start should fail
 	err = w.AddPath(tmpDir)
-	if !errors.Is(err, fs.ErrFSWatcherStartedNotAllowingNewPath) {
+	if !errors.Is(err, watcher.ErrFSWatcherStartedNotAllowingNewPath) {
 		t.Errorf("expected ErrFSWatcherStartedNotAllowingNewPath, got: %v", err)
 	}
 
-	_ = w.Close()
+	closeWatcher(t, w)
 }
 
 func TestStartNoPaths(t *testing.T) {
-	w, err := fs.NewFSWatcher()
-	if err != nil {
-		t.Fatalf("failed to create watcher: %v", err)
-	}
+	w := newWatcher(t)
 
-	err = w.Start()
-	if !errors.Is(err, fs.ErrFSWatcherHasNoPathsConfigured) {
+	err := w.Start()
+	if !errors.Is(err, watcher.ErrFSWatcherHasNoPathsConfigured) {
 		t.Errorf("expected ErrFSWatcherHasNoPathsConfigured, got: %v", err)
 	}
 }
@@ -60,28 +83,17 @@ func TestEventHandlerReceivesEvents(t *testing.T) {
 	eventsCh := make(chan fsnotify.Event, 1)
 	errorsCh := make(chan error, 1)
 
-	w, err := fs.NewFSWatcher(
-		fs.OnPath(tmpDir),
-		fs.WithEventHandler(func(e fsnotify.Event) { eventsCh <- e }),
-		fs.WithErrorEventHandler(func(e error) { errorsCh <- e }),
+	w := newWatcher(t,
+		watcher.OnPath(tmpDir),
+		watcher.WithEventHandler(func(e fsnotify.Event) { eventsCh <- e }),
+		watcher.WithErrorEventHandler(func(e error) { errorsCh <- e }),
 	)
-	if err != nil {
-		t.Fatalf("failed to create watcher: %v", err)
-	}
-	defer func(w *fs.NotifyWrapper) {
-		err := w.Close()
-		if err != nil {
-			t.Fatalf("failed to close watcher: %v", err)
-		}
-	}(w)
+	defer closeWatcher(t, w)
 
-	err = w.Start()
-	if err != nil {
-		t.Fatalf("failed to start watcher: %v", err)
-	}
+	startWatcher(t, w)
 
 	// Trigger an event: write a file
-	err = os.WriteFile(tmpFile, []byte("hello"), 0644)
+	err := os.WriteFile(tmpFile, []byte("hello"), 0644)
 	if err != nil {
 		t.Fatalf("failed to write file: %v", err)
 	}
@@ -97,14 +109,10 @@ func TestEventHandlerReceivesEvents(t *testing.T) {
 }
 
 func TestAddPathNonexistent(t *testing.T) {
-	w, err := fs.NewFSWatcher()
-	if err != nil {
-		t.Fatalf("failed to create watcher: %v", err)
-	}
-
+	w := newWatcher(t)
 	nonexistent := filepath.Join(t.TempDir(), "does-not-exist")
 
-	err = w.AddPath(nonexistent)
+	err := w.AddPath(nonexistent)
 	if err == nil {
 		t.Errorf("expected error for nonexistent path, got nil")
 	}
@@ -112,25 +120,16 @@ func TestAddPathNonexistent(t *testing.T) {
 
 func TestCloseIsSafeToCallMultipleTimes(t *testing.T) {
 	tmpDir := t.TempDir()
+	w := newWatcher(t, watcher.OnPath(tmpDir))
+	startWatcher(t, w)
 
-	w, err := fs.NewFSWatcher(fs.OnPath(tmpDir))
-	if err != nil {
-		t.Fatalf("failed to create watcher: %v", err)
-	}
-
-	err = w.Start()
-	if err != nil {
-		t.Fatalf("failed to start watcher: %v", err)
-	}
-
-	// Call Close() multiple times in different goroutines
 	done := make(chan struct{})
 
 	go func() {
 		defer close(done)
 
 		for range 5 {
-			_ = w.Close() // should not panic
+			_ = w.Close() // should not panic or deadlock
 		}
 	}()
 
