@@ -16,6 +16,7 @@ import (
 
 func newTestLoader(t *testing.T, dir string) (*loader.Loader, *keyvalue.MemoryStorage) {
 	t.Helper()
+
 	st := keyvalue.NewMemoryStorage()
 	l, err := loader.Create(dir,
 		loader.WithStorage(st),
@@ -23,6 +24,7 @@ func newTestLoader(t *testing.T, dir string) (*loader.Loader, *keyvalue.MemorySt
 		loader.WithKeyIDType(loader.FileNameWithoutExtension),
 	)
 	require.NoError(t, err)
+
 	return l, st
 }
 
@@ -38,6 +40,7 @@ func stopLoader(t *testing.T, l *loader.Loader) {
 
 func createTestPemFiles(t *testing.T, dir string, files map[string]string) {
 	t.Helper()
+
 	for name, content := range files {
 		pemPath := filepath.Join(dir, name+".pem")
 		require.NoError(t, os.WriteFile(pemPath, []byte(content), 0600))
@@ -157,6 +160,7 @@ func TestLoadAllloaders_Positive(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "key.pem"), []byte("secret"), 0644))
 
 	l, st := newTestLoader(t, dir)
+
 	startLoader(t, l)
 	defer stopLoader(t, l)
 
@@ -168,6 +172,7 @@ func TestLoadAllloaders_Positive(t *testing.T) {
 func TestStartStopWatching(t *testing.T) {
 	dir := t.TempDir()
 	l, st := newTestLoader(t, dir)
+
 	startLoader(t, l)
 	defer stopLoader(t, l)
 
@@ -182,6 +187,7 @@ func TestStartStopWatching(t *testing.T) {
 func TestFileRemovalUpdatesStorage(t *testing.T) {
 	dir := t.TempDir()
 	l, st := newTestLoader(t, dir)
+
 	startLoader(t, l)
 	defer stopLoader(t, l)
 
@@ -211,6 +217,7 @@ func TestLoadSigningKeys_LoadsPemFiles(t *testing.T) {
 	require.NoError(t, os.Mkdir(filepath.Join(dir, "subdir"), 0755))
 
 	l, st := newTestLoader(t, dir)
+
 	startLoader(t, l)
 	defer stopLoader(t, l)
 
@@ -238,6 +245,7 @@ func TestLoadSigningKeys_ErrorOnReadFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(pemPath, []byte("data"), 0000)) // no permissions
 
 	l, st := newTestLoader(t, dir)
+
 	startLoader(t, l)
 	defer stopLoader(t, l)
 
@@ -251,6 +259,7 @@ func TestStartSigningKeysWatcher_ReloadsOnChange(t *testing.T) {
 	createTestPemFiles(t, dir, files)
 
 	l, st := newTestLoader(t, dir)
+
 	startLoader(t, l)
 	defer stopLoader(t, l)
 
@@ -259,6 +268,7 @@ func TestStartSigningKeysWatcher_ReloadsOnChange(t *testing.T) {
 	// Add new key
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "key3.pem"), []byte("pemdata3"), 0600))
 	time.Sleep(300 * time.Millisecond)
+
 	val, ok := st.Get("key3")
 	require.True(t, ok)
 	require.Equal(t, []byte("pemdata3"), val)
@@ -266,6 +276,7 @@ func TestStartSigningKeysWatcher_ReloadsOnChange(t *testing.T) {
 	// Modify key
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "key1.pem"), []byte("pemdata1_modified"), 0600))
 	time.Sleep(300 * time.Millisecond)
+
 	val, ok = st.Get("key1")
 	require.True(t, ok)
 	require.Equal(t, []byte("pemdata1_modified"), val)
@@ -273,6 +284,7 @@ func TestStartSigningKeysWatcher_ReloadsOnChange(t *testing.T) {
 	// Remove key
 	require.NoError(t, os.Remove(filepath.Join(dir, "key2.pem")))
 	time.Sleep(300 * time.Millisecond)
+
 	_, ok = st.Get("key2")
 	require.False(t, ok)
 }
@@ -283,6 +295,7 @@ func TestStartSigningKeysWatcher_NoReloadOnNoChange(t *testing.T) {
 	createTestPemFiles(t, dir, files)
 
 	l, st := newTestLoader(t, dir)
+
 	startLoader(t, l)
 	defer stopLoader(t, l)
 
@@ -299,6 +312,7 @@ func TestStartSigningKeysWatcher_ReloadOnTouch(t *testing.T) {
 	createTestPemFiles(t, dir, files)
 
 	l, st := newTestLoader(t, dir)
+
 	startLoader(t, l)
 	defer stopLoader(t, l)
 

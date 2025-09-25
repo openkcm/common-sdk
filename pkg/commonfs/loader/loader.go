@@ -195,6 +195,7 @@ func (dl *Loader) loadSigningKey(event fsnotify.Event) {
 		_, name := filepath.Split(filePath)
 
 		var found bool
+
 		keyID, found = strings.CutSuffix(name, dl.extension)
 		if !found {
 			return
