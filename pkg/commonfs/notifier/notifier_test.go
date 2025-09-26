@@ -38,7 +38,7 @@ func TestGroupNotifierSimpleHandlerInvocation(t *testing.T) {
 	err = g.StartWatching()
 	require.NoError(t, err)
 
-	defer func(g *notifier.GroupNotifier) {
+	defer func(g *notifier.Notifier) {
 		err := g.StopWatching()
 		require.NoError(t, err)
 	}(g)

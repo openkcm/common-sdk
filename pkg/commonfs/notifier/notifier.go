@@ -3,7 +3,7 @@ Package notifier provides a grouped event notification mechanism that
 accumulates filesystem events and errors and triggers user-defined callbacks
 at controlled intervals.
 
-The GroupNotifier is designed to avoid flooding handlers when many filesystem
+The Notifier is designed to avoid flooding handlers when many filesystem
 events happen in quick succession. It supports:
 
   - Event batching with a configurable delay.
@@ -52,11 +52,11 @@ var (
 	ErrPathsNotSpecified = errors.New("paths not specified")
 )
 
-// GroupNotifier accumulates filesystem events and errors and triggers
+// Notifier accumulates filesystem events and errors and triggers
 // user-defined callbacks in a rate-limited and batched manner.
 //
 // It is safe for concurrent use.
-type GroupNotifier struct {
+type Notifier struct {
 	paths         []string
 	eventHandler  func([]fsnotify.Event) // Callback for batch of fsnotify events
 	simpleHandler func()                 // Simple callback if no event details are needed
@@ -75,12 +75,12 @@ type GroupNotifier struct {
 	watcher *watcher.NotifyWatcher // Underlying filesystem watcher
 }
 
-// Option is a function type for configuring GroupNotifier.
-type Option func(*GroupNotifier) error
+// Option is a function type for configuring Notifier.
+type Option func(*Notifier) error
 
 // WithEventHandler sets the event handler callback that receives batched fsnotify events.
 func WithEventHandler(handler func([]fsnotify.Event)) Option {
-	return func(w *GroupNotifier) error {
+	return func(w *Notifier) error {
 		w.eventHandler = handler
 		return nil
 	}
@@ -88,7 +88,7 @@ func WithEventHandler(handler func([]fsnotify.Event)) Option {
 
 // WithSimpleHandler sets a simple callback invoked when events are accumulated, without event details.
 func WithSimpleHandler(handler func()) Option {
-	return func(w *GroupNotifier) error {
+	return func(w *Notifier) error {
 		w.simpleHandler = handler
 		return nil
 	}
@@ -96,7 +96,7 @@ func WithSimpleHandler(handler func()) Option {
 
 // WithLimitDelay sets the minimum delay between callback invocations.
 func WithLimitDelay(delay time.Duration) Option {
-	return func(w *GroupNotifier) error {
+	return func(w *Notifier) error {
 		w.delay = delay
 		return nil
 	}
@@ -104,7 +104,7 @@ func WithLimitDelay(delay time.Duration) Option {
 
 // WithEventPerDelay sets the maximum number of events allowed per delay window.
 func WithEventPerDelay(eventPerDelay uint) Option {
-	return func(w *GroupNotifier) error {
+	return func(w *Notifier) error {
 		w.eventPerDelay = eventPerDelay
 		return nil
 	}
@@ -112,7 +112,7 @@ func WithEventPerDelay(eventPerDelay uint) Option {
 
 // WithPaths sets the paths to be watched.
 func WithPaths(paths ...string) Option {
-	return func(w *GroupNotifier) error {
+	return func(w *Notifier) error {
 		w.paths = paths
 		return nil
 	}
@@ -123,12 +123,12 @@ func WithPath(path string) Option {
 	return WithPaths(path)
 }
 
-// NewGroupNotifyWrapper creates a new GroupNotifier for the specified filesystem locations.
+// NewGroupNotifyWrapper creates a new Notifier for the specified filesystem locations.
 //
 // The notifier will accumulate events and errors from the given paths and trigger
 // configured callbacks according to the delay and event-per-delay settings.
-func NewGroupNotifyWrapper(opts ...Option) (*GroupNotifier, error) {
-	c := &GroupNotifier{
+func NewGroupNotifyWrapper(opts ...Option) (*Notifier, error) {
+	c := &Notifier{
 		delay:         100 * time.Millisecond,
 		eventPerDelay: 1,
 		cacheMu:       sync.Mutex{},
@@ -166,19 +166,19 @@ func NewGroupNotifyWrapper(opts ...Option) (*GroupNotifier, error) {
 }
 
 // StartWatching starts the underlying filesystem watcher.
-func (c *GroupNotifier) StartWatching() error {
+func (c *Notifier) StartWatching() error {
 	return c.watcher.Start()
 }
 
 // StopWatching stops the watcher and releases all associated resources.
 // It is safe to call multiple times.
-func (c *GroupNotifier) StopWatching() error {
+func (c *Notifier) StopWatching() error {
 	return c.watcher.Close()
 }
 
 // onEvent is the internal fsnotify event handler that accumulates events
 // and triggers the configured callbacks based on rate limiting.
-func (c *GroupNotifier) onEvent(event fsnotify.Event) {
+func (c *Notifier) onEvent(event fsnotify.Event) {
 	c.cacheMu.Lock()
 	defer c.cacheMu.Unlock()
 
@@ -197,18 +197,21 @@ func (c *GroupNotifier) onEvent(event fsnotify.Event) {
 
 // sendCachedEvents sends accumulated events to the configured callback
 // and resets the internal cache. Recovers from panics in user callbacks.
-func (c *GroupNotifier) sendCachedEvents() {
+func (c *Notifier) sendCachedEvents() {
 	defer func() {
 		if err := recover(); err != nil {
 			slog.Error("Notifier onEvent recover", "error", err, "events", c.cacheEvents)
 		}
 
+		c.jobSendingEvents = nil
+		c.cacheEvents = make([]fsnotify.Event, 0)
+	}()
+
+	defer func() {
 		if c.jobSendingEvents != nil {
 			c.jobSendingEvents.Stop()
 			c.jobSendingEvents = nil
 		}
-
-		c.cacheEvents = make([]fsnotify.Event, 0)
 	}()
 
 	if c.eventHandler != nil && len(c.cacheEvents) > 0 {
@@ -224,7 +227,7 @@ func (c *GroupNotifier) sendCachedEvents() {
 
 // onError is the internal error handler that accumulates errors
 // and triggers the configured error callback based on rate limiting.
-func (c *GroupNotifier) onError(err error) {
+func (c *Notifier) onError(err error) {
 	c.cacheMu.Lock()
 	defer c.cacheMu.Unlock()
 
@@ -245,18 +248,21 @@ func (c *GroupNotifier) onError(err error) {
 
 // sendCachedErrors sends accumulated errors to the configured error callback
 // and resets the internal cache. Recovers from panics in user callbacks.
-func (c *GroupNotifier) sendCachedErrors() {
+func (c *Notifier) sendCachedErrors() {
 	defer func() {
 		if errRec := recover(); errRec != nil {
 			slog.Error("Notifier onError recover err", "error", errRec)
 		}
 
+		c.jobSendingErrors = nil
+		c.cacheErrors = make([]error, 0)
+	}()
+
+	defer func() {
 		if c.jobSendingErrors != nil {
 			c.jobSendingErrors.Stop()
 			c.jobSendingErrors = nil
 		}
-
-		c.cacheErrors = make([]error, 0)
 	}()
 
 	if c.errorHandler != nil && len(c.cacheErrors) > 0 {
