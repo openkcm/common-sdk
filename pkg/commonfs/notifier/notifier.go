@@ -21,7 +21,7 @@ Example usage:
 			fmt.Println("Received events:", events)
 		}),
 		notifier.WithLimitDelay(200*time.Millisecond),
-		notifier.WithEventPerDelay(5),
+		notifier.WithEventsPerDelay(5),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -62,9 +62,9 @@ type Notifier struct {
 	simpleHandler func()                 // Simple callback if no event details are needed
 	errorHandler  func([]error)          // Callback for batch of errors
 
-	delay         time.Duration // Minimum time between callback triggers
-	eventPerDelay uint          // Maximum events allowed per delay window
-	limiter       *rate.Limiter
+	delay          time.Duration // Minimum time between notifications triggers
+	eventsPerDelay uint          // Maximum events allowed per delay window
+	limiter        *rate.Limiter
 
 	cacheMu          sync.Mutex
 	cacheEvents      []fsnotify.Event // Accumulated events
@@ -102,10 +102,10 @@ func WithLimitDelay(delay time.Duration) Option {
 	}
 }
 
-// WithEventPerDelay sets the maximum number of events allowed per delay window.
-func WithEventPerDelay(eventPerDelay uint) Option {
+// WithEventsPerDelay sets the maximum number of events allowed per delay window.
+func WithEventsPerDelay(number uint) Option {
 	return func(w *Notifier) error {
-		w.eventPerDelay = eventPerDelay
+		w.eventsPerDelay = number
 		return nil
 	}
 }
@@ -129,11 +129,11 @@ func WithPath(path string) Option {
 // configured callbacks according to the delay and event-per-delay settings.
 func NewGroupNotifyWrapper(opts ...Option) (*Notifier, error) {
 	c := &Notifier{
-		delay:         100 * time.Millisecond,
-		eventPerDelay: 1,
-		cacheMu:       sync.Mutex{},
-		cacheEvents:   make([]fsnotify.Event, 0),
-		cacheErrors:   make([]error, 0),
+		delay:          100 * time.Millisecond,
+		eventsPerDelay: 1,
+		cacheMu:        sync.Mutex{},
+		cacheEvents:    make([]fsnotify.Event, 0),
+		cacheErrors:    make([]error, 0),
 	}
 
 	for _, opt := range opts {
@@ -149,7 +149,7 @@ func NewGroupNotifyWrapper(opts ...Option) (*Notifier, error) {
 		return nil, ErrPathsNotSpecified
 	}
 
-	c.limiter = rate.NewLimiter(rate.Limit(c.delay), int(c.eventPerDelay))
+	c.limiter = rate.NewLimiter(rate.Limit(c.delay), int(c.eventsPerDelay))
 
 	defaultWatcher, err := watcher.NewFSWatcher(
 		watcher.OnPaths(c.paths...),
