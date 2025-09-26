@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/openkcm/common-sdk/compare/v1.4.2...v1.4.3) (2025-09-26)
+
+
+### Bug Fixes
+
+* add documentation for common fs and storage ([#128](https://github.com/openkcm/common-sdk/issues/128)) ([bd9d329](https://github.com/openkcm/common-sdk/commit/bd9d32937a7b705d8c7f79113d7ba9b87b5b4d83))
+
 ## [1.4.2](https://github.com/openkcm/common-sdk/compare/v1.4.1...v1.4.2) (2025-09-25)
 
 
