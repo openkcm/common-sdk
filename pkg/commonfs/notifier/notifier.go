@@ -16,12 +16,12 @@ Example usage:
 	paths := []string{"/tmp/watchdir"}
 
 	// Create a new notifier with a delay of 200ms and up to 5 events per delay
-	notifier, err := notifier.NewGroupNotifyWrapper(paths,
+	notifier, err := notifier.NewNotifier(paths,
 		notifier.WithEventHandler(func(events []fsnotify.Event) {
 			fmt.Println("Received events:", events)
 		}),
 		notifier.WithLimitDelay(200*time.Millisecond),
-		notifier.WithEventsPerDelay(5),
+		notifier.WithBurstNumber(5),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -62,9 +62,9 @@ type Notifier struct {
 	simpleHandler func()                 // Simple callback if no event details are needed
 	errorHandler  func([]error)          // Callback for batch of errors
 
-	delay          time.Duration // Minimum time between notifications triggers
-	eventsPerDelay uint          // Maximum events allowed per delay window
-	limiter        *rate.Limiter
+	delay   time.Duration // Minimum time between notifications triggers
+	burst   uint          // Maximum events allowed per delay window
+	limiter *rate.Limiter
 
 	cacheMu          sync.Mutex
 	cacheEvents      []fsnotify.Event // Accumulated events
@@ -102,10 +102,13 @@ func WithLimitDelay(delay time.Duration) Option {
 	}
 }
 
-// WithEventsPerDelay sets the maximum number of events allowed per delay window.
-func WithEventsPerDelay(number uint) Option {
+// WithBurstNumber sets the maximum number of events allowed per delay window.
+func WithBurstNumber(burst uint) Option {
 	return func(w *Notifier) error {
-		w.eventsPerDelay = number
+		w.burst = burst
+		if w.burst == 0 {
+			w.burst = 1
+		}
 		return nil
 	}
 }
@@ -123,17 +126,17 @@ func WithPath(path string) Option {
 	return WithPaths(path)
 }
 
-// NewGroupNotifyWrapper creates a new Notifier for the specified filesystem locations.
+// NewNotifier creates a new Notifier for the specified filesystem locations.
 //
 // The notifier will accumulate events and errors from the given paths and trigger
 // configured callbacks according to the delay and event-per-delay settings.
-func NewGroupNotifyWrapper(opts ...Option) (*Notifier, error) {
+func NewNotifier(opts ...Option) (*Notifier, error) {
 	c := &Notifier{
-		delay:          100 * time.Millisecond,
-		eventsPerDelay: 1,
-		cacheMu:        sync.Mutex{},
-		cacheEvents:    make([]fsnotify.Event, 0),
-		cacheErrors:    make([]error, 0),
+		delay:       time.Nanosecond,
+		burst:       1,
+		cacheMu:     sync.Mutex{},
+		cacheEvents: make([]fsnotify.Event, 0),
+		cacheErrors: make([]error, 0),
 	}
 
 	for _, opt := range opts {
@@ -149,7 +152,10 @@ func NewGroupNotifyWrapper(opts ...Option) (*Notifier, error) {
 		return nil, ErrPathsNotSpecified
 	}
 
-	c.limiter = rate.NewLimiter(rate.Limit(c.delay), int(c.eventsPerDelay))
+	c.limiter = rate.NewLimiter(rate.Every(c.delay), 1)
+	if c.burst == 1 {
+		c.limiter.Allow()
+	}
 
 	defaultWatcher, err := watcher.NewFSWatcher(
 		watcher.OnPaths(c.paths...),
