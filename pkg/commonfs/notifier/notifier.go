@@ -152,7 +152,9 @@ func ForOperations(ops ...fsnotify.Op) Option {
 		for _, op := range ops {
 			operations[op] = struct{}{}
 		}
+
 		w.operations = operations
+
 		return nil
 	}
 }
