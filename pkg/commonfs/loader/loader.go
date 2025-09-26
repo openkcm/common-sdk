@@ -1,3 +1,13 @@
+// Package loader provides a file-system–based key loader with live updates.
+//
+// It monitors a directory for resource files (such as signing keys), extracts
+// a key identifier (KeyID) from file paths based on configurable rules,
+// and stores the file contents in a key–value storage backend.
+//
+// Typical use cases include:
+//   - Cryptographic key management
+//   - Dynamic configuration loading
+//   - Hot-reloading of resources from disk
 package loader
 
 import (
@@ -14,55 +24,74 @@ import (
 	"github.com/openkcm/common-sdk/pkg/storage/keyvalue"
 )
 
+// KeyIDType defines how the loader generates Key IDs from file paths.
+//
+// Different strategies are available depending on how keys should be identified.
 type KeyIDType uint32
 
 const (
-	// FileNameWithoutExtension - Key ID Type for which the key id is formated based on the file name, excluding the extension.
+	// FileNameWithoutExtension uses the base file name without its extension
+	// as the Key ID.
 	//
-	//	FilePath: /tmp/xxx/.../ss/key.pem
-	//  KeyID -> key
-	//
+	// Example:
+	//   Path:       /tmp/keys/signing.pem
+	//   Extension:  .pem
+	//   KeyID:      signing
 	FileNameWithoutExtension KeyIDType = 1 << iota
 
-	// FileNameWithExtension - Key ID Type for which the key id is formated based on the file name, including the extension.
+	// FileNameWithExtension uses the base file name including its extension
+	// as the Key ID.
 	//
-	//	FilePath: /tmp/xxx/.../ss/key.pem
-	//  KeyID -> key.pem
-	//
+	// Example:
+	//   Path:   /tmp/keys/signing.pem
+	//   KeyID:  signing.pem
 	FileNameWithExtension
 
-	// FileFullPathRelativeToLocation - Key ID Type for which the key id will be the subpath by excluding the given location.
+	// FileFullPathRelativeToLocation uses the file path relative to the
+	// configured root location as the Key ID.
 	//
-	//	FilePath: /tmp/xxx/ss/key.pem
-	//  Given Location: /tmp/xxx
-	//  KeyID -> /ss/key.pem
-	//
+	// Example:
+	//   Location:  /tmp/keys
+	//   Path:      /tmp/keys/sub/key.pem
+	//   KeyID:     /sub/key.pem
 	FileFullPathRelativeToLocation
 
-	// FileFullPath - Key ID Type for which the key id will be the full path.
+	// FileFullPath uses the absolute file path as the Key ID.
 	//
-	//	FilePath: /tmp/xxx/ss/key.pem
-	//  KeyID -> /tmp/xxx/ss/key.pem
-	//
+	// Example:
+	//   Path:   /tmp/keys/sub/key.pem
+	//   KeyID:  /tmp/keys/sub/key.pem
 	FileFullPath
 )
 
 var (
-	ErrExtensionIsEmpty    = errors.New("extension is empty")
+	// ErrExtensionIsEmpty is returned when WithExtension("") is called.
+	ErrExtensionIsEmpty = errors.New("extension is empty")
+
+	// ErrStorageNotSpecified is returned when a nil storage is passed to WithStorage.
 	ErrStorageNotSpecified = errors.New("storage not specified")
 )
 
+// Loader watches a directory for resource files and maintains a key–value store
+// of file contents, indexed by Key IDs.
 type Loader struct {
 	location  string
 	extension string
 	keyIDType KeyIDType
 
 	watcher *watcher.NotifyWrapper
-	storage keyvalue.Storage[string, []byte]
+	storage keyvalue.StringToBytesStorage
 }
 
+// Option represents a configuration option for Loader.
 type Option func(*Loader) error
 
+// WithExtension configures the file extension that identifies relevant files.
+//
+// If the extension is missing a leading ".", it will be added automatically.
+// The extension must not be empty, otherwise ErrExtensionIsEmpty is returned.
+//
+// This option is only used when KeyIDType is FileNameWithoutExtension.
 func WithExtension(value string) Option {
 	return func(w *Loader) error {
 		if value == "" {
@@ -71,11 +100,16 @@ func WithExtension(value string) Option {
 
 		if !strings.HasPrefix(value, ".") {
 			w.extension = "." + value
+		} else {
+			w.extension = value
 		}
 
 		return nil
 	}
 }
+
+// WithKeyIDType configures the KeyID extraction strategy.
+// The default KeyIDType is FileFullPath.
 func WithKeyIDType(value KeyIDType) Option {
 	return func(w *Loader) error {
 		w.keyIDType = value
@@ -83,7 +117,11 @@ func WithKeyIDType(value KeyIDType) Option {
 	}
 }
 
-func WithStorage(storage keyvalue.Storage[string, []byte]) Option {
+// WithStorage configures the storage backend used by Loader.
+//
+// If storage is nil, ErrStorageNotSpecified is returned.
+// By default, an in-memory storage is used.
+func WithStorage(storage keyvalue.StringToBytesStorage) Option {
 	return func(w *Loader) error {
 		if storage == nil {
 			return ErrStorageNotSpecified
@@ -95,6 +133,26 @@ func WithStorage(storage keyvalue.Storage[string, []byte]) Option {
 	}
 }
 
+// Create initializes a Loader that watches the given location for files.
+//
+// Options may be provided to customize KeyID extraction, file extension
+// handling, and storage backend.
+//
+// Example:
+//
+//	ldr, err := loader.Create(
+//	    "/etc/keys",
+//	    loader.WithExtension(".pem"),
+//	    loader.WithKeyIDType(loader.FileNameWithoutExtension),
+//	)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//
+//	if err := ldr.StartWatching(); err != nil {
+//	    log.Fatal(err)
+//	}
+//	defer ldr.StopWatching()
 func Create(location string, opts ...Option) (*Loader, error) {
 	dl := &Loader{
 		location:  location,
@@ -114,30 +172,38 @@ func Create(location string, opts ...Option) (*Loader, error) {
 
 	dl.watcher = defaultWatcher
 
-	// Apply the options
+	// Apply options
 	for _, opt := range opts {
-		if opt != nil {
-			err := opt(dl)
-			if err != nil {
-				return nil, err
-			}
+		if opt == nil {
+			continue
+		}
+
+		err = opt(dl)
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	return dl, nil
 }
 
+// onEvent is the fsnotify event handler.
 func (dl *Loader) onEvent(event fsnotify.Event) {
 	if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Remove|fsnotify.Rename) != 0 {
 		dl.loadSigningKey(event)
 	}
 }
 
+// onError is the fsnotify error handler.
 func (dl *Loader) onError(err error) {
 	slog.Error("failed to load signing keys", slog.String("error", err.Error()))
 }
 
-// StartWatching starts a watcher on the given directory.
+// StartWatching starts the file system watcher and performs an initial
+// load of all resources.
+//
+// Returns an error if the watcher cannot be started or if resources
+// cannot be loaded.
 func (dl *Loader) StartWatching() error {
 	errStart := dl.watcher.Start()
 
@@ -149,12 +215,21 @@ func (dl *Loader) StartWatching() error {
 	return errStart
 }
 
-// StopWatching stop a watcher on the given directory.
+// StopWatching stops the watcher and releases resources.
+// Safe to call multiple times.
 func (dl *Loader) StopWatching() error {
 	return dl.watcher.Close()
 }
 
-// loadAllResources loads signing keys from the in config specified directory.
+// Storage returns a read-only view of the Loader’s storage.
+// Consumers can use this to retrieve key data without modifying
+// the internal storage.
+func (dl *Loader) Storage() keyvalue.ReadOnlyStringToBytesStorage {
+	return dl.storage
+}
+
+// loadAllResources recursively loads all files from the given path
+// into the storage, applying the configured KeyID extraction rules.
 func (dl *Loader) loadAllResources(path string) error {
 	_, err := os.Stat(path)
 	if err != nil {
@@ -183,10 +258,13 @@ func (dl *Loader) loadAllResources(path string) error {
 	return nil
 }
 
-func (dl *Loader) Storage() keyvalue.ReadStorage[string, []byte] {
-	return dl.storage
-}
-
+// loadSigningKey loads or removes a single file in response to a file system event.
+//
+// Supported operations:
+//   - Create/Write: load or update file contents
+//   - Rename/Remove: remove file from storage
+//
+// Files that are directories, unreadable, or empty are skipped.
 func (dl *Loader) loadSigningKey(event fsnotify.Event) {
 	filePath := event.Name
 
@@ -195,6 +273,7 @@ func (dl *Loader) loadSigningKey(event fsnotify.Event) {
 	switch dl.keyIDType {
 	case FileNameWithExtension:
 		_, keyID = filepath.Split(filePath)
+
 	case FileNameWithoutExtension:
 		_, name := filepath.Split(filePath)
 
@@ -204,11 +283,13 @@ func (dl *Loader) loadSigningKey(event fsnotify.Event) {
 		if !found {
 			return
 		}
+
 	case FileFullPathRelativeToLocation:
 		keyID = strings.TrimPrefix(filePath, dl.location)
 		if !strings.HasPrefix(keyID, string(os.PathSeparator)) {
 			keyID = string(os.PathSeparator) + keyID
 		}
+
 	case FileFullPath:
 		keyID = filePath
 	}
@@ -229,13 +310,12 @@ func (dl *Loader) loadSigningKey(event fsnotify.Event) {
 
 	keyData, err := os.ReadFile(filePath)
 	if err != nil {
-		// skip files that cannot be read
-		// this allows partial loading of keys
+		// Skip unreadable files
 		return
 	}
 
 	if len(keyData) == 0 {
-		// skip on no data
+		// Skip empty files
 		return
 	}
 

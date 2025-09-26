@@ -1,3 +1,42 @@
+// Package watcher provides a thin wrapper around fsnotify for watching
+// file system paths. It offers a configurable interface to register event
+// and error handlers, and ensures safe lifecycle management of the watcher.
+//
+// The NotifyWrapper struct is the main type that manages:
+//   - Configured paths to watch
+//   - Event handlers for file changes
+//   - Error handlers for watcher errors
+//
+// Example usage:
+//
+//	events := make(chan fsnotify.Event, 1)
+//	errors := make(chan error, 1)
+//
+//	w, err := watcher.NewFSWatcher(
+//	    watcher.OnPath("/tmp"),
+//	    watcher.WithEventChainAsHandler(events),
+//	    watcher.WithErrorChainAsHandler(errors),
+//	)
+//	if err != nil {
+//	    log.Fatalf("failed to create watcher: %v", err)
+//	}
+//
+//	if err := w.Start(); err != nil {
+//	    log.Fatalf("failed to start watcher: %v", err)
+//	}
+//
+//	go func() {
+//	    for {
+//	        select {
+//	        case e := <-events:
+//	            fmt.Println("file event:", e)
+//	        case err := <-errors:
+//	            fmt.Println("watcher error:", err)
+//	        }
+//	    }
+//	}
+//
+//	defer w.Close()
 package watcher
 
 import (
@@ -11,10 +50,21 @@ import (
 )
 
 var (
+	// ErrFSWatcherStartedNotAllowingNewPath is returned when trying to add
+	// new paths to a watcher after it has already been started.
 	ErrFSWatcherStartedNotAllowingNewPath = errors.New("watcher already started, cannot add new path")
-	ErrFSWatcherHasNoPathsConfigured      = errors.New("watcher has no paths")
+
+	// ErrFSWatcherHasNoPathsConfigured is returned when Start is called
+	// without any paths configured to watch.
+	ErrFSWatcherHasNoPathsConfigured = errors.New("watcher has no paths")
 )
 
+// NotifyWrapper wraps fsnotify.Watcher and provides higher-level configuration
+// via functional options. It simplifies setting up file system watchers with
+// custom event and error handlers.
+//
+// It tracks its lifecycle (`started`) and ensures consistent behavior
+// when adding paths or starting multiple times.
 type NotifyWrapper struct {
 	started bool
 	paths   []string
@@ -24,15 +74,17 @@ type NotifyWrapper struct {
 	errorHandler func(error)
 }
 
-// Option is used to configure a NotifyWrapper.
+// Option represents a configuration option that can be applied to a NotifyWrapper.
 type Option func(*NotifyWrapper) error
 
+// OnPath configures the watcher to observe a single path.
 func OnPath(path string) Option {
 	return func(w *NotifyWrapper) error {
 		return w.AddPath(path)
 	}
 }
 
+// OnPaths configures the watcher to observe multiple paths at once.
 func OnPaths(paths ...string) Option {
 	return func(w *NotifyWrapper) error {
 		for _, path := range paths {
@@ -46,6 +98,8 @@ func OnPaths(paths ...string) Option {
 	}
 }
 
+// WithEventHandler sets the event handler that will be called
+// whenever a file system event occurs on a watched path.
 func WithEventHandler(handler func(fsnotify.Event)) Option {
 	return func(w *NotifyWrapper) error {
 		w.handler = handler
@@ -53,10 +107,14 @@ func WithEventHandler(handler func(fsnotify.Event)) Option {
 	}
 }
 
+// WithEventChainAsHandler sends all file system events to the provided channel.
+// This is useful for external event processing loops.
 func WithEventChainAsHandler(eventsCh chan<- fsnotify.Event) Option {
 	return WithEventHandler(func(e fsnotify.Event) { eventsCh <- e })
 }
 
+// WithErrorEventHandler sets the error handler that will be called
+// whenever the watcher encounters an error.
 func WithErrorEventHandler(handler func(error)) Option {
 	return func(w *NotifyWrapper) error {
 		w.errorHandler = handler
@@ -64,10 +122,23 @@ func WithErrorEventHandler(handler func(error)) Option {
 	}
 }
 
+// WithErrorChainAsHandler sends all watcher errors to the provided channel.
+// This is useful for external error handling loops.
 func WithErrorChainAsHandler(eventsCh chan<- error) Option {
 	return WithErrorEventHandler(func(e error) { eventsCh <- e })
 }
 
+// NewFSWatcher creates a new NotifyWrapper with the given options.
+//
+// Example:
+//
+//	w, err := watcher.NewFSWatcher(
+//	    watcher.OnPath("/tmp"),
+//	    watcher.WithEventHandler(func(e fsnotify.Event) { fmt.Println(e) }),
+//	)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 func NewFSWatcher(opts ...Option) (*NotifyWrapper, error) {
 	w := &NotifyWrapper{
 		paths: make([]string, 0),
@@ -86,6 +157,10 @@ func NewFSWatcher(opts ...Option) (*NotifyWrapper, error) {
 	return w, nil
 }
 
+// AddPath adds a new path to the watcher. It must be called before Start.
+// If the watcher has already been started, this returns ErrFSWatcherStartedNotAllowingNewPath.
+//
+// The path must exist on the filesystem, otherwise an error is returned.
 func (w *NotifyWrapper) AddPath(path string) error {
 	if w.started {
 		return ErrFSWatcherStartedNotAllowingNewPath
@@ -110,6 +185,12 @@ func (w *NotifyWrapper) AddPath(path string) error {
 	return nil
 }
 
+// Start initializes the underlying fsnotify.Watcher and begins watching all
+// configured paths. It also launches the event processing goroutine.
+//
+// Returns ErrFSWatcherHasNoPathsConfigured if no paths were added.
+//
+// After Start, the watcher cannot accept new paths (AddPath will fail).
 func (w *NotifyWrapper) Start() error {
 	if len(w.paths) == 0 {
 		return ErrFSWatcherHasNoPathsConfigured
@@ -146,6 +227,8 @@ func (w *NotifyWrapper) Start() error {
 	return nil
 }
 
+// eventProcessor is the internal loop that dispatches events and errors
+// to the configured handlers.
 func (w *NotifyWrapper) eventProcessor() {
 	for {
 		select {
@@ -169,6 +252,8 @@ func (w *NotifyWrapper) eventProcessor() {
 	}
 }
 
+// Close stops the watcher and releases resources. It is safe to call
+// multiple times; subsequent calls will simply reset the started flag.
 func (w *NotifyWrapper) Close() error {
 	defer func() {
 		w.started = false
@@ -177,6 +262,8 @@ func (w *NotifyWrapper) Close() error {
 	return w.watcher.Close()
 }
 
+// exists checks if a filesystem path exists. It distinguishes between
+// "does not exist" and other errors (e.g., permission denied).
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
