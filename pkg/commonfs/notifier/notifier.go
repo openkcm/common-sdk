@@ -324,8 +324,6 @@ func (c *Notifier) onError(err error) {
 	} else {
 		c.jobSendingErrors = time.AfterFunc(c.delay, c.sendCachedErrors)
 	}
-
-	slog.Warn("Notifier onError err", "error", err)
 }
 
 // sendCachedErrors sends accumulated errors to the configured error callback
