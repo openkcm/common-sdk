@@ -64,12 +64,6 @@ const (
 	FileFullPath
 )
 
-// StringToBytesStorage is a convenience alias for a string→[]byte storage backend.
-type StringToBytesStorage = keyvalue.Storage[string, []byte]
-
-// ReadOnlyStringToBytesStorage is the read-only view of StringToBytesStorage.
-type ReadOnlyStringToBytesStorage = keyvalue.ReadStorage[string, []byte]
-
 var (
 	// ErrExtensionIsEmpty is returned when WithExtension("") is called.
 	ErrExtensionIsEmpty = errors.New("extension is empty")
@@ -86,7 +80,7 @@ type Loader struct {
 	keyIDType KeyIDType
 
 	watcher *watcher.NotifyWrapper
-	storage StringToBytesStorage
+	storage keyvalue.StringToBytesStorage
 }
 
 // Option represents a configuration option for Loader.
@@ -127,7 +121,7 @@ func WithKeyIDType(value KeyIDType) Option {
 //
 // If storage is nil, ErrStorageNotSpecified is returned.
 // By default, an in-memory storage is used.
-func WithStorage(storage StringToBytesStorage) Option {
+func WithStorage(storage keyvalue.StringToBytesStorage) Option {
 	return func(w *Loader) error {
 		if storage == nil {
 			return ErrStorageNotSpecified
@@ -230,7 +224,7 @@ func (dl *Loader) StopWatching() error {
 // Storage returns a read-only view of the Loader’s storage.
 // Consumers can use this to retrieve key data without modifying
 // the internal storage.
-func (dl *Loader) Storage() ReadOnlyStringToBytesStorage {
+func (dl *Loader) Storage() keyvalue.ReadOnlyStringToBytesStorage {
 	return dl.storage
 }
 
