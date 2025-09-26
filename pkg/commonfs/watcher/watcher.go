@@ -93,6 +93,7 @@ func OnPaths(paths ...string) Option {
 				return err
 			}
 		}
+
 		return nil
 	}
 }
@@ -174,11 +175,13 @@ func (w *NotifyWrapper) AddPath(path string) error {
 	if err != nil {
 		return err
 	}
+
 	if !exist {
 		return fmt.Errorf("path does not exist: %s", absPath)
 	}
 
 	w.paths = append(w.paths, absPath)
+
 	return nil
 }
 
@@ -205,6 +208,7 @@ func (w *NotifyWrapper) Start() error {
 	if err != nil {
 		return err
 	}
+
 	w.watcher = watcher
 
 	for _, path := range w.paths {
@@ -219,6 +223,7 @@ func (w *NotifyWrapper) Start() error {
 	}()
 
 	go w.eventProcessor()
+
 	return nil
 }
 
@@ -231,6 +236,7 @@ func (w *NotifyWrapper) eventProcessor() {
 			if !ok {
 				return
 			}
+
 			if w.handler != nil {
 				w.handler(event)
 			}
@@ -238,6 +244,7 @@ func (w *NotifyWrapper) eventProcessor() {
 			if !ok {
 				return
 			}
+
 			if w.handler != nil {
 				w.errorHandler(err)
 			}
@@ -251,6 +258,7 @@ func (w *NotifyWrapper) Close() error {
 	defer func() {
 		w.started = false
 	}()
+
 	return w.watcher.Close()
 }
 
@@ -261,8 +269,10 @@ func exists(path string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
+
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	}
+
 	return false, err
 }

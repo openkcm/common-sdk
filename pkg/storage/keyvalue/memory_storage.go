@@ -70,6 +70,7 @@ func (ms *MemoryStorage[K, V]) Clean() bool {
 	for k := range ms.data {
 		delete(ms.data, k)
 	}
+
 	return exists
 }
 
@@ -103,5 +104,6 @@ func (ms *MemoryStorage[K, V]) Remove(key K) bool {
 	if exist {
 		delete(ms.data, key)
 	}
+
 	return exist
 }

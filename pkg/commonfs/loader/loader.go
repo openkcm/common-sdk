@@ -132,7 +132,9 @@ func WithStorage(storage StringToBytesStorage) Option {
 		if storage == nil {
 			return ErrStorageNotSpecified
 		}
+
 		w.storage = storage
+
 		return nil
 	}
 }
@@ -173,6 +175,7 @@ func Create(location string, opts ...Option) (*Loader, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	dl.watcher = defaultWatcher
 
 	// Apply options
@@ -180,6 +183,7 @@ func Create(location string, opts ...Option) (*Loader, error) {
 		if opt == nil {
 			continue
 		}
+
 		err = opt(dl)
 		if err != nil {
 			return nil, err
@@ -271,13 +275,16 @@ func (dl *Loader) loadSigningKey(event fsnotify.Event) {
 	filePath := event.Name
 
 	var keyID string
+
 	switch dl.keyIDType {
 	case FileNameWithExtension:
 		_, keyID = filepath.Split(filePath)
 
 	case FileNameWithoutExtension:
 		_, name := filepath.Split(filePath)
+
 		var found bool
+
 		keyID, found = strings.CutSuffix(name, dl.extension)
 		if !found {
 			return
@@ -302,6 +309,7 @@ func (dl *Loader) loadSigningKey(event fsnotify.Event) {
 	if err != nil {
 		return
 	}
+
 	if info.IsDir() {
 		return
 	}
@@ -311,6 +319,7 @@ func (dl *Loader) loadSigningKey(event fsnotify.Event) {
 		// Skip unreadable files
 		return
 	}
+
 	if len(keyData) == 0 {
 		// Skip empty files
 		return
