@@ -45,10 +45,10 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/openkcm/common-sdk/pkg/utils"
 	"golang.org/x/time/rate"
 
 	"github.com/openkcm/common-sdk/pkg/commonfs/watcher"
+	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 var (
@@ -130,6 +130,7 @@ func OnPaths(paths ...string) Option {
 				return err
 			}
 		}
+
 		return nil
 	}
 }
@@ -176,7 +177,7 @@ func ForOperations(ops ...fsnotify.Op) Option {
 func NewNotifier(opts ...Option) (*Notifier, error) {
 	c := &Notifier{
 		paths: make([]string, 0),
-		
+
 		delay: time.Nanosecond,
 		burst: 0,
 		operations: map[fsnotify.Op]struct{}{
