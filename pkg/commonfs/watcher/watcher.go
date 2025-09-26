@@ -2,7 +2,7 @@
 // file system paths. It offers a configurable interface to register event
 // and error handlers, and ensures safe lifecycle management of the watcher.
 //
-// The NotifyWrapper struct is the main type that manages:
+// The NotifyWatcher struct is the main type that manages:
 //   - Configured paths to watch
 //   - Event handlers for file changes
 //   - Error handlers for watcher errors
@@ -59,13 +59,13 @@ var (
 	ErrFSWatcherHasNoPathsConfigured = errors.New("watcher has no paths")
 )
 
-// NotifyWrapper wraps fsnotify.Watcher and provides higher-level configuration
+// NotifyWatcher wraps fsnotify.Watcher and provides higher-level configuration
 // via functional options. It simplifies setting up file system watchers with
 // custom event and error handlers.
 //
 // It tracks its lifecycle (`started`) and ensures consistent behavior
 // when adding paths or starting multiple times.
-type NotifyWrapper struct {
+type NotifyWatcher struct {
 	started bool
 	paths   []string
 	watcher *fsnotify.Watcher
@@ -74,19 +74,19 @@ type NotifyWrapper struct {
 	errorHandler func(error)
 }
 
-// Option represents a configuration option that can be applied to a NotifyWrapper.
-type Option func(*NotifyWrapper) error
+// Option represents a configuration option that can be applied to a NotifyWatcher.
+type Option func(*NotifyWatcher) error
 
 // OnPath configures the watcher to observe a single path.
 func OnPath(path string) Option {
-	return func(w *NotifyWrapper) error {
+	return func(w *NotifyWatcher) error {
 		return w.AddPath(path)
 	}
 }
 
 // OnPaths configures the watcher to observe multiple paths at once.
 func OnPaths(paths ...string) Option {
-	return func(w *NotifyWrapper) error {
+	return func(w *NotifyWatcher) error {
 		for _, path := range paths {
 			err := w.AddPath(path)
 			if err != nil {
@@ -101,7 +101,7 @@ func OnPaths(paths ...string) Option {
 // WithEventHandler sets the event handler that will be called
 // whenever a file system event occurs on a watched path.
 func WithEventHandler(handler func(fsnotify.Event)) Option {
-	return func(w *NotifyWrapper) error {
+	return func(w *NotifyWatcher) error {
 		w.handler = handler
 		return nil
 	}
@@ -116,7 +116,7 @@ func WithEventChainAsHandler(eventsCh chan<- fsnotify.Event) Option {
 // WithErrorEventHandler sets the error handler that will be called
 // whenever the watcher encounters an error.
 func WithErrorEventHandler(handler func(error)) Option {
-	return func(w *NotifyWrapper) error {
+	return func(w *NotifyWatcher) error {
 		w.errorHandler = handler
 		return nil
 	}
@@ -128,7 +128,7 @@ func WithErrorChainAsHandler(eventsCh chan<- error) Option {
 	return WithErrorEventHandler(func(e error) { eventsCh <- e })
 }
 
-// NewFSWatcher creates a new NotifyWrapper with the given options.
+// NewFSWatcher creates a new NotifyWatcher with the given options.
 //
 // Example:
 //
@@ -139,8 +139,8 @@ func WithErrorChainAsHandler(eventsCh chan<- error) Option {
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-func NewFSWatcher(opts ...Option) (*NotifyWrapper, error) {
-	w := &NotifyWrapper{
+func NewFSWatcher(opts ...Option) (*NotifyWatcher, error) {
+	w := &NotifyWatcher{
 		paths: make([]string, 0),
 	}
 
@@ -161,7 +161,7 @@ func NewFSWatcher(opts ...Option) (*NotifyWrapper, error) {
 // If the watcher has already been started, this returns ErrFSWatcherStartedNotAllowingNewPath.
 //
 // The path must exist on the filesystem, otherwise an error is returned.
-func (w *NotifyWrapper) AddPath(path string) error {
+func (w *NotifyWatcher) AddPath(path string) error {
 	if w.started {
 		return ErrFSWatcherStartedNotAllowingNewPath
 	}
@@ -191,7 +191,7 @@ func (w *NotifyWrapper) AddPath(path string) error {
 // Returns ErrFSWatcherHasNoPathsConfigured if no paths were added.
 //
 // After Start, the watcher cannot accept new paths (AddPath will fail).
-func (w *NotifyWrapper) Start() error {
+func (w *NotifyWatcher) Start() error {
 	if len(w.paths) == 0 {
 		return ErrFSWatcherHasNoPathsConfigured
 	}
@@ -229,7 +229,7 @@ func (w *NotifyWrapper) Start() error {
 
 // eventProcessor is the internal loop that dispatches events and errors
 // to the configured handlers.
-func (w *NotifyWrapper) eventProcessor() {
+func (w *NotifyWatcher) eventProcessor() {
 	for {
 		select {
 		case event, ok := <-w.watcher.Events:
@@ -254,7 +254,7 @@ func (w *NotifyWrapper) eventProcessor() {
 
 // Close stops the watcher and releases resources. It is safe to call
 // multiple times; subsequent calls will simply reset the started flag.
-func (w *NotifyWrapper) Close() error {
+func (w *NotifyWatcher) Close() error {
 	defer func() {
 		w.started = false
 	}()
