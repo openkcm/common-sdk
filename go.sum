@@ -1,5 +1,7 @@
 github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0 h1:fYtSrInkNuXIuvE46i/SI0+Yr1HvD6aIlgm/tFVnls0=
 github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0/go.mod h1:kCcKw+7c9+/LExeIms6kv2eTbedu+mF/ByuG3SUDVzM=
+github.com/avast/retry-go/v4 v4.6.1 h1:VkOLRubHdisGrHnTu89g08aQEWEgRU7LVEop3GbIcMk=
+github.com/avast/retry-go/v4 v4.6.1/go.mod h1:V6oF8njAwxJ5gRo1Q7Cxab24xs5NCWZBeaHHBklR8mA=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1xcsSM=
