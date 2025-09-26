@@ -111,17 +111,17 @@ func WithBurstNumber(burst uint) Option {
 	}
 }
 
-// WithPaths sets the paths to be watched.
-func WithPaths(paths ...string) Option {
+// OnPath configures the notifier to observe a single path.
+func OnPath(path string) Option {
+	return OnPaths(path)
+}
+
+// OnPaths configures the notifier to observe multiple paths at once.
+func OnPaths(paths ...string) Option {
 	return func(w *Notifier) error {
 		w.paths = paths
 		return nil
 	}
-}
-
-// WithPath sets the path to be watched.
-func WithPath(path string) Option {
-	return WithPaths(path)
 }
 
 // ForOperations returns an Option that configures a Notifier to
