@@ -58,6 +58,7 @@ var (
 // It is safe for concurrent use.
 type Notifier struct {
 	paths         []string
+	operations    map[fsnotify.Op]struct{}
 	eventHandler  func([]fsnotify.Event) // Callback for batch of fsnotify events
 	simpleHandler func()                 // Simple callback if no event details are needed
 	errorHandler  func([]error)          // Callback for batch of errors
@@ -123,14 +124,53 @@ func WithPath(path string) Option {
 	return WithPaths(path)
 }
 
+// ForOperations returns an Option that configures a Notifier to
+// only consider specific filesystem operations for triggering events.
+//
+// The provided operations (ops) are combined into a set. Only events
+// matching one of these operations will be processed by the Notifier.
+//
+// Example:
+//
+//	notifier, err := NewNotifier(
+//	    "/tmp/watchdir",
+//	    ForOperations(fsnotify.Create, fsnotify.Write, fsnotify.Remove),
+//	)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//
+// Supported operations are defined in fsnotify.Op:
+//
+//	fsnotify.Create, fsnotify.Write, fsnotify.Remove, fsnotify.Rename, fsnotify.Chmod
+//
+// This Option can be passed to a Notifier during creation to filter
+// events according to your requirements.
+func ForOperations(ops ...fsnotify.Op) Option {
+	return func(w *Notifier) error {
+		operations := make(map[fsnotify.Op]struct{})
+		for _, op := range ops {
+			operations[op] = struct{}{}
+		}
+		w.operations = operations
+		return nil
+	}
+}
+
 // NewNotifier creates a new Notifier for the specified filesystem locations.
 //
 // The notifier will accumulate events and errors from the given paths and trigger
 // configured callbacks according to the delay and event-per-delay settings.
 func NewNotifier(opts ...Option) (*Notifier, error) {
 	c := &Notifier{
-		delay:       time.Nanosecond,
-		burst:       0,
+		delay: time.Nanosecond,
+		burst: 0,
+		operations: map[fsnotify.Op]struct{}{
+			fsnotify.Create: {},
+			fsnotify.Write:  {},
+			fsnotify.Rename: {},
+			fsnotify.Remove: {},
+		},
 		cacheMu:     sync.Mutex{},
 		cacheEvents: make([]fsnotify.Event, 0),
 		cacheErrors: make([]error, 0),
@@ -179,6 +219,11 @@ func (c *Notifier) StopWatching() error {
 // onEvent is the internal fsnotify event handler that accumulates events
 // and triggers the configured callbacks based on rate limiting.
 func (c *Notifier) onEvent(event fsnotify.Event) {
+	_, exists := c.operations[event.Op]
+	if !exists {
+		return
+	}
+
 	c.cacheMu.Lock()
 	defer c.cacheMu.Unlock()
 
