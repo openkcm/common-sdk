@@ -38,11 +38,14 @@ package notifier
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
+	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/openkcm/common-sdk/pkg/utils"
 	"golang.org/x/time/rate"
 
 	"github.com/openkcm/common-sdk/pkg/commonfs/watcher"
@@ -113,13 +116,20 @@ func WithBurstNumber(burst uint) Option {
 
 // OnPath configures the notifier to observe a single path.
 func OnPath(path string) Option {
-	return OnPaths(path)
+	return func(w *Notifier) error {
+		return w.AddPath(path)
+	}
 }
 
 // OnPaths configures the notifier to observe multiple paths at once.
 func OnPaths(paths ...string) Option {
 	return func(w *Notifier) error {
-		w.paths = paths
+		for _, path := range paths {
+			err := w.AddPath(path)
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
@@ -165,6 +175,8 @@ func ForOperations(ops ...fsnotify.Op) Option {
 // configured callbacks according to the delay and event-per-delay settings.
 func NewNotifier(opts ...Option) (*Notifier, error) {
 	c := &Notifier{
+		paths: make([]string, 0),
+		
 		delay: time.Nanosecond,
 		burst: 0,
 		operations: map[fsnotify.Op]struct{}{
@@ -205,6 +217,28 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 	c.watcher = defaultWatcher
 
 	return c, nil
+}
+
+// AddPath adds a new path to the notifier. It must be called before Start.
+// The path must exist on the filesystem, otherwise an error is returned.
+func (w *Notifier) AddPath(path string) error {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+
+	exist, err := utils.FileExist(absPath)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		return fmt.Errorf("path does not exist: %s", absPath)
+	}
+
+	w.paths = append(w.paths, absPath)
+
+	return nil
 }
 
 // StartWatching starts the underlying filesystem watcher.

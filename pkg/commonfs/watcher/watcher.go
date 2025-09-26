@@ -42,11 +42,10 @@ package watcher
 import (
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 var (
@@ -171,7 +170,7 @@ func (w *NotifyWatcher) AddPath(path string) error {
 		return err
 	}
 
-	exist, err := exists(absPath)
+	exist, err := utils.FileExist(absPath)
 	if err != nil {
 		return err
 	}
@@ -260,19 +259,4 @@ func (w *NotifyWatcher) Close() error {
 	}()
 
 	return w.watcher.Close()
-}
-
-// exists checks if a filesystem path exists. It distinguishes between
-// "does not exist" and other errors (e.g., permission denied).
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-
-	if errors.Is(err, fs.ErrNotExist) {
-		return false, nil
-	}
-
-	return false, err
 }
