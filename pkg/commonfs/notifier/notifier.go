@@ -106,9 +106,6 @@ func WithLimitDelay(delay time.Duration) Option {
 func WithBurstNumber(burst uint) Option {
 	return func(w *Notifier) error {
 		w.burst = burst
-		if w.burst == 0 {
-			w.burst = 1
-		}
 		return nil
 	}
 }
@@ -133,7 +130,7 @@ func WithPath(path string) Option {
 func NewNotifier(opts ...Option) (*Notifier, error) {
 	c := &Notifier{
 		delay:       time.Nanosecond,
-		burst:       1,
+		burst:       0,
 		cacheMu:     sync.Mutex{},
 		cacheEvents: make([]fsnotify.Event, 0),
 		cacheErrors: make([]error, 0),
@@ -152,10 +149,7 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 		return nil, ErrPathsNotSpecified
 	}
 
-	c.limiter = rate.NewLimiter(rate.Every(c.delay), 1)
-	if c.burst == 1 {
-		c.limiter.Allow()
-	}
+	c.limiter = rate.NewLimiter(rate.Every(c.delay), int(c.burst))
 
 	defaultWatcher, err := watcher.NewFSWatcher(
 		watcher.OnPaths(c.paths...),
