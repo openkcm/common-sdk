@@ -4,6 +4,7 @@ go 1.24.2
 
 require (
 	github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0
+	github.com/avast/retry-go/v4 v4.6.1
 	github.com/davidhoo/jsonpath v1.0.4
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
