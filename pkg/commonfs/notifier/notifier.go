@@ -16,7 +16,7 @@ Example usage:
 	paths := []string{"/tmp/watchdir"}
 
 	// Create a new notifier with a delay of 200ms and up to 5 events per delay
-	notifier, err := notifier.NewNotifier(paths,
+	notifier, err := notifier.Create(paths,
 		notifier.WithEventHandler(func(events []fsnotify.Event) {
 			fmt.Println("Received events:", events)
 		}),
@@ -77,7 +77,7 @@ type Notifier struct {
 	cacheErrors      []error                     // Accumulated errors
 	jobSendingErrors *time.Timer                 // Timer for sending errors
 
-	watcher *watcher.NotifyWatcher // Underlying filesystem watcher
+	watcher *watcher.Watcher // Underlying filesystem watcher
 }
 
 // Option is a function type for configuring Notifier.
@@ -165,7 +165,7 @@ func WatchSubfolders(enabled bool) Option {
 //
 // Example:
 //
-//	notifier, err := NewNotifier(
+//	notifier, err := Create(
 //	    "/tmp/watchdir",
 //	    ForOperations(fsnotify.Create, fsnotify.Write, fsnotify.Remove),
 //	)
@@ -192,11 +192,11 @@ func ForOperations(ops ...fsnotify.Op) Option {
 	}
 }
 
-// NewNotifier creates a new Notifier for the specified filesystem locations.
+// Create creates a new Notifier for the specified filesystem locations.
 //
 // The notifier will accumulate events and errors from the given paths and trigger
 // configured callbacks according to the delay and event-per-delay settings.
-func NewNotifier(opts ...Option) (*Notifier, error) {
+func Create(opts ...Option) (*Notifier, error) {
 	n := &Notifier{
 		paths: make([]string, 0),
 
@@ -234,7 +234,7 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 
 	n.cacheEvents = cacheEvents
 
-	w, err := watcher.NewFSWatcher(
+	w, err := watcher.Create(
 		watcher.OnPaths(n.paths...),
 		watcher.WatchSubfolders(n.recursiveWatch),
 		watcher.WithEventHandler(n.onEvent),

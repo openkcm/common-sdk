@@ -80,7 +80,7 @@ type Loader struct {
 	keyIDType      KeyIDType
 	recursiveWatch bool
 
-	watcher *watcher.NotifyWatcher
+	watcher *watcher.Watcher
 	storage keyvalue.StringToBytesStorage
 }
 
@@ -190,7 +190,7 @@ func Create(location string, opts ...Option) (*Loader, error) {
 		}
 	}
 
-	w, err := watcher.NewFSWatcher(
+	w, err := watcher.Create(
 		watcher.OnPath(location),
 		watcher.WatchSubfolders(dl.recursiveWatch),
 		watcher.WithEventHandler(dl.onEvent),

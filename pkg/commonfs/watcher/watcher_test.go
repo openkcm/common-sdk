@@ -14,10 +14,10 @@ import (
 
 // --- Helpers ---
 
-func newWatcher(t *testing.T, opts ...watcher.Option) *watcher.NotifyWatcher {
+func newWatcher(t *testing.T, opts ...watcher.Option) *watcher.Watcher {
 	t.Helper()
 
-	w, err := watcher.NewFSWatcher(opts...)
+	w, err := watcher.Create(opts...)
 	if err != nil {
 		t.Fatalf("failed to create watcher: %v", err)
 	}
@@ -25,7 +25,7 @@ func newWatcher(t *testing.T, opts ...watcher.Option) *watcher.NotifyWatcher {
 	return w
 }
 
-func startWatcher(t *testing.T, w *watcher.NotifyWatcher) {
+func startWatcher(t *testing.T, w *watcher.Watcher) {
 	t.Helper()
 
 	err := w.Start()
@@ -34,7 +34,7 @@ func startWatcher(t *testing.T, w *watcher.NotifyWatcher) {
 	}
 }
 
-func closeWatcher(t *testing.T, w *watcher.NotifyWatcher) {
+func closeWatcher(t *testing.T, w *watcher.Watcher) {
 	t.Helper()
 
 	err := w.Close()
