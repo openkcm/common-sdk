@@ -17,7 +17,7 @@ Example usage:
 
 	// Create a new notifier with a delay of 200ms and up to 5 events per delay
 	notifier, err := notifier.NewNotifier(paths,
-		notifier.WithEventHandler(func(events []fsnotify.Event) {
+		notifier.WithEventHandler(func(paths []string, events []fsnotify.Event) {
 			fmt.Println("Received events:", events)
 		}),
 		notifier.WithLimitDelay(200*time.Millisecond),
@@ -62,9 +62,9 @@ var (
 type Notifier struct {
 	paths         []string
 	operations    map[fsnotify.Op]struct{}
-	eventHandler  func([]fsnotify.Event) // Callback for batch of fsnotify events
-	simpleHandler func()                 // Simple callback if no event details are needed
-	errorHandler  func([]error)          // Callback for batch of errors
+	eventHandler  func([]string, []fsnotify.Event) // Callback for batch of fsnotify events
+	simpleHandler func([]string)                   // Simple callback if no event details are needed
+	errorHandler  func([]error)                    // Callback for batch of errors
 
 	delay   time.Duration // Minimum time between notifications triggers
 	burst   uint          // Maximum events allowed per delay window
@@ -83,7 +83,7 @@ type Notifier struct {
 type Option func(*Notifier) error
 
 // WithEventHandler sets the event handler callback that receives batched fsnotify events.
-func WithEventHandler(handler func([]fsnotify.Event)) Option {
+func WithEventHandler(handler func([]string, []fsnotify.Event)) Option {
 	return func(w *Notifier) error {
 		w.eventHandler = handler
 		return nil
@@ -91,7 +91,7 @@ func WithEventHandler(handler func([]fsnotify.Event)) Option {
 }
 
 // WithSimpleHandler sets a simple callback invoked when events are accumulated, without event details.
-func WithSimpleHandler(handler func()) Option {
+func WithSimpleHandler(handler func([]string)) Option {
 	return func(w *Notifier) error {
 		w.simpleHandler = handler
 		return nil
@@ -117,7 +117,7 @@ func WithBurstNumber(burst uint) Option {
 // OnPath configures the notifier to observe a single path.
 func OnPath(path string) Option {
 	return func(w *Notifier) error {
-		return w.AddPath(path)
+		return w.addPath(path)
 	}
 }
 
@@ -125,7 +125,7 @@ func OnPath(path string) Option {
 func OnPaths(paths ...string) Option {
 	return func(w *Notifier) error {
 		for _, path := range paths {
-			err := w.AddPath(path)
+			err := w.addPath(path)
 			if err != nil {
 				return err
 			}
@@ -220,9 +220,9 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 	return c, nil
 }
 
-// AddPath adds a new path to the notifier. It must be called before Start.
+// addPath adds a new path to the notifier. It must be called before Start.
 // The path must exist on the filesystem, otherwise an error is returned.
-func (w *Notifier) AddPath(path string) error {
+func (w *Notifier) addPath(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
@@ -297,12 +297,12 @@ func (c *Notifier) sendCachedEvents() {
 	}()
 
 	if c.eventHandler != nil && len(c.cacheEvents) > 0 {
-		c.eventHandler(c.cacheEvents)
+		c.eventHandler(c.paths, c.cacheEvents)
 		return
 	}
 
 	if c.simpleHandler != nil && len(c.cacheEvents) > 0 {
-		c.simpleHandler()
+		c.simpleHandler(c.paths)
 		return
 	}
 }
