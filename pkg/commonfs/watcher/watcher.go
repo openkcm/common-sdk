@@ -285,14 +285,11 @@ func (w *Watcher) addRecursive(root string) error {
 			return nil
 		}
 
-		if d.IsDir() {
-			err := w.AddPath(path)
-			if err != nil {
-				return err
-			}
+		if !d.IsDir() {
+			return nil
 		}
 
-		return nil
+		return w.AddPath(path)
 	})
 }
 

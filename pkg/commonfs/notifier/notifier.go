@@ -306,13 +306,16 @@ func (n *Notifier) onEvent(event fsnotify.Event) {
 	defer n.cacheMu.Unlock()
 
 	dir := filepath.Dir(event.Name)
-	for dir != "/" {
-
+	for {
 		if _, ok := n.cacheEvents[dir]; ok {
 			n.cacheEvents[dir] = append(n.cacheEvents[dir], event)
 			break
 		} else {
 			dir = filepath.Dir(dir)
+		}
+
+		if dir == "/" {
+			break
 		}
 	}
 
