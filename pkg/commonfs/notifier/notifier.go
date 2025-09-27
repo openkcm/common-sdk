@@ -197,7 +197,7 @@ func ForOperations(ops ...fsnotify.Op) Option {
 // The notifier will accumulate events and errors from the given paths and trigger
 // configured callbacks according to the delay and event-per-delay settings.
 func NewNotifier(opts ...Option) (*Notifier, error) {
-	c := &Notifier{
+	n := &Notifier{
 		paths: make([]string, 0),
 
 		interval: time.Nanosecond,
@@ -214,44 +214,44 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 
 	for _, opt := range opts {
 		if opt != nil {
-			err := opt(c)
+			err := opt(n)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	if len(c.paths) == 0 {
+	if len(n.paths) == 0 {
 		return nil, ErrPathsNotSpecified
 	}
 
-	c.limiter = rate.NewLimiter(rate.Every(c.interval), int(c.burst))
+	n.limiter = rate.NewLimiter(rate.Every(n.interval), int(n.burst))
 
 	cacheEvents := make(map[string][]fsnotify.Event)
-	for _, path := range c.paths {
+	for _, path := range n.paths {
 		cacheEvents[path] = make([]fsnotify.Event, 0)
 	}
 
-	c.cacheEvents = cacheEvents
+	n.cacheEvents = cacheEvents
 
 	w, err := watcher.NewFSWatcher(
-		watcher.OnPaths(c.paths...),
-		watcher.WatchSubfolders(c.recursiveWatch),
-		watcher.WithEventHandler(c.onEvent),
-		watcher.WithErrorEventHandler(c.onError),
+		watcher.OnPaths(n.paths...),
+		watcher.WatchSubfolders(n.recursiveWatch),
+		watcher.WithEventHandler(n.onEvent),
+		watcher.WithErrorEventHandler(n.onError),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	c.watcher = w
+	n.watcher = w
 
-	return c, nil
+	return n, nil
 }
 
 // AddPath adds a new path to the notifier. It must be called before Start.
 // The path must exist on the filesystem, otherwise an error is returned.
-func (w *Notifier) AddPath(path string) error {
+func (n *Notifier) AddPath(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
@@ -266,49 +266,49 @@ func (w *Notifier) AddPath(path string) error {
 		return fmt.Errorf("path does not exist: %s", absPath)
 	}
 
-	w.paths = append(w.paths, absPath)
+	n.paths = append(n.paths, absPath)
 
 	return nil
 }
 
 // StartWatching starts the underlying filesystem watcher.
-func (c *Notifier) StartWatching() error {
-	if c.IsStarted() {
+func (n *Notifier) StartWatching() error {
+	if n.IsStarted() {
 		return nil
 	}
 
-	return c.watcher.Start()
+	return n.watcher.Start()
 }
 
 // StopWatching stops the watcher and releases all associated resources.
 // It is safe to call multiple times.
-func (c *Notifier) StopWatching() error {
-	if c.IsStarted() == false {
+func (n *Notifier) StopWatching() error {
+	if !n.IsStarted() {
 		return nil
 	}
 
-	return c.watcher.Close()
+	return n.watcher.Close()
 }
 
-func (c *Notifier) IsStarted() bool {
-	return c.watcher.IsStarted()
+func (n *Notifier) IsStarted() bool {
+	return n.watcher.IsStarted()
 }
 
 // onEvent is the internal fsnotify event handler that accumulates events
 // and triggers the configured callbacks based on rate limiting.
-func (c *Notifier) onEvent(event fsnotify.Event) {
-	_, exists := c.operations[event.Op]
+func (n *Notifier) onEvent(event fsnotify.Event) {
+	_, exists := n.operations[event.Op]
 	if !exists {
 		return
 	}
 
-	c.cacheMu.Lock()
-	defer c.cacheMu.Unlock()
+	n.cacheMu.Lock()
+	defer n.cacheMu.Unlock()
 
 	dir := filepath.Dir(event.Name)
 	for {
-		if _, ok := c.cacheEvents[dir]; ok {
-			c.cacheEvents[dir] = append(c.cacheEvents[dir], event)
+		if _, ok := n.cacheEvents[dir]; ok {
+			n.cacheEvents[dir] = append(n.cacheEvents[dir], event)
 			break
 		} else {
 			dir = filepath.Dir(dir)
@@ -319,94 +319,94 @@ func (c *Notifier) onEvent(event fsnotify.Event) {
 		}
 	}
 
-	if c.limiter.Allow() {
-		c.sendCachedEvents()
+	if n.limiter.Allow() {
+		n.sendCachedEvents()
 	}
 
-	if c.jobSendingEvents != nil {
-		c.jobSendingEvents.Reset(c.interval)
+	if n.jobSendingEvents != nil {
+		n.jobSendingEvents.Reset(n.interval)
 	} else {
-		c.jobSendingEvents = time.AfterFunc(c.interval, c.sendCachedEvents)
+		n.jobSendingEvents = time.AfterFunc(n.interval, n.sendCachedEvents)
 	}
 }
 
 // sendCachedEvents sends accumulated events to the configured callback
 // and resets the internal cache. Recovers from panics in user callbacks.
-func (c *Notifier) sendCachedEvents() {
+func (n *Notifier) sendCachedEvents() {
 	defer func() {
 		if err := recover(); err != nil {
-			slog.Error("Notifier onEvent recover", "error", err, "events", c.cacheEvents)
+			slog.Error("Notifier onEvent recover", "error", err, "events", n.cacheEvents)
 		}
 
-		c.jobSendingEvents = nil
-		for _, path := range c.paths {
-			c.cacheEvents[path] = make([]fsnotify.Event, 0)
+		n.jobSendingEvents = nil
+		for _, path := range n.paths {
+			n.cacheEvents[path] = make([]fsnotify.Event, 0)
 		}
 	}()
 
 	defer func() {
-		if c.jobSendingEvents != nil {
-			c.jobSendingEvents.Stop()
-			c.jobSendingEvents = nil
+		if n.jobSendingEvents != nil {
+			n.jobSendingEvents.Stop()
+			n.jobSendingEvents = nil
 		}
 	}()
 
-	if c.eventHandler != nil {
-		for path, events := range c.cacheEvents {
+	if n.eventHandler != nil {
+		for path, events := range n.cacheEvents {
 			if len(events) > 0 {
-				c.eventHandler(path, events)
+				n.eventHandler(path, events)
 			}
 		}
 
 		return
 	}
 
-	if c.simpleHandler != nil && len(c.cacheEvents) > 0 {
-		c.simpleHandler()
+	if n.simpleHandler != nil && len(n.cacheEvents) > 0 {
+		n.simpleHandler()
 		return
 	}
 }
 
 // onError is the internal error handler that accumulates errors
 // and triggers the configured error callback based on rate limiting.
-func (c *Notifier) onError(err error) {
-	c.cacheMu.Lock()
-	defer c.cacheMu.Unlock()
+func (n *Notifier) onError(err error) {
+	n.cacheMu.Lock()
+	defer n.cacheMu.Unlock()
 
-	if c.limiter.Allow() {
-		c.sendCachedErrors()
+	if n.limiter.Allow() {
+		n.sendCachedErrors()
 	}
 
-	c.cacheErrors = append(c.cacheErrors, err)
+	n.cacheErrors = append(n.cacheErrors, err)
 
-	if c.jobSendingErrors != nil {
-		c.jobSendingErrors.Reset(c.interval)
+	if n.jobSendingErrors != nil {
+		n.jobSendingErrors.Reset(n.interval)
 	} else {
-		c.jobSendingErrors = time.AfterFunc(c.interval, c.sendCachedErrors)
+		n.jobSendingErrors = time.AfterFunc(n.interval, n.sendCachedErrors)
 	}
 }
 
 // sendCachedErrors sends accumulated errors to the configured error callback
 // and resets the internal cache. Recovers from panics in user callbacks.
-func (c *Notifier) sendCachedErrors() {
+func (n *Notifier) sendCachedErrors() {
 	defer func() {
 		if errRec := recover(); errRec != nil {
 			slog.Error("Notifier onError recover err", "error", errRec)
 		}
 
-		c.jobSendingErrors = nil
-		c.cacheErrors = make([]error, 0)
+		n.jobSendingErrors = nil
+		n.cacheErrors = make([]error, 0)
 	}()
 
 	defer func() {
-		if c.jobSendingErrors != nil {
-			c.jobSendingErrors.Stop()
-			c.jobSendingErrors = nil
+		if n.jobSendingErrors != nil {
+			n.jobSendingErrors.Stop()
+			n.jobSendingErrors = nil
 		}
 	}()
 
-	if c.errorHandler != nil && len(c.cacheErrors) > 0 {
-		c.errorHandler(c.cacheErrors)
+	if n.errorHandler != nil && len(n.cacheErrors) > 0 {
+		n.errorHandler(n.cacheErrors)
 		return
 	}
 }

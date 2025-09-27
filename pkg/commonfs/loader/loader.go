@@ -206,14 +206,14 @@ func Create(location string, opts ...Option) (*Loader, error) {
 }
 
 // onEvent is the fsnotify event handler.
-func (dl *Loader) onEvent(event fsnotify.Event) {
+func (l *Loader) onEvent(event fsnotify.Event) {
 	if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Remove|fsnotify.Rename) != 0 {
-		dl.loadResource(event)
+		l.loadResource(event)
 	}
 }
 
 // onError is the fsnotify error handler.
-func (dl *Loader) onError(err error) {
+func (l *Loader) onError(err error) {
 	slog.Error("failed to load signing keys", slog.String("error", err.Error()))
 }
 
@@ -222,14 +222,14 @@ func (dl *Loader) onError(err error) {
 //
 // Returns an error if the watcher cannot be started or if resources
 // cannot be loaded.
-func (dl *Loader) StartWatching() error {
-	if dl.IsStarted() {
+func (l *Loader) StartWatching() error {
+	if l.IsStarted() {
 		return nil
 	}
 
-	errStart := dl.watcher.Start()
+	errStart := l.watcher.Start()
 
-	err := dl.loadAllResources(dl.location)
+	err := l.loadAllResources(l.location)
 	if err != nil {
 		return fmt.Errorf("failed to load signing keys %w", err)
 	}
@@ -239,28 +239,28 @@ func (dl *Loader) StartWatching() error {
 
 // StopWatching stops the watcher and releases resources.
 // Safe to call multiple times.
-func (dl *Loader) StopWatching() error {
-	if dl.IsStarted() == false {
+func (l *Loader) StopWatching() error {
+	if !l.IsStarted() {
 		return nil
 	}
 
-	return dl.watcher.Close()
+	return l.watcher.Close()
 }
 
 // Storage returns a read-only view of the Loader’s storage.
 // Consumers can use this to retrieve key data without modifying
 // the internal storage.
-func (dl *Loader) Storage() keyvalue.ReadOnlyStringToBytesStorage {
-	return dl.storage
+func (l *Loader) Storage() keyvalue.ReadOnlyStringToBytesStorage {
+	return l.storage
 }
 
-func (dl *Loader) IsStarted() bool {
-	return dl.watcher.IsStarted()
+func (l *Loader) IsStarted() bool {
+	return l.watcher.IsStarted()
 }
 
 // loadAllResources recursively loads all files from the given path
 // into the storage, applying the configured KeyID extraction rules.
-func (dl *Loader) loadAllResources(path string) error {
+func (l *Loader) loadAllResources(path string) error {
 	_, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -273,12 +273,12 @@ func (dl *Loader) loadAllResources(path string) error {
 
 	for _, keyFile := range keys {
 		if keyFile.IsDir() {
-			err = dl.loadAllResources(filepath.Join(path, keyFile.Name()))
+			err = l.loadAllResources(filepath.Join(path, keyFile.Name()))
 			if err != nil {
 				return err
 			}
 		} else {
-			dl.loadResource(fsnotify.Event{
+			l.loadResource(fsnotify.Event{
 				Name: filepath.Join(path, keyFile.Name()),
 				Op:   fsnotify.Write,
 			})
@@ -295,12 +295,12 @@ func (dl *Loader) loadAllResources(path string) error {
 //   - Rename/Remove: remove file from storage
 //
 // Files that are directories, unreadable, or empty are skipped.
-func (dl *Loader) loadResource(event fsnotify.Event) {
+func (l *Loader) loadResource(event fsnotify.Event) {
 	filePath := event.Name
 
 	var keyID string
 
-	switch dl.keyIDType {
+	switch l.keyIDType {
 	case FileNameWithExtension:
 		_, keyID = filepath.Split(filePath)
 
@@ -309,13 +309,13 @@ func (dl *Loader) loadResource(event fsnotify.Event) {
 
 		var found bool
 
-		keyID, found = strings.CutSuffix(name, dl.extension)
+		keyID, found = strings.CutSuffix(name, l.extension)
 		if !found {
 			return
 		}
 
 	case FileFullPathRelativeToLocation:
-		keyID = strings.TrimPrefix(filePath, dl.location)
+		keyID = strings.TrimPrefix(filePath, l.location)
 		if !strings.HasPrefix(keyID, string(os.PathSeparator)) {
 			keyID = string(os.PathSeparator) + keyID
 		}
@@ -325,7 +325,7 @@ func (dl *Loader) loadResource(event fsnotify.Event) {
 	}
 
 	if event.Op&(fsnotify.Rename|fsnotify.Remove) != 0 {
-		dl.storage.Remove(keyID)
+		l.storage.Remove(keyID)
 		return
 	}
 
@@ -349,5 +349,5 @@ func (dl *Loader) loadResource(event fsnotify.Event) {
 		return
 	}
 
-	dl.storage.Store(keyID, keyData)
+	l.storage.Store(keyID, keyData)
 }
