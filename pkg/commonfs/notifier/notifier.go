@@ -17,7 +17,7 @@ Example usage:
 
 	// Create a new notifier with a delay of 200ms and up to 5 events per delay
 	notifier, err := notifier.NewNotifier(paths,
-		notifier.WithEventHandler(func(paths []string, events []fsnotify.Event) {
+		notifier.WithEventHandler(func(events []fsnotify.Event) {
 			fmt.Println("Received events:", events)
 		}),
 		notifier.WithLimitDelay(200*time.Millisecond),
@@ -62,9 +62,9 @@ var (
 type Notifier struct {
 	paths         []string
 	operations    map[fsnotify.Op]struct{}
-	eventHandler  func([]string, []fsnotify.Event) // Callback for batch of fsnotify events
-	simpleHandler func([]string)                   // Simple callback if no event details are needed
-	errorHandler  func([]error)                    // Callback for batch of errors
+	eventHandler  func([]fsnotify.Event) // Callback for batch of fsnotify events
+	simpleHandler func()                 // Simple callback if no event details are needed
+	errorHandler  func([]error)          // Callback for batch of errors
 
 	delay   time.Duration // Minimum time between notifications triggers
 	burst   uint          // Maximum events allowed per delay window
@@ -83,7 +83,7 @@ type Notifier struct {
 type Option func(*Notifier) error
 
 // WithEventHandler sets the event handler callback that receives batched fsnotify events.
-func WithEventHandler(handler func([]string, []fsnotify.Event)) Option {
+func WithEventHandler(handler func([]fsnotify.Event)) Option {
 	return func(w *Notifier) error {
 		w.eventHandler = handler
 		return nil
@@ -91,7 +91,7 @@ func WithEventHandler(handler func([]string, []fsnotify.Event)) Option {
 }
 
 // WithSimpleHandler sets a simple callback invoked when events are accumulated, without event details.
-func WithSimpleHandler(handler func([]string)) Option {
+func WithSimpleHandler(handler func()) Option {
 	return func(w *Notifier) error {
 		w.simpleHandler = handler
 		return nil
@@ -297,12 +297,12 @@ func (c *Notifier) sendCachedEvents() {
 	}()
 
 	if c.eventHandler != nil && len(c.cacheEvents) > 0 {
-		c.eventHandler(c.paths, c.cacheEvents)
+		c.eventHandler(c.cacheEvents)
 		return
 	}
 
 	if c.simpleHandler != nil && len(c.cacheEvents) > 0 {
-		c.simpleHandler(c.paths)
+		c.simpleHandler()
 		return
 	}
 }
