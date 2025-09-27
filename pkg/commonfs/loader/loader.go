@@ -171,7 +171,7 @@ func WithStorage(storage keyvalue.StringToBytesStorage) Option {
 //	}
 //	defer ldr.StopWatching()
 func Create(location string, opts ...Option) (*Loader, error) {
-	dl := &Loader{
+	l := &Loader{
 		location:  location,
 		extension: "",
 		keyIDType: FileFullPath,
@@ -184,7 +184,7 @@ func Create(location string, opts ...Option) (*Loader, error) {
 			continue
 		}
 
-		err := opt(dl)
+		err := opt(l)
 		if err != nil {
 			return nil, err
 		}
@@ -192,17 +192,17 @@ func Create(location string, opts ...Option) (*Loader, error) {
 
 	w, err := watcher.Create(
 		watcher.OnPath(location),
-		watcher.WatchSubfolders(dl.recursiveWatch),
-		watcher.WithEventHandler(dl.onEvent),
-		watcher.WithErrorEventHandler(dl.onError),
+		watcher.WatchSubfolders(l.recursiveWatch),
+		watcher.WithEventHandler(l.onEvent),
+		watcher.WithErrorEventHandler(l.onError),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	dl.watcher = w
+	l.watcher = w
 
-	return dl, nil
+	return l, nil
 }
 
 // onEvent is the fsnotify event handler.
@@ -277,12 +277,14 @@ func (l *Loader) loadAllResources(path string) error {
 			if err != nil {
 				return err
 			}
-		} else {
-			l.loadResource(fsnotify.Event{
-				Name: filepath.Join(path, keyFile.Name()),
-				Op:   fsnotify.Write,
-			})
+
+			continue
 		}
+
+		l.loadResource(fsnotify.Event{
+			Name: filepath.Join(path, keyFile.Name()),
+			Op:   fsnotify.Write,
+		})
 	}
 
 	return nil

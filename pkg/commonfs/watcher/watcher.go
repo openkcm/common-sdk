@@ -310,18 +310,22 @@ func (w *Watcher) eventProcessor() {
 				continue
 			}
 
-			if w.handler != nil {
-				w.handler(event)
+			if w.handler == nil {
+				continue
 			}
+
+			w.handler(event)
 
 		case err, ok := <-w.watcher.Errors:
 			if !ok {
 				return
 			}
 
-			if w.handler != nil {
-				w.errorHandler(err)
+			if w.errorHandler == nil {
+				continue
 			}
+
+			w.errorHandler(err)
 		}
 	}
 }
@@ -342,21 +346,23 @@ func (w *Watcher) eventProcessor() {
 // Returns true if a directory was successfully identified and processed, or
 // false otherwise.
 func (w *Watcher) processAsDirectory(event fsnotify.Event) bool {
-	if w.recursiveWatch && event.Has(fsnotify.Create) {
-		fi, err := os.Stat(event.Name)
-		if err == nil && fi.IsDir() {
-			_ = w.addRecursive(event.Name)
-
-			err = w.watcher.Add(event.Name)
-			if err != nil {
-				slog.Warn("Failed to include into watcher new created folder at realtime", "error", err)
-			}
-
-			return true
-		}
+	if !w.recursiveWatch || !event.Has(fsnotify.Create) {
+		return false
 	}
 
-	return false
+	fi, err := os.Stat(event.Name)
+	if err != nil || !fi.IsDir() {
+		return false
+	}
+
+	_ = w.addRecursive(event.Name)
+
+	err = w.watcher.Add(event.Name)
+	if err != nil {
+		slog.Warn("Failed to include into watcher new created folder at realtime", "error", err)
+	}
+
+	return true
 }
 
 // Close stops the watcher and releases resources. It is safe to call
