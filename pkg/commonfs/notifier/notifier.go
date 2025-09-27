@@ -66,9 +66,9 @@ type Notifier struct {
 	simpleHandler func()                 // Simple callback if no event details are needed
 	errorHandler  func([]error)          // Callback for batch of errors
 
-	delay   time.Duration // Minimum time between notifications triggers
-	burst   uint          // Maximum events allowed per delay window
-	limiter *rate.Limiter
+	interval time.Duration // Minimum time between notifications triggers
+	burst    uint          // Maximum events allowed per delay window
+	limiter  *rate.Limiter
 
 	cacheMu          sync.Mutex
 	cacheEvents      []fsnotify.Event // Accumulated events
@@ -98,10 +98,12 @@ func WithSimpleHandler(handler func()) Option {
 	}
 }
 
-// WithLimitDelay sets the minimum delay between callback invocations.
-func WithLimitDelay(delay time.Duration) Option {
+// WithThrottleInterval sets the throttling interval used to configure
+// the rate limiter. It represents the minimum time between allowed
+// callback invocations.
+func WithThrottleInterval(interval time.Duration) Option {
 	return func(w *Notifier) error {
-		w.delay = delay
+		w.interval = interval
 		return nil
 	}
 }
@@ -178,8 +180,8 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 	c := &Notifier{
 		paths: make([]string, 0),
 
-		delay: time.Nanosecond,
-		burst: 0,
+		interval: time.Nanosecond,
+		burst:    0,
 		operations: map[fsnotify.Op]struct{}{
 			fsnotify.Create: {},
 			fsnotify.Write:  {},
@@ -204,8 +206,6 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 		return nil, ErrPathsNotSpecified
 	}
 
-	c.limiter = rate.NewLimiter(rate.Every(c.delay), int(c.burst))
-
 	defaultWatcher, err := watcher.NewFSWatcher(
 		watcher.OnPaths(c.paths...),
 		watcher.WithEventHandler(c.onEvent),
@@ -216,6 +216,7 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 	}
 
 	c.watcher = defaultWatcher
+	c.limiter = rate.NewLimiter(rate.Every(c.interval), int(c.burst))
 
 	return c, nil
 }
@@ -271,9 +272,9 @@ func (c *Notifier) onEvent(event fsnotify.Event) {
 	}
 
 	if c.jobSendingEvents != nil {
-		c.jobSendingEvents.Reset(c.delay)
+		c.jobSendingEvents.Reset(c.interval)
 	} else {
-		c.jobSendingEvents = time.AfterFunc(c.delay, c.sendCachedEvents)
+		c.jobSendingEvents = time.AfterFunc(c.interval, c.sendCachedEvents)
 	}
 }
 
@@ -320,9 +321,9 @@ func (c *Notifier) onError(err error) {
 	c.cacheErrors = append(c.cacheErrors, err)
 
 	if c.jobSendingErrors != nil {
-		c.jobSendingErrors.Reset(c.delay)
+		c.jobSendingErrors.Reset(c.interval)
 	} else {
-		c.jobSendingErrors = time.AfterFunc(c.delay, c.sendCachedErrors)
+		c.jobSendingErrors = time.AfterFunc(c.interval, c.sendCachedErrors)
 	}
 }
 
