@@ -79,7 +79,7 @@ type Loader struct {
 	extension string
 	keyIDType KeyIDType
 
-	watcher *watcher.NotifyWrapper
+	watcher *watcher.NotifyWatcher
 	storage keyvalue.StringToBytesStorage
 }
 
@@ -190,7 +190,7 @@ func Create(location string, opts ...Option) (*Loader, error) {
 // onEvent is the fsnotify event handler.
 func (dl *Loader) onEvent(event fsnotify.Event) {
 	if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Remove|fsnotify.Rename) != 0 {
-		dl.loadSigningKey(event)
+		dl.loadResource(event)
 	}
 }
 
@@ -248,7 +248,7 @@ func (dl *Loader) loadAllResources(path string) error {
 				return err
 			}
 		} else {
-			dl.loadSigningKey(fsnotify.Event{
+			dl.loadResource(fsnotify.Event{
 				Name: filepath.Join(path, keyFile.Name()),
 				Op:   fsnotify.Write,
 			})
@@ -258,14 +258,14 @@ func (dl *Loader) loadAllResources(path string) error {
 	return nil
 }
 
-// loadSigningKey loads or removes a single file in response to a file system event.
+// loadResource loads or removes a single file in response to a file system event.
 //
 // Supported operations:
 //   - Create/Write: load or update file contents
 //   - Rename/Remove: remove file from storage
 //
 // Files that are directories, unreadable, or empty are skipped.
-func (dl *Loader) loadSigningKey(event fsnotify.Event) {
+func (dl *Loader) loadResource(event fsnotify.Event) {
 	filePath := event.Name
 
 	var keyID string

@@ -14,7 +14,7 @@ import (
 
 // --- Helpers ---
 
-func newWatcher(t *testing.T, opts ...watcher.Option) *watcher.NotifyWrapper {
+func newWatcher(t *testing.T, opts ...watcher.Option) *watcher.NotifyWatcher {
 	t.Helper()
 
 	w, err := watcher.NewFSWatcher(opts...)
@@ -25,7 +25,7 @@ func newWatcher(t *testing.T, opts ...watcher.Option) *watcher.NotifyWrapper {
 	return w
 }
 
-func startWatcher(t *testing.T, w *watcher.NotifyWrapper) {
+func startWatcher(t *testing.T, w *watcher.NotifyWatcher) {
 	t.Helper()
 
 	err := w.Start()
@@ -34,7 +34,7 @@ func startWatcher(t *testing.T, w *watcher.NotifyWrapper) {
 	}
 }
 
-func closeWatcher(t *testing.T, w *watcher.NotifyWrapper) {
+func closeWatcher(t *testing.T, w *watcher.NotifyWatcher) {
 	t.Helper()
 
 	err := w.Close()
