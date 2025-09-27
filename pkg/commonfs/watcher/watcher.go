@@ -306,18 +306,8 @@ func (w *Watcher) eventProcessor() {
 				return
 			}
 
-			if w.recursiveWatch && event.Has(fsnotify.Create) {
-				fi, err := os.Stat(event.Name)
-				if err == nil && fi.IsDir() {
-					_ = w.addRecursive(event.Name)
-
-					err = w.watcher.Add(event.Name)
-					if err != nil {
-						slog.Warn("Failed to include into watcher new created folder at realtime", "error", err)
-					}
-
-					continue
-				}
+			if w.processAsDirectory(event) {
+				continue
 			}
 
 			if w.handler != nil {
@@ -334,6 +324,39 @@ func (w *Watcher) eventProcessor() {
 			}
 		}
 	}
+}
+
+// processAsDirectory checks whether a given fsnotify event refers to a newly
+// created directory and, if recursive watching is enabled, ensures it is added
+// to the watcher.
+//
+// Behavior:
+//   - If recursive watching is disabled, the method always returns false.
+//   - If the event is a Create operation and the target is a directory,
+//     the method adds the directory and all of its subdirectories to the watcher
+//     via addRecursive.
+//   - Additionally, the newly created directory itself is explicitly registered
+//     with the watcher.
+//   - Any errors during Add are logged as warnings but do not stop execution.
+//
+// Returns true if a directory was successfully identified and processed, or
+// false otherwise.
+func (w *Watcher) processAsDirectory(event fsnotify.Event) bool {
+	if w.recursiveWatch && event.Has(fsnotify.Create) {
+		fi, err := os.Stat(event.Name)
+		if err == nil && fi.IsDir() {
+			_ = w.addRecursive(event.Name)
+
+			err = w.watcher.Add(event.Name)
+			if err != nil {
+				slog.Warn("Failed to include into watcher new created folder at realtime", "error", err)
+			}
+
+			return true
+		}
+	}
+
+	return false
 }
 
 // Close stops the watcher and releases resources. It is safe to call
