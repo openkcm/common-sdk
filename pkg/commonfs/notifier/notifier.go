@@ -60,21 +60,22 @@ var (
 //
 // It is safe for concurrent use.
 type Notifier struct {
-	paths         []string
-	operations    map[fsnotify.Op]struct{}
-	eventHandler  func([]fsnotify.Event) // Callback for batch of fsnotify events
-	simpleHandler func()                 // Simple callback if no event details are needed
-	errorHandler  func([]error)          // Callback for batch of errors
+	paths          []string
+	recursiveWatch bool
+	operations     map[fsnotify.Op]struct{}
+	eventHandler   func(string, []fsnotify.Event) // Callback for batch of fsnotify events
+	simpleHandler  func()                         // Simple callback if no event details are needed
+	errorHandler   func([]error)                  // Callback for batch of errors
 
 	interval time.Duration // Minimum time between notifications triggers
 	burst    uint          // Maximum events allowed per delay window
 	limiter  *rate.Limiter
 
 	cacheMu          sync.Mutex
-	cacheEvents      []fsnotify.Event // Accumulated events
-	jobSendingEvents *time.Timer      // Timer for sending events
-	cacheErrors      []error          // Accumulated errors
-	jobSendingErrors *time.Timer      // Timer for sending errors
+	cacheEvents      map[string][]fsnotify.Event // Accumulated events
+	jobSendingEvents *time.Timer                 // Timer for sending events
+	cacheErrors      []error                     // Accumulated errors
+	jobSendingErrors *time.Timer                 // Timer for sending errors
 
 	watcher *watcher.NotifyWatcher // Underlying filesystem watcher
 }
@@ -83,7 +84,7 @@ type Notifier struct {
 type Option func(*Notifier) error
 
 // WithEventHandler sets the event handler callback that receives batched fsnotify events.
-func WithEventHandler(handler func([]fsnotify.Event)) Option {
+func WithEventHandler(handler func(string, []fsnotify.Event)) Option {
 	return func(w *Notifier) error {
 		w.eventHandler = handler
 		return nil
@@ -119,7 +120,7 @@ func WithBurstNumber(burst uint) Option {
 // OnPath configures the notifier to observe a single path.
 func OnPath(path string) Option {
 	return func(w *Notifier) error {
-		return w.addPath(path)
+		return w.AddPath(path)
 	}
 }
 
@@ -127,12 +128,31 @@ func OnPath(path string) Option {
 func OnPaths(paths ...string) Option {
 	return func(w *Notifier) error {
 		for _, path := range paths {
-			err := w.addPath(path)
+			err := w.AddPath(path)
 			if err != nil {
 				return err
 			}
 		}
 
+		return nil
+	}
+}
+
+// WatchSubfolders enables or disables recursive monitoring of subfolders.
+//
+// By default, fsnotify does not watch subfolders of a directory automatically.
+// When enabled, this option ensures that all nested directories are included
+// in the watch scope, so events such as file creation, modification, renaming,
+// or deletion inside subdirectories will also be detected.
+// Parameters:
+//   - enabled: set to true to include subfolders in the watch, false to
+//     restrict watching only to the top-level directory.
+//
+// Returns:
+//   - Option: a configuration function applied when creating the watcher.
+func WatchSubfolders(enabled bool) Option {
+	return func(w *Notifier) error {
+		w.recursiveWatch = enabled
 		return nil
 	}
 }
@@ -189,7 +209,6 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 			fsnotify.Remove: {},
 		},
 		cacheMu:     sync.Mutex{},
-		cacheEvents: make([]fsnotify.Event, 0),
 		cacheErrors: make([]error, 0),
 	}
 
@@ -206,8 +225,18 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 		return nil, ErrPathsNotSpecified
 	}
 
-	defaultWatcher, err := watcher.NewFSWatcher(
+	c.limiter = rate.NewLimiter(rate.Every(c.interval), int(c.burst))
+
+	cacheEvents := make(map[string][]fsnotify.Event)
+	for _, path := range c.paths {
+		cacheEvents[path] = make([]fsnotify.Event, 0)
+	}
+
+	c.cacheEvents = cacheEvents
+
+	w, err := watcher.NewFSWatcher(
 		watcher.OnPaths(c.paths...),
+		watcher.WatchSubfolders(c.recursiveWatch),
 		watcher.WithEventHandler(c.onEvent),
 		watcher.WithErrorEventHandler(c.onError),
 	)
@@ -215,15 +244,14 @@ func NewNotifier(opts ...Option) (*Notifier, error) {
 		return nil, err
 	}
 
-	c.watcher = defaultWatcher
-	c.limiter = rate.NewLimiter(rate.Every(c.interval), int(c.burst))
+	c.watcher = w
 
 	return c, nil
 }
 
-// addPath adds a new path to the notifier. It must be called before Start.
+// AddPath adds a new path to the notifier. It must be called before Start.
 // The path must exist on the filesystem, otherwise an error is returned.
-func (w *Notifier) addPath(path string) error {
+func (w *Notifier) AddPath(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
@@ -245,13 +273,25 @@ func (w *Notifier) addPath(path string) error {
 
 // StartWatching starts the underlying filesystem watcher.
 func (c *Notifier) StartWatching() error {
+	if c.IsStarted() {
+		return nil
+	}
+
 	return c.watcher.Start()
 }
 
 // StopWatching stops the watcher and releases all associated resources.
 // It is safe to call multiple times.
 func (c *Notifier) StopWatching() error {
+	if c.IsStarted() == false {
+		return nil
+	}
+
 	return c.watcher.Close()
+}
+
+func (c *Notifier) IsStarted() bool {
+	return c.watcher.IsStarted()
 }
 
 // onEvent is the internal fsnotify event handler that accumulates events
@@ -265,7 +305,19 @@ func (c *Notifier) onEvent(event fsnotify.Event) {
 	c.cacheMu.Lock()
 	defer c.cacheMu.Unlock()
 
-	c.cacheEvents = append(c.cacheEvents, event)
+	dir := filepath.Dir(event.Name)
+	for {
+		if _, ok := c.cacheEvents[dir]; ok {
+			c.cacheEvents[dir] = append(c.cacheEvents[dir], event)
+			break
+		} else {
+			dir = filepath.Dir(dir)
+		}
+
+		if dir == "/" {
+			break
+		}
+	}
 
 	if c.limiter.Allow() {
 		c.sendCachedEvents()
@@ -287,7 +339,9 @@ func (c *Notifier) sendCachedEvents() {
 		}
 
 		c.jobSendingEvents = nil
-		c.cacheEvents = make([]fsnotify.Event, 0)
+		for _, path := range c.paths {
+			c.cacheEvents[path] = make([]fsnotify.Event, 0)
+		}
 	}()
 
 	defer func() {
@@ -297,8 +351,13 @@ func (c *Notifier) sendCachedEvents() {
 		}
 	}()
 
-	if c.eventHandler != nil && len(c.cacheEvents) > 0 {
-		c.eventHandler(c.cacheEvents)
+	if c.eventHandler != nil {
+		for path, events := range c.cacheEvents {
+			if len(events) > 0 {
+				c.eventHandler(path, events)
+			}
+		}
+
 		return
 	}
 

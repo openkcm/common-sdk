@@ -42,6 +42,8 @@ package watcher
 import (
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 	"path/filepath"
 
 	"github.com/fsnotify/fsnotify"
@@ -66,8 +68,10 @@ var (
 // It tracks its lifecycle (`started`) and ensures consistent behavior
 // when adding paths or starting multiple times.
 type NotifyWatcher struct {
-	started bool
-	paths   []string
+	started        bool
+	paths          []string
+	recursiveWatch bool
+
 	watcher *fsnotify.Watcher
 
 	handler      func(fsnotify.Event)
@@ -94,6 +98,22 @@ func OnPaths(paths ...string) Option {
 			}
 		}
 
+		return nil
+	}
+}
+
+// WatchSubfolders enables or disables recursive monitoring of subfolders.
+//
+// By default, fsnotify does not watch subfolders of a directory automatically.
+// When enabled, this option ensures that all nested directories are included
+// in the watch scope, so events such as file creation, modification, renaming,
+// or deletion inside subdirectories will also be detected.
+// Parameters:
+//   - enabled: set to true to include subfolders in the watch, false to
+//     restrict watching only to the top-level directory.
+func WatchSubfolders(enabled bool) Option {
+	return func(w *NotifyWatcher) error {
+		w.recursiveWatch = enabled
 		return nil
 	}
 }
@@ -151,6 +171,17 @@ func NewFSWatcher(opts ...Option) (*NotifyWatcher, error) {
 			if err != nil {
 				return nil, err
 			}
+		}
+	}
+
+	if !w.recursiveWatch {
+		return w, nil
+	}
+
+	for _, path := range w.paths {
+		err := w.addRecursive(path)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -227,6 +258,44 @@ func (w *NotifyWatcher) Start() error {
 	return nil
 }
 
+func (w *NotifyWatcher) IsStarted() bool {
+	return w.started
+}
+
+// addRecursive walks the given root directory and adds all of its
+// subdirectories to the watcher, excluding the root directory itself.
+//
+// This is useful when recursive watching is enabled but the caller does
+// not want to include the root folder directly.
+//
+// For example, if root = "/project", the watcher will register:
+//   - /project/subdir1
+//   - /project/subdir2
+//   - /project/subdir2/nested
+//
+// But "/project" itself will not be added.
+func (w *NotifyWatcher) addRecursive(root string) error {
+	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip the root itself
+		if path == root {
+			return nil
+		}
+
+		if d.IsDir() {
+			err := w.AddPath(path)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
 // eventProcessor is the internal loop that dispatches events and errors
 // to the configured handlers.
 func (w *NotifyWatcher) eventProcessor() {
@@ -237,9 +306,24 @@ func (w *NotifyWatcher) eventProcessor() {
 				return
 			}
 
+			if w.recursiveWatch && event.Has(fsnotify.Create) {
+				fi, err := os.Stat(event.Name)
+				if err == nil && fi.IsDir() {
+					_ = w.addRecursive(event.Name)
+
+					err = w.watcher.Add(event.Name)
+					if err != nil {
+						slog.Warn("Failed to include into watcher new created folder at realtime", "error", err)
+					}
+
+					continue
+				}
+			}
+
 			if w.handler != nil {
 				w.handler(event)
 			}
+
 		case err, ok := <-w.watcher.Errors:
 			if !ok {
 				return

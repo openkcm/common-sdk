@@ -75,9 +75,10 @@ var (
 // Loader watches a directory for resource files and maintains a key–value store
 // of file contents, indexed by Key IDs.
 type Loader struct {
-	location  string
-	extension string
-	keyIDType KeyIDType
+	location       string
+	extension      string
+	keyIDType      KeyIDType
+	recursiveWatch bool
 
 	watcher *watcher.NotifyWatcher
 	storage keyvalue.StringToBytesStorage
@@ -104,6 +105,22 @@ func WithExtension(value string) Option {
 			w.extension = value
 		}
 
+		return nil
+	}
+}
+
+// WatchSubfolders enables or disables recursive monitoring of subfolders.
+//
+// By default, fsnotify does not watch subfolders of a directory automatically.
+// When enabled, this option ensures that all nested directories are included
+// in the watch scope, so events such as file creation, modification, renaming,
+// or deletion inside subdirectories will also be detected.
+// Parameters:
+//   - enabled: set to true to include subfolders in the watch, false to
+//     restrict watching only to the top-level directory.
+func WatchSubfolders(enabled bool) Option {
+	return func(w *Loader) error {
+		w.recursiveWatch = enabled
 		return nil
 	}
 }
@@ -161,8 +178,21 @@ func Create(location string, opts ...Option) (*Loader, error) {
 		storage:   keyvalue.NewMemoryStorage[string, []byte](),
 	}
 
-	defaultWatcher, err := watcher.NewFSWatcher(
+	// Apply options
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+
+		err := opt(dl)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	w, err := watcher.NewFSWatcher(
 		watcher.OnPath(location),
+		watcher.WatchSubfolders(dl.recursiveWatch),
 		watcher.WithEventHandler(dl.onEvent),
 		watcher.WithErrorEventHandler(dl.onError),
 	)
@@ -170,19 +200,7 @@ func Create(location string, opts ...Option) (*Loader, error) {
 		return nil, err
 	}
 
-	dl.watcher = defaultWatcher
-
-	// Apply options
-	for _, opt := range opts {
-		if opt == nil {
-			continue
-		}
-
-		err = opt(dl)
-		if err != nil {
-			return nil, err
-		}
-	}
+	dl.watcher = w
 
 	return dl, nil
 }
@@ -205,6 +223,10 @@ func (dl *Loader) onError(err error) {
 // Returns an error if the watcher cannot be started or if resources
 // cannot be loaded.
 func (dl *Loader) StartWatching() error {
+	if dl.IsStarted() {
+		return nil
+	}
+
 	errStart := dl.watcher.Start()
 
 	err := dl.loadAllResources(dl.location)
@@ -218,6 +240,10 @@ func (dl *Loader) StartWatching() error {
 // StopWatching stops the watcher and releases resources.
 // Safe to call multiple times.
 func (dl *Loader) StopWatching() error {
+	if dl.IsStarted() == false {
+		return nil
+	}
+
 	return dl.watcher.Close()
 }
 
@@ -226,6 +252,10 @@ func (dl *Loader) StopWatching() error {
 // the internal storage.
 func (dl *Loader) Storage() keyvalue.ReadOnlyStringToBytesStorage {
 	return dl.storage
+}
+
+func (dl *Loader) IsStarted() bool {
+	return dl.watcher.IsStarted()
 }
 
 // loadAllResources recursively loads all files from the given path
