@@ -399,6 +399,7 @@ func (l *Loader) loadResource(event fsnotify.Event) {
 	}
 
 	filePath, _ = strings.CutSuffix(filePath, "~")
+
 	info, err := os.Stat(filePath)
 	if err != nil || info.IsDir() {
 		return

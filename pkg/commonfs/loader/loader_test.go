@@ -126,6 +126,7 @@ func TestLoaderKeyIDTypes(t *testing.T) {
 				loader.OnPath(tt.location),
 				loader.WithStorage(st),
 				loader.WithExtension("pem"),
+				loader.WatchSubfolders(true),
 				loader.WithKeyIDType(tt.keyIDType),
 			)
 			require.NoError(t, err)
@@ -133,7 +134,7 @@ func TestLoaderKeyIDTypes(t *testing.T) {
 			startLoader(t, l)
 			defer stopLoader(t, l)
 
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 
 			for _, key := range tt.expected {
 				val, ok := st.Get(key)

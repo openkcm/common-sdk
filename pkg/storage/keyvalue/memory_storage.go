@@ -99,6 +99,7 @@ func (ms *MemoryStorage[K, V]) List() []K {
 	for k := range ms.data {
 		keys = append(keys, k)
 	}
+
 	return keys
 }
 
