@@ -45,6 +45,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 
@@ -52,13 +53,9 @@ import (
 )
 
 var (
-	// ErrFSWatcherStartedNotAllowingNewPath is returned when trying to add
-	// new paths to a watcher after it has already been started.
-	ErrFSWatcherStartedNotAllowingNewPath = errors.New("watcher already started, cannot add new path")
-
-	// ErrFSWatcherHasNoPathsConfigured is returned when Start is called
+	// ErrNoPathsConfigured is returned when Start is called
 	// without any paths configured to watch.
-	ErrFSWatcherHasNoPathsConfigured = errors.New("watcher has no paths")
+	ErrNoPathsConfigured = errors.New("no paths has been configured")
 )
 
 // Watcher wraps fsnotify.Watcher and provides higher-level configuration
@@ -68,10 +65,12 @@ var (
 // It tracks its lifecycle (`started`) and ensures consistent behavior
 // when adding paths or starting multiple times.
 type Watcher struct {
+	startMu        sync.Mutex
 	started        bool
 	paths          []string
 	recursiveWatch bool
 
+	done    chan struct{}
 	watcher *fsnotify.Watcher
 
 	handler      func(fsnotify.Event)
@@ -161,7 +160,8 @@ func WithErrorChainAsHandler(eventsCh chan<- error) Option {
 //	}
 func Create(opts ...Option) (*Watcher, error) {
 	w := &Watcher{
-		paths: make([]string, 0),
+		startMu: sync.Mutex{},
+		paths:   make([]string, 0),
 	}
 
 	// Apply the options
@@ -189,14 +189,10 @@ func Create(opts ...Option) (*Watcher, error) {
 }
 
 // AddPath adds a new path to the watcher. It must be called before Start.
-// If the watcher has already been started, this returns ErrFSWatcherStartedNotAllowingNewPath.
+// If the watcher has already been started, this returns ErrOnStartedStateNotAllowingNewPath.
 //
 // The path must exist on the filesystem, otherwise an error is returned.
 func (w *Watcher) AddPath(path string) error {
-	if w.started {
-		return ErrFSWatcherStartedNotAllowingNewPath
-	}
-
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
@@ -219,12 +215,19 @@ func (w *Watcher) AddPath(path string) error {
 // Start initializes the underlying fsnotify.Watcher and begins watching all
 // configured paths. It also launches the event processing goroutine.
 //
-// Returns ErrFSWatcherHasNoPathsConfigured if no paths were added.
+// Returns ErrNoPathsConfigured if no paths were added.
 //
 // After Start, the watcher cannot accept new paths (AddPath will fail).
 func (w *Watcher) Start() error {
+	w.startMu.Lock()
+	defer w.startMu.Unlock()
+
+	if w.IsStarted() {
+		return nil
+	}
+
 	if len(w.paths) == 0 {
-		return ErrFSWatcherHasNoPathsConfigured
+		return ErrNoPathsConfigured
 	}
 
 	if w.watcher != nil {
@@ -253,9 +256,28 @@ func (w *Watcher) Start() error {
 		w.started = true
 	}()
 
+	w.done = make(chan struct{})
 	go w.eventProcessor()
 
 	return nil
+}
+
+// Close stops the watcher and releases resources.
+func (w *Watcher) Close() error {
+	w.startMu.Lock()
+	defer w.startMu.Unlock()
+
+	if !w.IsStarted() {
+		return nil
+	}
+
+	defer func() {
+		w.started = false
+		close(w.done)
+		w.done = nil
+	}()
+
+	return w.watcher.Close()
 }
 
 func (w *Watcher) IsStarted() bool {
@@ -323,6 +345,8 @@ func (w *Watcher) eventProcessor() {
 			}
 
 			w.errorHandler(err)
+		case <-w.done:
+			return
 		}
 	}
 }
@@ -360,14 +384,4 @@ func (w *Watcher) processAsDirectory(event fsnotify.Event) bool {
 	}
 
 	return true
-}
-
-// Close stops the watcher and releases resources. It is safe to call
-// multiple times; subsequent calls will simply reset the started flag.
-func (w *Watcher) Close() error {
-	defer func() {
-		w.started = false
-	}()
-
-	return w.watcher.Close()
 }

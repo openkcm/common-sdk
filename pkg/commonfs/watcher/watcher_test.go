@@ -44,35 +44,12 @@ func closeWatcher(t *testing.T, w *watcher.Watcher) {
 }
 
 // --- Tests ---
-
-func TestAddPathAndStart(t *testing.T) {
-	tmpDir := t.TempDir()
-	w := newWatcher(t)
-
-	// Should add path successfully
-	err := w.AddPath(tmpDir)
-	if err != nil {
-		t.Fatalf("expected AddPath to succeed, got error: %v", err)
-	}
-
-	// Should start successfully
-	startWatcher(t, w)
-
-	// Adding path after start should fail
-	err = w.AddPath(tmpDir)
-	if !errors.Is(err, watcher.ErrFSWatcherStartedNotAllowingNewPath) {
-		t.Errorf("expected ErrFSWatcherStartedNotAllowingNewPath, got: %v", err)
-	}
-
-	closeWatcher(t, w)
-}
-
 func TestStartNoPaths(t *testing.T) {
 	w := newWatcher(t)
 
 	err := w.Start()
-	if !errors.Is(err, watcher.ErrFSWatcherHasNoPathsConfigured) {
-		t.Errorf("expected ErrFSWatcherHasNoPathsConfigured, got: %v", err)
+	if !errors.Is(err, watcher.ErrNoPathsConfigured) {
+		t.Errorf("expected ErrNoPathsConfigured, got: %v", err)
 	}
 }
 

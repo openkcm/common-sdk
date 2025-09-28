@@ -37,7 +37,6 @@ Example usage:
 package notifier
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -49,10 +48,6 @@ import (
 
 	"github.com/openkcm/common-sdk/pkg/commonfs/watcher"
 	"github.com/openkcm/common-sdk/pkg/utils"
-)
-
-var (
-	ErrPathsNotSpecified = errors.New("paths not specified")
 )
 
 // Notifier accumulates filesystem events and errors and triggers
@@ -77,6 +72,7 @@ type Notifier struct {
 	cacheErrors      []error                     // Accumulated errors
 	jobSendingErrors *time.Timer                 // Timer for sending errors
 
+	startMu sync.Mutex
 	watcher *watcher.Watcher // Underlying filesystem watcher
 }
 
@@ -210,6 +206,9 @@ func Create(opts ...Option) (*Notifier, error) {
 		},
 		cacheMu:     sync.Mutex{},
 		cacheErrors: make([]error, 0),
+		cacheEvents: make(map[string][]fsnotify.Event),
+
+		startMu: sync.Mutex{},
 	}
 
 	for _, opt := range opts {
@@ -221,30 +220,7 @@ func Create(opts ...Option) (*Notifier, error) {
 		}
 	}
 
-	if len(n.paths) == 0 {
-		return nil, ErrPathsNotSpecified
-	}
-
 	n.limiter = rate.NewLimiter(rate.Every(n.interval), int(n.burst))
-
-	cacheEvents := make(map[string][]fsnotify.Event)
-	for _, path := range n.paths {
-		cacheEvents[path] = make([]fsnotify.Event, 0)
-	}
-
-	n.cacheEvents = cacheEvents
-
-	w, err := watcher.Create(
-		watcher.OnPaths(n.paths...),
-		watcher.WatchSubfolders(n.recursiveWatch),
-		watcher.WithEventHandler(n.onEvent),
-		watcher.WithErrorEventHandler(n.onError),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	n.watcher = w
 
 	return n, nil
 }
@@ -268,14 +244,34 @@ func (n *Notifier) AddPath(path string) error {
 
 	n.paths = append(n.paths, absPath)
 
+	_, ok := n.cacheEvents[absPath]
+	if !ok {
+		n.cacheEvents[absPath] = make([]fsnotify.Event, 0)
+	}
+
 	return nil
 }
 
 // StartWatching starts the underlying filesystem watcher.
 func (n *Notifier) StartWatching() error {
+	n.startMu.Lock()
+	defer n.startMu.Unlock()
+
 	if n.IsStarted() {
 		return nil
 	}
+
+	w, err := watcher.Create(
+		watcher.OnPaths(n.paths...),
+		watcher.WatchSubfolders(n.recursiveWatch),
+		watcher.WithEventHandler(n.onEvent),
+		watcher.WithErrorEventHandler(n.onError),
+	)
+	if err != nil {
+		return err
+	}
+
+	n.watcher = w
 
 	return n.watcher.Start()
 }
@@ -283,15 +279,22 @@ func (n *Notifier) StartWatching() error {
 // StopWatching stops the watcher and releases all associated resources.
 // It is safe to call multiple times.
 func (n *Notifier) StopWatching() error {
+	n.startMu.Lock()
+	defer n.startMu.Unlock()
+
 	if !n.IsStarted() {
 		return nil
 	}
+
+	defer func() {
+		n.watcher = nil
+	}()
 
 	return n.watcher.Close()
 }
 
 func (n *Notifier) IsStarted() bool {
-	return n.watcher.IsStarted()
+	return n.watcher != nil && n.watcher.IsStarted()
 }
 
 // onEvent is the internal fsnotify event handler that accumulates events
@@ -306,17 +309,16 @@ func (n *Notifier) onEvent(event fsnotify.Event) {
 	defer n.cacheMu.Unlock()
 
 	dir := filepath.Dir(event.Name)
-	for {
-		if _, ok := n.cacheEvents[dir]; ok {
-			n.cacheEvents[dir] = append(n.cacheEvents[dir], event)
-			break
-		} else {
+	for dir != "/" && len(dir) > 1 {
+		_, ok := n.cacheEvents[dir]
+		if !ok {
 			dir = filepath.Dir(dir)
+			continue
 		}
 
-		if dir == "/" {
-			break
-		}
+		n.cacheEvents[dir] = append(n.cacheEvents[dir], event)
+
+		break
 	}
 
 	if n.limiter.Allow() {
