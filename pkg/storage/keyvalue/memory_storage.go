@@ -94,6 +94,14 @@ func (ms *MemoryStorage[K, V]) Get(key K) (V, bool) {
 	return value, exist
 }
 
+func (ms *MemoryStorage[K, V]) List() []K {
+	keys := make([]K, 0)
+	for k := range ms.data {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // Remove deletes the entry for the given key if it exists.
 //
 // Returns:

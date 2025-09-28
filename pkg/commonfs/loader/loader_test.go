@@ -159,14 +159,6 @@ func TestNewLoaderWithOptions(t *testing.T) {
 		require.NotNil(t, l)
 	})
 
-	t.Run("invalid extension", func(t *testing.T) {
-		_, err := loader.Create(
-			loader.OnPath(tmpDir),
-			loader.WithExtension(""),
-		)
-		require.ErrorIs(t, err, loader.ErrExtensionIsEmpty)
-	})
-
 	t.Run("nil storage", func(t *testing.T) {
 		_, err := loader.Create(
 			loader.OnPath(tmpDir),

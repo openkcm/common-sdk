@@ -68,6 +68,7 @@ type Storage[K comparable, V any] interface {
 //   - IsEmpty() bool:
 //     Returns true if the storage contains no entries, false otherwise.
 type ReadStorage[K comparable, V any] interface {
+	List() []K
 	Get(key K) (V, bool)
 	IsEmpty() bool
 }

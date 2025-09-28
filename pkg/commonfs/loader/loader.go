@@ -67,9 +67,6 @@ const (
 )
 
 var (
-	// ErrExtensionIsEmpty is returned when WithExtension("") is called.
-	ErrExtensionIsEmpty = errors.New("extension is empty")
-
 	// ErrStorageNotSpecified is returned when a nil storage is passed to WithStorage.
 	ErrStorageNotSpecified = errors.New("storage not specified")
 )
@@ -82,6 +79,7 @@ type Loader struct {
 	extension      string
 	keyIDType      KeyIDType
 	recursiveWatch bool
+	operations     map[fsnotify.Op]struct{}
 
 	startMu sync.Mutex
 	watcher *watcher.Watcher
@@ -120,10 +118,6 @@ func OnPaths(paths ...string) Option {
 // This option is only used when KeyIDType is FileNameWithoutExtension.
 func WithExtension(value string) Option {
 	return func(w *Loader) error {
-		if value == "" {
-			return ErrExtensionIsEmpty
-		}
-
 		if !strings.HasPrefix(value, ".") {
 			w.extension = "." + value
 		} else {
@@ -175,6 +169,30 @@ func WithStorage(storage keyvalue.StringToBytesStorage) Option {
 	}
 }
 
+// ForOperations returns an Option that configures a Loader to
+// only consider specific filesystem operations for triggering events.
+//
+// The provided operations (ops) are combined into a set. Only events
+// matching one of these operations will be processed by the Loader.
+// Supported operations are defined in fsnotify.Op:
+//
+//	fsnotify.Create, fsnotify.Write, fsnotify.Remove, fsnotify.Rename, fsnotify.Chmod
+//
+// This Option can be passed to a Loader during creation to filter
+// events according to your requirements.
+func ForOperations(ops ...fsnotify.Op) Option {
+	return func(w *Loader) error {
+		operations := make(map[fsnotify.Op]struct{})
+		for _, op := range ops {
+			operations[op] = struct{}{}
+		}
+
+		w.operations = operations
+
+		return nil
+	}
+}
+
 // Create initializes a Loader that watches the given location for files.
 //
 // Options may be provided to customize KeyID extraction, file extension
@@ -201,6 +219,12 @@ func Create(opts ...Option) (*Loader, error) {
 		pathsToWatch: make(map[string]struct{}),
 		extension:    "",
 		keyIDType:    FileFullPath,
+		operations: map[fsnotify.Op]struct{}{
+			fsnotify.Create: {},
+			fsnotify.Write:  {},
+			fsnotify.Rename: {},
+			fsnotify.Remove: {},
+		},
 
 		startMu: sync.Mutex{},
 		storage: keyvalue.NewMemoryStorage[string, []byte](),
@@ -223,9 +247,12 @@ func Create(opts ...Option) (*Loader, error) {
 
 // onEvent is the fsnotify event handler.
 func (l *Loader) onEvent(event fsnotify.Event) {
-	if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Remove|fsnotify.Rename) != 0 {
-		l.loadResource(event)
+	_, exists := l.operations[event.Op]
+	if !exists {
+		return
 	}
+
+	l.loadResource(event)
 }
 
 // onError is the fsnotify error handler.
@@ -333,7 +360,7 @@ func (l *Loader) loadAllResources(path string) error {
 	}
 
 	for _, keyFile := range keys {
-		if keyFile.IsDir() {
+		if l.recursiveWatch && keyFile.IsDir() {
 			err = l.loadAllResources(filepath.Join(path, keyFile.Name()))
 			if err != nil {
 				return err
@@ -371,6 +398,7 @@ func (l *Loader) loadResource(event fsnotify.Event) {
 		return
 	}
 
+	filePath, _ = strings.CutSuffix(filePath, "~")
 	info, err := os.Stat(filePath)
 	if err != nil || info.IsDir() {
 		return
@@ -382,6 +410,7 @@ func (l *Loader) loadResource(event fsnotify.Event) {
 		return
 	}
 
+	keyID, _ = strings.CutSuffix(keyID, "~")
 	l.storage.Store(keyID, keyData)
 }
 
@@ -413,8 +442,12 @@ func (l *Loader) resolveKeyID(filePath string) (string, bool) {
 			}
 
 			keyID := strings.TrimPrefix(filePath, dir)
+			if filepath.Dir(keyID) == "/" {
+				return keyID[1:], true
+			}
+
 			if !strings.HasPrefix(keyID, string(os.PathSeparator)) {
-				keyID = string(os.PathSeparator) + keyID
+				return string(os.PathSeparator) + keyID, true
 			}
 
 			return keyID, true
