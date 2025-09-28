@@ -209,10 +209,10 @@ func ForOperations(ops ...fsnotify.Op) Option {
 //	    log.Fatal(err)
 //	}
 //
-//	if err := ldr.StartWatching(); err != nil {
+//	if err := ldr.Start(); err != nil {
 //	    log.Fatal(err)
 //	}
-//	defer ldr.StopWatching()
+//	defer ldr.Close()
 func Create(opts ...Option) (*Loader, error) {
 	l := &Loader{
 		paths:        make([]string, 0),
@@ -260,12 +260,12 @@ func (l *Loader) onError(err error) {
 	slog.Warn("failed to load a resource", slog.String("error", err.Error()))
 }
 
-// StartWatching starts the file system watcher and performs an initial
+// Start starts the file system watcher and performs an initial
 // load of all resources.
 //
 // Returns an error if the watcher cannot be started or if resources
 // cannot be loaded.
-func (l *Loader) StartWatching() error {
+func (l *Loader) Start() error {
 	l.startMu.Lock()
 	defer l.startMu.Unlock()
 
@@ -295,9 +295,9 @@ func (l *Loader) StartWatching() error {
 	return l.watcher.Start()
 }
 
-// StopWatching stops the watcher and releases resources.
+// Close stops the watcher and releases resources.
 // Safe to call multiple times.
-func (l *Loader) StopWatching() error {
+func (l *Loader) Close() error {
 	l.startMu.Lock()
 	defer l.startMu.Unlock()
 

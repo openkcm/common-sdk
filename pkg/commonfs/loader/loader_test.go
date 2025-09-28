@@ -43,12 +43,12 @@ func newTestLoader(t *testing.T, dir string) (*loader.Loader, *keyvalue.MemorySt
 
 func startLoader(t *testing.T, l *loader.Loader) {
 	t.Helper()
-	require.NoError(t, l.StartWatching())
+	require.NoError(t, l.Start())
 }
 
 func stopLoader(t *testing.T, l *loader.Loader) {
 	t.Helper()
-	require.NoError(t, l.StopWatching())
+	require.NoError(t, l.Close())
 }
 
 func createTestPemFiles(t *testing.T, dir string, files map[string]string) {

@@ -28,11 +28,11 @@ Example usage:
 	}
 
 	// Start watching
-	err = notifier.StartWatching()
+	err = notifier.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer notifier.StopWatching()
+	defer notifier.Close()
 */
 package notifier
 
@@ -252,8 +252,8 @@ func (n *Notifier) AddPath(path string) error {
 	return nil
 }
 
-// StartWatching starts the underlying filesystem watcher.
-func (n *Notifier) StartWatching() error {
+// Start starts the underlying filesystem watcher.
+func (n *Notifier) Start() error {
 	n.startMu.Lock()
 	defer n.startMu.Unlock()
 
@@ -276,9 +276,9 @@ func (n *Notifier) StartWatching() error {
 	return n.watcher.Start()
 }
 
-// StopWatching stops the watcher and releases all associated resources.
+// Close stops the watcher and releases all associated resources.
 // It is safe to call multiple times.
-func (n *Notifier) StopWatching() error {
+func (n *Notifier) Close() error {
 	n.startMu.Lock()
 	defer n.startMu.Unlock()
 
