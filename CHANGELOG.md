@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.4](https://github.com/openkcm/common-sdk/compare/v1.4.3...v1.4.4) (2025-09-29)
+
+
+### Bug Fixes
+
+* commonfs fixes and introduced a notifier ([#132](https://github.com/openkcm/common-sdk/issues/132)) ([c81ddea](https://github.com/openkcm/common-sdk/commit/c81ddea4e09c5239f14d1667573e6b00b6df49e1))
+
 ## [1.4.3](https://github.com/openkcm/common-sdk/compare/v1.4.2...v1.4.3) (2025-09-26)
 
 
