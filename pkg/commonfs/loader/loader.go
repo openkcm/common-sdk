@@ -217,14 +217,14 @@ func Create(opts ...Option) (*Loader, error) {
 	l := &Loader{
 		paths:        make([]string, 0),
 		pathsToWatch: make(map[string]struct{}),
-		extension:    "",
-		keyIDType:    FileFullPath,
 		operations: map[fsnotify.Op]struct{}{
 			fsnotify.Create: {},
 			fsnotify.Write:  {},
 			fsnotify.Rename: {},
 			fsnotify.Remove: {},
 		},
+		extension: "",
+		keyIDType: FileFullPath,
 
 		startMu: sync.Mutex{},
 		storage: keyvalue.NewMemoryStorage[string, []byte](),
@@ -393,6 +393,7 @@ func (l *Loader) loadResource(event fsnotify.Event) {
 		return
 	}
 
+	keyID, _ = strings.CutSuffix(keyID, "~")
 	if event.Op&(fsnotify.Rename|fsnotify.Remove) != 0 {
 		l.storage.Remove(keyID)
 		return
@@ -411,7 +412,6 @@ func (l *Loader) loadResource(event fsnotify.Event) {
 		return
 	}
 
-	keyID, _ = strings.CutSuffix(keyID, "~")
 	l.storage.Store(keyID, keyData)
 }
 

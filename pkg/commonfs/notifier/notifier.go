@@ -195,15 +195,16 @@ func ForOperations(ops ...fsnotify.Op) Option {
 func Create(opts ...Option) (*Notifier, error) {
 	n := &Notifier{
 		paths: make([]string, 0),
-
-		interval: time.Nanosecond,
-		burst:    0,
 		operations: map[fsnotify.Op]struct{}{
 			fsnotify.Create: {},
 			fsnotify.Write:  {},
 			fsnotify.Rename: {},
 			fsnotify.Remove: {},
 		},
+
+		interval: time.Nanosecond,
+		burst:    0,
+
 		cacheMu:     sync.Mutex{},
 		cacheErrors: make([]error, 0),
 		cacheEvents: make(map[string][]fsnotify.Event),
