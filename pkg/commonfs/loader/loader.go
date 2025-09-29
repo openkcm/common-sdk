@@ -17,11 +17,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/openkcm/common-sdk/pkg/commonfs/watcher"
 	"github.com/openkcm/common-sdk/pkg/storage/keyvalue"
+	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 // KeyIDType defines how the loader generates Key IDs from file paths.
@@ -65,9 +67,6 @@ const (
 )
 
 var (
-	// ErrExtensionIsEmpty is returned when WithExtension("") is called.
-	ErrExtensionIsEmpty = errors.New("extension is empty")
-
 	// ErrStorageNotSpecified is returned when a nil storage is passed to WithStorage.
 	ErrStorageNotSpecified = errors.New("storage not specified")
 )
@@ -75,16 +74,41 @@ var (
 // Loader watches a directory for resource files and maintains a key–value store
 // of file contents, indexed by Key IDs.
 type Loader struct {
-	location  string
-	extension string
-	keyIDType KeyIDType
+	paths          []string
+	pathsToWatch   map[string]struct{}
+	extension      string
+	keyIDType      KeyIDType
+	recursiveWatch bool
+	operations     map[fsnotify.Op]struct{}
 
-	watcher *watcher.NotifyWrapper
+	startMu sync.Mutex
+	watcher *watcher.Watcher
 	storage keyvalue.StringToBytesStorage
 }
 
 // Option represents a configuration option for Loader.
 type Option func(*Loader) error
+
+// OnPath configures the notifier to observe a single path.
+func OnPath(path string) Option {
+	return func(w *Loader) error {
+		return w.AddPath(path)
+	}
+}
+
+// OnPaths configures the notifier to observe multiple paths at once.
+func OnPaths(paths ...string) Option {
+	return func(w *Loader) error {
+		for _, path := range paths {
+			err := w.AddPath(path)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
 
 // WithExtension configures the file extension that identifies relevant files.
 //
@@ -94,16 +118,28 @@ type Option func(*Loader) error
 // This option is only used when KeyIDType is FileNameWithoutExtension.
 func WithExtension(value string) Option {
 	return func(w *Loader) error {
-		if value == "" {
-			return ErrExtensionIsEmpty
-		}
-
 		if !strings.HasPrefix(value, ".") {
 			w.extension = "." + value
 		} else {
 			w.extension = value
 		}
 
+		return nil
+	}
+}
+
+// WatchSubfolders enables or disables recursive monitoring of subfolders.
+//
+// By default, fsnotify does not watch subfolders of a directory automatically.
+// When enabled, this option ensures that all nested directories are included
+// in the watch scope, so events such as file creation, modification, renaming,
+// or deletion inside subdirectories will also be detected.
+// Parameters:
+//   - enabled: set to true to include subfolders in the watch, false to
+//     restrict watching only to the top-level directory.
+func WatchSubfolders(enabled bool) Option {
+	return func(w *Loader) error {
+		w.recursiveWatch = enabled
 		return nil
 	}
 }
@@ -133,6 +169,30 @@ func WithStorage(storage keyvalue.StringToBytesStorage) Option {
 	}
 }
 
+// ForOperations returns an Option that configures a Loader to
+// only consider specific filesystem operations for triggering events.
+//
+// The provided operations (ops) are combined into a set. Only events
+// matching one of these operations will be processed by the Loader.
+// Supported operations are defined in fsnotify.Op:
+//
+//	fsnotify.Create, fsnotify.Write, fsnotify.Remove, fsnotify.Rename, fsnotify.Chmod
+//
+// This Option can be passed to a Loader during creation to filter
+// events according to your requirements.
+func ForOperations(ops ...fsnotify.Op) Option {
+	return func(w *Loader) error {
+		operations := make(map[fsnotify.Op]struct{})
+		for _, op := range ops {
+			operations[op] = struct{}{}
+		}
+
+		w.operations = operations
+
+		return nil
+	}
+}
+
 // Create initializes a Loader that watches the given location for files.
 //
 // Options may be provided to customize KeyID extraction, file extension
@@ -149,28 +209,26 @@ func WithStorage(storage keyvalue.StringToBytesStorage) Option {
 //	    log.Fatal(err)
 //	}
 //
-//	if err := ldr.StartWatching(); err != nil {
+//	if err := ldr.Start(); err != nil {
 //	    log.Fatal(err)
 //	}
-//	defer ldr.StopWatching()
-func Create(location string, opts ...Option) (*Loader, error) {
-	dl := &Loader{
-		location:  location,
+//	defer ldr.Close()
+func Create(opts ...Option) (*Loader, error) {
+	l := &Loader{
+		paths:        make([]string, 0),
+		pathsToWatch: make(map[string]struct{}),
+		operations: map[fsnotify.Op]struct{}{
+			fsnotify.Create: {},
+			fsnotify.Write:  {},
+			fsnotify.Rename: {},
+			fsnotify.Remove: {},
+		},
 		extension: "",
 		keyIDType: FileFullPath,
-		storage:   keyvalue.NewMemoryStorage[string, []byte](),
-	}
 
-	defaultWatcher, err := watcher.NewFSWatcher(
-		watcher.OnPath(location),
-		watcher.WithEventHandler(dl.onEvent),
-		watcher.WithErrorEventHandler(dl.onError),
-	)
-	if err != nil {
-		return nil, err
+		startMu: sync.Mutex{},
+		storage: keyvalue.NewMemoryStorage[string, []byte](),
 	}
-
-	dl.watcher = defaultWatcher
 
 	// Apply options
 	for _, opt := range opts {
@@ -178,59 +236,119 @@ func Create(location string, opts ...Option) (*Loader, error) {
 			continue
 		}
 
-		err = opt(dl)
+		err := opt(l)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return dl, nil
+	return l, nil
 }
 
 // onEvent is the fsnotify event handler.
-func (dl *Loader) onEvent(event fsnotify.Event) {
-	if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Remove|fsnotify.Rename) != 0 {
-		dl.loadSigningKey(event)
+func (l *Loader) onEvent(event fsnotify.Event) {
+	_, exists := l.operations[event.Op]
+	if !exists {
+		return
 	}
+
+	l.loadResource(event)
 }
 
 // onError is the fsnotify error handler.
-func (dl *Loader) onError(err error) {
-	slog.Error("failed to load signing keys", slog.String("error", err.Error()))
+func (l *Loader) onError(err error) {
+	slog.Warn("failed to load a resource", slog.String("error", err.Error()))
 }
 
-// StartWatching starts the file system watcher and performs an initial
+// Start starts the file system watcher and performs an initial
 // load of all resources.
 //
 // Returns an error if the watcher cannot be started or if resources
 // cannot be loaded.
-func (dl *Loader) StartWatching() error {
-	errStart := dl.watcher.Start()
+func (l *Loader) Start() error {
+	l.startMu.Lock()
+	defer l.startMu.Unlock()
 
-	err := dl.loadAllResources(dl.location)
-	if err != nil {
-		return fmt.Errorf("failed to load signing keys %w", err)
+	if l.IsStarted() {
+		return nil
 	}
 
-	return errStart
+	w, err := watcher.Create(
+		watcher.OnPaths(l.paths...),
+		watcher.WatchSubfolders(l.recursiveWatch),
+		watcher.WithEventHandler(l.onEvent),
+		watcher.WithErrorEventHandler(l.onError),
+	)
+	if err != nil {
+		return err
+	}
+
+	l.watcher = w
+
+	for _, path := range l.paths {
+		err := l.loadAllResources(path)
+		if err != nil {
+			return fmt.Errorf("failed to load resources: %w", err)
+		}
+	}
+
+	return l.watcher.Start()
 }
 
-// StopWatching stops the watcher and releases resources.
+// Close stops the watcher and releases resources.
 // Safe to call multiple times.
-func (dl *Loader) StopWatching() error {
-	return dl.watcher.Close()
+func (l *Loader) Close() error {
+	l.startMu.Lock()
+	defer l.startMu.Unlock()
+
+	if !l.IsStarted() {
+		return nil
+	}
+
+	defer func() {
+		l.watcher = nil
+	}()
+
+	return l.watcher.Close()
 }
 
 // Storage returns a read-only view of the Loader’s storage.
 // Consumers can use this to retrieve key data without modifying
 // the internal storage.
-func (dl *Loader) Storage() keyvalue.ReadOnlyStringToBytesStorage {
-	return dl.storage
+func (l *Loader) Storage() keyvalue.ReadOnlyStringToBytesStorage {
+	return l.storage
+}
+
+func (l *Loader) IsStarted() bool {
+	return l.watcher != nil && l.watcher.IsStarted()
+}
+
+// AddPath adds a new path to the notifier. It must be called before Start.
+// The path must exist on the filesystem, otherwise an error is returned.
+func (l *Loader) AddPath(path string) error {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+
+	exist, err := utils.FileExist(absPath)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		return fmt.Errorf("path does not exist: %s", absPath)
+	}
+
+	l.paths = append(l.paths, absPath)
+	l.pathsToWatch[absPath] = struct{}{}
+
+	return nil
 }
 
 // loadAllResources recursively loads all files from the given path
 // into the storage, applying the configured KeyID extraction rules.
-func (dl *Loader) loadAllResources(path string) error {
+func (l *Loader) loadAllResources(path string) error {
 	_, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -242,82 +360,105 @@ func (dl *Loader) loadAllResources(path string) error {
 	}
 
 	for _, keyFile := range keys {
-		if keyFile.IsDir() {
-			err = dl.loadAllResources(filepath.Join(path, keyFile.Name()))
+		if l.recursiveWatch && keyFile.IsDir() {
+			err = l.loadAllResources(filepath.Join(path, keyFile.Name()))
 			if err != nil {
 				return err
 			}
-		} else {
-			dl.loadSigningKey(fsnotify.Event{
-				Name: filepath.Join(path, keyFile.Name()),
-				Op:   fsnotify.Write,
-			})
+
+			continue
 		}
+
+		l.loadResource(fsnotify.Event{
+			Name: filepath.Join(path, keyFile.Name()),
+			Op:   fsnotify.Write,
+		})
 	}
 
 	return nil
 }
 
-// loadSigningKey loads or removes a single file in response to a file system event.
+// loadResource loads or removes a single file in response to a file system event.
 //
 // Supported operations:
 //   - Create/Write: load or update file contents
 //   - Rename/Remove: remove file from storage
 //
 // Files that are directories, unreadable, or empty are skipped.
-func (dl *Loader) loadSigningKey(event fsnotify.Event) {
+func (l *Loader) loadResource(event fsnotify.Event) {
 	filePath := event.Name
 
-	var keyID string
-
-	switch dl.keyIDType {
-	case FileNameWithExtension:
-		_, keyID = filepath.Split(filePath)
-
-	case FileNameWithoutExtension:
-		_, name := filepath.Split(filePath)
-
-		var found bool
-
-		keyID, found = strings.CutSuffix(name, dl.extension)
-		if !found {
-			return
-		}
-
-	case FileFullPathRelativeToLocation:
-		keyID = strings.TrimPrefix(filePath, dl.location)
-		if !strings.HasPrefix(keyID, string(os.PathSeparator)) {
-			keyID = string(os.PathSeparator) + keyID
-		}
-
-	case FileFullPath:
-		keyID = filePath
-	}
-
-	if event.Op&(fsnotify.Rename|fsnotify.Remove) != 0 {
-		dl.storage.Remove(keyID)
+	keyID, ok := l.resolveKeyID(filePath)
+	if !ok {
 		return
 	}
+
+	keyID, _ = strings.CutSuffix(keyID, "~")
+	if event.Op&(fsnotify.Rename|fsnotify.Remove) != 0 {
+		l.storage.Remove(keyID)
+		return
+	}
+
+	filePath, _ = strings.CutSuffix(filePath, "~")
 
 	info, err := os.Stat(filePath)
-	if err != nil {
-		return
-	}
-
-	if info.IsDir() {
+	if err != nil || info.IsDir() {
 		return
 	}
 
 	keyData, err := os.ReadFile(filePath)
-	if err != nil {
+	if err != nil || len(keyData) == 0 {
 		// Skip unreadable files
 		return
 	}
 
-	if len(keyData) == 0 {
-		// Skip empty files
-		return
+	l.storage.Store(keyID, keyData)
+}
+
+// resolveKeyID determines the storage key based on Loader.keyIDType
+// Returns (key, true) if the key is valid, or ("", false) if it should be skipped.
+func (l *Loader) resolveKeyID(filePath string) (string, bool) {
+	switch l.keyIDType {
+	case FileNameWithExtension:
+		_, name := filepath.Split(filePath)
+		return name, true
+
+	case FileNameWithoutExtension:
+		_, name := filepath.Split(filePath)
+
+		keyID, found := strings.CutSuffix(name, l.extension)
+		if !found {
+			return "", false
+		}
+
+		return keyID, true
+
+	case FileFullPathRelativeToLocation:
+		dir := filepath.Dir(filePath)
+		for dir != "/" && len(dir) > 1 {
+			_, ok := l.pathsToWatch[dir]
+			if !ok {
+				dir = filepath.Dir(dir)
+				continue
+			}
+
+			keyID := strings.TrimPrefix(filePath, dir)
+			if filepath.Dir(keyID) == "/" {
+				return keyID[1:], true
+			}
+
+			if !strings.HasPrefix(keyID, string(os.PathSeparator)) {
+				return string(os.PathSeparator) + keyID, true
+			}
+
+			return keyID, true
+		}
+
+		return "", false
+
+	case FileFullPath:
+		return filePath, true
 	}
 
-	dl.storage.Store(keyID, keyData)
+	return "", false
 }

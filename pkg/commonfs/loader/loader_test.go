@@ -30,7 +30,8 @@ func newTestLoader(t *testing.T, dir string) (*loader.Loader, *keyvalue.MemorySt
 	t.Helper()
 
 	st := keyvalue.NewMemoryStorage[string, []byte]()
-	l, err := loader.Create(dir,
+	l, err := loader.Create(
+		loader.OnPath(dir),
 		loader.WithStorage(st),
 		loader.WithExtension("pem"),
 		loader.WithKeyIDType(loader.FileNameWithoutExtension),
@@ -42,12 +43,12 @@ func newTestLoader(t *testing.T, dir string) (*loader.Loader, *keyvalue.MemorySt
 
 func startLoader(t *testing.T, l *loader.Loader) {
 	t.Helper()
-	require.NoError(t, l.StartWatching())
+	require.NoError(t, l.Start())
 }
 
 func stopLoader(t *testing.T, l *loader.Loader) {
 	t.Helper()
-	require.NoError(t, l.StopWatching())
+	require.NoError(t, l.Close())
 }
 
 func createTestPemFiles(t *testing.T, dir string, files map[string]string) {
@@ -121,9 +122,11 @@ func TestLoaderKeyIDTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			st := keyvalue.NewMemoryStorage[string, []byte]()
-			l, err := loader.Create(tt.location,
+			l, err := loader.Create(
+				loader.OnPath(tt.location),
 				loader.WithStorage(st),
 				loader.WithExtension("pem"),
+				loader.WatchSubfolders(true),
 				loader.WithKeyIDType(tt.keyIDType),
 			)
 			require.NoError(t, err)
@@ -131,7 +134,7 @@ func TestLoaderKeyIDTypes(t *testing.T) {
 			startLoader(t, l)
 			defer stopLoader(t, l)
 
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 
 			for _, key := range tt.expected {
 				val, ok := st.Get(key)
@@ -147,7 +150,8 @@ func TestNewLoaderWithOptions(t *testing.T) {
 
 	t.Run("valid loader with storage + extension", func(t *testing.T) {
 		st := keyvalue.NewMemoryStorage[string, []byte]()
-		l, err := loader.Create(tmpDir,
+		l, err := loader.Create(
+			loader.OnPath(tmpDir),
 			loader.WithStorage(st),
 			loader.WithExtension(".pem"),
 			loader.WithKeyIDType(loader.FileNameWithExtension),
@@ -156,13 +160,11 @@ func TestNewLoaderWithOptions(t *testing.T) {
 		require.NotNil(t, l)
 	})
 
-	t.Run("invalid extension", func(t *testing.T) {
-		_, err := loader.Create(tmpDir, loader.WithExtension(""))
-		require.ErrorIs(t, err, loader.ErrExtensionIsEmpty)
-	})
-
 	t.Run("nil storage", func(t *testing.T) {
-		_, err := loader.Create(tmpDir, loader.WithStorage(nil))
+		_, err := loader.Create(
+			loader.OnPath(tmpDir),
+			loader.WithStorage(nil),
+		)
 		require.ErrorIs(t, err, loader.ErrStorageNotSpecified)
 	})
 }
@@ -244,7 +246,8 @@ func TestLoadSigningKeysLoadsPemFiles(t *testing.T) {
 }
 
 func TestLoadSigningKeysErrorOnReadDir(t *testing.T) {
-	_, err := loader.Create("/non/existent/path",
+	_, err := loader.Create(
+		loader.OnPath("/non/existent/path"),
 		loader.WithExtension("pem"),
 		loader.WithKeyIDType(loader.FileNameWithoutExtension),
 	)
