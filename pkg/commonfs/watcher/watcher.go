@@ -129,7 +129,13 @@ func WithEventHandler(handler func(fsnotify.Event)) Option {
 // WithEventChainAsHandler sends all file system events to the provided channel.
 // This is useful for external event processing loops.
 func WithEventChainAsHandler(eventsCh chan<- fsnotify.Event) Option {
-	return WithEventHandler(func(e fsnotify.Event) { eventsCh <- e })
+	return WithEventHandler(func(e fsnotify.Event) {
+		select {
+		case eventsCh <- e:
+		default:
+			slog.Error("watcher event couldn't be delivered", "event", e)
+		}
+	})
 }
 
 // WithErrorEventHandler sets the error handler that will be called
@@ -144,7 +150,14 @@ func WithErrorEventHandler(handler func(error)) Option {
 // WithErrorChainAsHandler sends all watcher errors to the provided channel.
 // This is useful for external error handling loops.
 func WithErrorChainAsHandler(eventsCh chan<- error) Option {
-	return WithErrorEventHandler(func(e error) { eventsCh <- e })
+	return WithErrorEventHandler(func(e error) {
+		select {
+		case eventsCh <- e:
+		default:
+			slog.Error("watcher error as event couldn't be delivered",
+				"error", e)
+		}
+	})
 }
 
 // Create creates a new Watcher with the given options.

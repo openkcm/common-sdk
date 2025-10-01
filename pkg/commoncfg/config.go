@@ -301,6 +301,7 @@ type GRPCClient struct {
 	Address    string               `yaml:"address" json:"address"`
 	Attributes GRPCClientAttributes `yaml:"attributes" json:"attributes"`
 	Pool       GRPCPool             `yaml:"pool" json:"pool"`
+	SecretRef  *SecretRef           `yaml:"secretRef" json:"secretRef"`
 }
 
 type GRPCPool struct {

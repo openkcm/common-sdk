@@ -12,7 +12,7 @@
 //     storage backend. The KeyID is derived from the file path using a
 //     configurable strategy (see KeyIDType).
 //   - Storage: a pluggable key->[]byte storage implementing
-//     keyvalue.StringToBytesStorage. By default an in-memory storage is used.
+//     keyvalue.StringToBytesStorage. By default, an in-memory storage is used.
 //   - Watcher: a filesystem watcher (fsnotify based) that forwards events to
 //     the loader so it can add/update/remove resources in storage.
 //
