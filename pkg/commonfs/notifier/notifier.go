@@ -13,11 +13,10 @@ events happen in quick succession. It supports:
 
 Example usage:
 
-	paths := []string{"/tmp/watchdir"}
-
 	// Create a new notifier with a delay of 200ms and up to 5 events per delay
 	notifier, err := notifier.Create(paths,
-		notifier.WithEventHandler(func(events []fsnotify.Event) {
+		notifier.OnPaths("/tmp/watchdir"),
+		notifier.WithEventHandler(func(path string, events []fsnotify.Event) {
 			fmt.Println("Received events:", events)
 		}),
 		notifier.WithLimitDelay(200*time.Millisecond),
