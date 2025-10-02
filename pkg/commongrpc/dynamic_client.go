@@ -10,7 +10,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 	"google.golang.org/grpc"
@@ -30,7 +30,9 @@ import (
 // certificate path. When changes are detected, the client connection is torn
 // down and recreated with the latest credentials.
 type DynamicClientConn struct {
-	clientConn  atomic.Pointer[grpc.ClientConn]
+	*grpc.ClientConn
+
+	mu          sync.Mutex
 	cfg         *commoncfg.GRPCClient
 	dialOptions []grpc.DialOption
 
@@ -63,7 +65,7 @@ type DynamicClientConn struct {
 //	conn := client.Get()
 func NewDynamicClientConn(cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOption) (*DynamicClientConn, error) {
 	rc := &DynamicClientConn{
-		clientConn:  atomic.Pointer[grpc.ClientConn]{},
+		mu:          sync.Mutex{},
 		cfg:         cfg,
 		dialOptions: dialOptions,
 	}
@@ -128,17 +130,10 @@ func (dcc *DynamicClientConn) Close() error {
 
 	_ = dcc.notifier.Close()
 
-	conn := dcc.clientConn.Swap(nil)
-	if conn != nil {
-		return conn.Close()
-	}
+	dcc.mu.Lock()
+	defer dcc.mu.Unlock()
 
-	return nil
-}
-
-// ClientConn returns the current gRPC client connection.
-func (dcc *DynamicClientConn) ClientConn() *grpc.ClientConn {
-	return dcc.clientConn.Load()
+	return dcc.ClientConn.Close()
 }
 
 // eventHandler is invoked by the underlying file watcher when the
@@ -146,7 +141,7 @@ func (dcc *DynamicClientConn) ClientConn() *grpc.ClientConn {
 func (dcc *DynamicClientConn) eventHandler(_ string, _ []fsnotify.Event) {
 	err := dcc.refreshGRPCClientConn()
 	if err != nil {
-		slog.Error("refreshing of grpc client failed", "error", err)
+		slog.Error("refreshing of dynamic grpc client failed", "error", err)
 	}
 }
 
@@ -160,12 +155,14 @@ func (dcc *DynamicClientConn) refreshGRPCClientConn() error {
 		return err
 	}
 
-	oldClient := dcc.clientConn.Swap(newClient)
-	if oldClient != nil {
-		err = oldClient.Close()
-		if err != nil {
-			return err
-		}
+	dcc.mu.Lock()
+	defer dcc.mu.Unlock()
+
+	if dcc.ClientConn != nil {
+		_ = dcc.ClientConn.Close()
+		dcc.ClientConn = nil
 	}
+
+	dcc.ClientConn = newClient
 	return nil
 }
