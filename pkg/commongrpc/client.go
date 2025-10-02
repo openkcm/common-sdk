@@ -192,6 +192,7 @@ func computeTransportCredentials(cfg *commoncfg.GRPCClient) (credentials.Transpo
 		if err != nil {
 			return nil, err
 		}
+
 		creds = credentials.NewTLS(tlsConfig)
 	default:
 		return nil, ErrUnsupportedSecretType

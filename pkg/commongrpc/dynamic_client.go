@@ -13,9 +13,10 @@ import (
 	"sync/atomic"
 
 	"github.com/fsnotify/fsnotify"
+	"google.golang.org/grpc"
+
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/commonfs/notifier"
-	"google.golang.org/grpc"
 )
 
 // DynamicClientConn represents a gRPC client connection that automatically
@@ -125,6 +126,7 @@ func (dcc *DynamicClientConn) Close() error {
 	if conn != nil {
 		return conn.Close()
 	}
+
 	return nil
 }
 

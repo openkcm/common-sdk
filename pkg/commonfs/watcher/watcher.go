@@ -191,7 +191,7 @@ func Create(opts ...Option) (*Watcher, error) {
 		return w, nil
 	}
 
-	for path, _ := range w.paths {
+	for path := range w.paths {
 		err := w.addRecursive(path)
 		if err != nil {
 			return nil, err
@@ -258,7 +258,7 @@ func (w *Watcher) Start() error {
 
 	w.watcher = watcher
 
-	for path, _ := range w.paths {
+	for path := range w.paths {
 		err := w.watcher.Add(path)
 		if err != nil {
 			return err
