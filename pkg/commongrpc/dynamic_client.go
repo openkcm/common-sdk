@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"google.golang.org/grpc"
@@ -63,7 +64,7 @@ type DynamicClientConn struct {
 //	client, _ := commongrpc.NewDynamicClientConn(cfg)
 //	_ = client.Start()
 //	conn := client.Get()
-func NewDynamicClientConn(cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOption) (*DynamicClientConn, error) {
+func NewDynamicClientConn(cfg *commoncfg.GRPCClient, throttleInterval time.Duration, dialOptions ...grpc.DialOption) (*DynamicClientConn, error) {
 	rc := &DynamicClientConn{
 		mu:          sync.Mutex{},
 		cfg:         cfg,
@@ -91,6 +92,7 @@ func NewDynamicClientConn(cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOpt
 		nt, err := notifier.Create(
 			notifier.OnPaths(paths...),
 			notifier.WithEventHandler(rc.eventHandler),
+			notifier.WithThrottleInterval(throttleInterval),
 			notifier.WithBurstNumber(0),
 		)
 		if err != nil {
