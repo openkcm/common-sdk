@@ -67,7 +67,7 @@ var (
 type Watcher struct {
 	startMu        sync.Mutex
 	started        bool
-	paths          []string
+	paths          map[string]struct{}
 	recursiveWatch bool
 
 	done    chan struct{}
@@ -174,7 +174,7 @@ func WithErrorChainAsHandler(eventsCh chan<- error) Option {
 func Create(opts ...Option) (*Watcher, error) {
 	w := &Watcher{
 		startMu: sync.Mutex{},
-		paths:   make([]string, 0),
+		paths:   make(map[string]struct{}),
 	}
 
 	// Apply the options
@@ -191,7 +191,7 @@ func Create(opts ...Option) (*Watcher, error) {
 		return w, nil
 	}
 
-	for _, path := range w.paths {
+	for path, _ := range w.paths {
 		err := w.addRecursive(path)
 		if err != nil {
 			return nil, err
@@ -220,7 +220,7 @@ func (w *Watcher) AddPath(path string) error {
 		return fmt.Errorf("path does not exist: %s", absPath)
 	}
 
-	w.paths = append(w.paths, absPath)
+	w.paths[absPath] = struct{}{}
 
 	return nil
 }
@@ -258,7 +258,7 @@ func (w *Watcher) Start() error {
 
 	w.watcher = watcher
 
-	for _, path := range w.paths {
+	for path, _ := range w.paths {
 		err := w.watcher.Add(path)
 		if err != nil {
 			return err
