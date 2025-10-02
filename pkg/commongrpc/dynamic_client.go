@@ -103,7 +103,13 @@ func NewDynamicClientConn(cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOpt
 		rc.notifier = nt
 	}
 
-	rc.refreshGRPCClientConn()
+	err := rc.refreshGRPCClientConn()
+	if err != nil {
+		if rc.notifier != nil {
+			_ = rc.notifier.Close()
+		}
+		return nil, err
+	}
 
 	return rc, nil
 }
@@ -138,22 +144,28 @@ func (dcc *DynamicClientConn) ClientConn() *grpc.ClientConn {
 // eventHandler is invoked by the underlying file watcher when the
 // certificate file changes. It triggers a refresh of the client connection.
 func (dcc *DynamicClientConn) eventHandler(_ string, _ []fsnotify.Event) {
-	dcc.refreshGRPCClientConn()
+	err := dcc.refreshGRPCClientConn()
+	if err != nil {
+		slog.Error("refreshing of grpc client failed", "error", err)
+	}
 }
 
 // refreshGRPCClientConn tears down the existing gRPC connection
 // and replaces it with a newly established one based on the latest
 // configuration and credentials. If connection creation fails, the
 // error is logged and the previous connection remains in use.
-func (dcc *DynamicClientConn) refreshGRPCClientConn() {
+func (dcc *DynamicClientConn) refreshGRPCClientConn() error {
 	newClient, err := NewClient(dcc.cfg, dcc.dialOptions...)
 	if err != nil {
-		slog.Error("creation of grpc client failed", "error", err)
-		return
+		return err
 	}
 
 	oldClient := dcc.clientConn.Swap(newClient)
 	if oldClient != nil {
-		_ = oldClient.Close()
+		err = oldClient.Close()
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
