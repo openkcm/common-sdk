@@ -1,6 +1,7 @@
 package commoncfg_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -108,7 +109,7 @@ func TestLoadConfig(t *testing.T) {
 
 			file := filepath.Join(tmpdir, "config.yaml")
 
-			err := os.WriteFile(file, []byte(tc.cfg), 0644)
+			err := os.WriteFile(file, []byte(tc.cfg), 0o644)
 			if err != nil {
 				t.Fatalf("failed to create config file: %v", err)
 			}
@@ -138,6 +139,66 @@ func TestLoadConfig(t *testing.T) {
 	}
 }
 
+func TestWithFile(t *testing.T) {
+	tmpdir := t.TempDir()
+	cfg := &MyConfig{}
+
+	yamlCfg := "key1: foo"
+	tests := []struct {
+		name      string
+		file      string
+		extension commoncfg.FileFormat
+		cfg       string
+		isErr     bool
+	}{
+		{
+			name:      "Should use default file",
+			file:      commoncfg.DefaultFileName,
+			extension: commoncfg.DefaultFileExtension,
+			cfg:       yamlCfg,
+		},
+		{
+			name:      "Should use file with different name",
+			file:      "test",
+			extension: commoncfg.DefaultFileExtension,
+			cfg:       yamlCfg,
+		},
+		{
+			name:      "Should use file with different supported format",
+			file:      "test",
+			extension: commoncfg.JSONFileFormat,
+			cfg:       "{\"key1\": \"foo\"}",
+		},
+		{
+			name:      "Should error on file with unsupported format",
+			file:      "test",
+			extension: "test",
+			isErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file := filepath.Join(
+				tmpdir,
+				fmt.Sprintf("%s.%s", tt.file, tt.extension),
+			)
+
+			err := os.WriteFile(file, []byte(tt.cfg), 0o644)
+			assert.NoError(t, err)
+
+			loader := commoncfg.NewLoader(cfg, commoncfg.WithPaths(tmpdir), commoncfg.WithFile(tt.file, tt.extension))
+			err = loader.LoadConfig()
+
+			if tt.isErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestWithEnvOverride(t *testing.T) {
 	// Arrange
 	config := "key1: value1\nkey2: 42\nsub:\n  key3: value3"
@@ -146,7 +207,7 @@ func TestWithEnvOverride(t *testing.T) {
 
 	file := filepath.Join(tmpdir, "config.yaml")
 
-	err := os.WriteFile(file, []byte(config), 0644)
+	err := os.WriteFile(file, []byte(config), 0o644)
 	if err != nil {
 		t.Fatalf("failed to create config file: %v", err)
 	}
