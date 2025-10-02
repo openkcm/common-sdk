@@ -110,6 +110,7 @@ func NewDynamicClientConn(cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOpt
 		if rc.notifier != nil {
 			_ = rc.notifier.Close()
 		}
+
 		return nil, err
 	}
 
@@ -164,5 +165,6 @@ func (dcc *DynamicClientConn) refreshGRPCClientConn() error {
 	}
 
 	dcc.ClientConn = newClient
+
 	return nil
 }
