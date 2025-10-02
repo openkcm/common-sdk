@@ -130,8 +130,7 @@ func (dcc *DynamicClientConn) Close() error {
 	return nil
 }
 
-// ClientConn returns the current gRPC client connection. If Start() has not
-// been called yet, or if connection creation failed, this may return nil.
+// ClientConn returns the current gRPC client connection.
 func (dcc *DynamicClientConn) ClientConn() *grpc.ClientConn {
 	return dcc.clientConn.Load()
 }
@@ -142,7 +141,7 @@ func (dcc *DynamicClientConn) eventHandler(_ string, _ []fsnotify.Event) {
 	dcc.refreshGRPCClientConn()
 }
 
-// refreshGRPCClientConnection tears down the existing gRPC connection
+// refreshGRPCClientConn tears down the existing gRPC connection
 // and replaces it with a newly established one based on the latest
 // configuration and credentials. If connection creation fails, the
 // error is logged and the previous connection remains in use.
