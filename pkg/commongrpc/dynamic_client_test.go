@@ -48,16 +48,21 @@ func generateSelfSignedCert(t *testing.T) ([]byte, []byte) {
 // writeTempFile writes content to a temporary file and returns its path.
 func writeTempFile(t *testing.T, dir, name, content string) string {
 	t.Helper()
+
 	path := filepath.Join(dir, name)
-	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+
+	err := os.WriteFile(path, []byte(content), 0600)
+	if err != nil {
 		t.Fatalf("failed to write file %s: %v", path, err)
 	}
+
 	return path
 }
 
 // buildGRPCClientConfig returns a GRPCClient config with optional mTLS setup
 func buildGRPCClientConfig(t *testing.T, tmpDir string, withSecretRef bool) *commoncfg.GRPCClient {
 	t.Helper()
+
 	cfg := &commoncfg.GRPCClient{Address: "localhost:12345"}
 
 	if !withSecretRef {
@@ -93,6 +98,8 @@ func buildGRPCClientConfig(t *testing.T, tmpDir string, withSecretRef bool) *com
 
 // runDynamicClientConnTest encapsulates the core logic for testing DynamicClientConn
 func runDynamicClientConnTest(t *testing.T, withSecretRef bool, expectError bool) {
+	t.Helper()
+
 	tmpDir := t.TempDir()
 	cfg := buildGRPCClientConfig(t, tmpDir, withSecretRef)
 
@@ -102,6 +109,7 @@ func runDynamicClientConnTest(t *testing.T, withSecretRef bool, expectError bool
 		if err == nil {
 			t.Fatal("expected error, got none")
 		}
+
 		return
 	}
 
@@ -111,6 +119,7 @@ func runDynamicClientConnTest(t *testing.T, withSecretRef bool, expectError bool
 
 	if conn != nil {
 		t.Cleanup(func() { _ = conn.Close() })
+
 		if conn.ClientConn == nil {
 			t.Error("expected ClientConn to be initialized")
 		}
@@ -130,7 +139,6 @@ func TestDynamicClientConn(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			runDynamicClientConnTest(t, tt.withSecretRef, tt.expectError)
@@ -143,10 +151,12 @@ func TestDynamicClientConnRefreshOnCertChange(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	cfg := buildGRPCClientConfig(t, tmpDir, true)
+
 	conn, err := commongrpc.NewDynamicClientConn(cfg, 50*time.Millisecond)
 	if err != nil {
 		t.Fatalf("failed to create DynamicClientConn: %v", err)
 	}
+
 	t.Cleanup(func() { _ = conn.Close() })
 
 	oldConn := conn.ClientConn
@@ -161,6 +171,7 @@ func TestDynamicClientConnRefreshOnCertChange(t *testing.T) {
 	if conn.ClientConn == nil {
 		t.Fatal("expected ClientConn to be refreshed")
 	}
+
 	if conn.ClientConn == oldConn {
 		t.Error("expected ClientConn to be different after refresh")
 	}
@@ -170,13 +181,15 @@ func TestDynamicClientConnCloseIdempotent(t *testing.T) {
 	t.Parallel()
 
 	cfg := &commoncfg.GRPCClient{Address: "localhost:12345"}
+
 	conn, err := commongrpc.NewDynamicClientConn(cfg, 50*time.Millisecond)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	for i := 0; i < 2; i++ {
-		if err := conn.Close(); err != nil {
+	for i := range 2 {
+		err := conn.Close()
+		if err != nil {
 			t.Errorf("close #%d failed: %v", i+1, err)
 		}
 	}
