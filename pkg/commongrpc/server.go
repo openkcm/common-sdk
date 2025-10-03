@@ -15,7 +15,21 @@ import (
 	"github.com/openkcm/common-sdk/pkg/otlp"
 )
 
-// NewServer create the grpc server
+// NewServer creates and configures a new gRPC server instance.
+//
+// It applies keepalive enforcement and server parameters, maximum receive message size,
+// and OpenTelemetry stats handlers. Additional grpc.ServerOption values can be provided.
+//
+// If reflection is enabled in the config, the server will register the reflection service.
+// If health checks are enabled, the server will register the gRPC health service.
+//
+// Parameters:
+//   - ctx: Context for logging and server setup
+//   - cfg: Pointer to GRPCServer configuration
+//   - serverOptions: Additional grpc.ServerOption values
+//
+// Returns:
+//   - *grpc.Server: The configured gRPC server instance
 func NewServer(ctx context.Context, cfg *commoncfg.GRPCServer, serverOptions ...grpc.ServerOption) *grpc.Server {
 	opts := make([]grpc.ServerOption, 0)
 

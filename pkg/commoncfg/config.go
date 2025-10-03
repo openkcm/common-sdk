@@ -245,6 +245,7 @@ type Prometheus struct {
 // GRPCServer specifies the gRPC server configuration e.g. used by the
 // business gRPC server if any.
 type GRPCServer struct {
+	Enabled bool   `yaml:"enabled" json:"enabled"`
 	Address string `yaml:"address" json:"address" default:":9092"`
 	Flags   Flags  `yaml:"flags" json:"flags"`
 	// MaxSendMsgSize returns a ServerOption to set the max message size in bytes the server can send.
@@ -298,9 +299,11 @@ type GRPCServerAttributes struct {
 // GRPCClient specifies the gRPC client configuration e.g. used by the
 // gRPC health check client.
 type GRPCClient struct {
+	Enabled    bool                 `yaml:"enabled" json:"enabled"`
 	Address    string               `yaml:"address" json:"address"`
 	Attributes GRPCClientAttributes `yaml:"attributes" json:"attributes"`
 	Pool       GRPCPool             `yaml:"pool" json:"pool"`
+	SecretRef  *SecretRef           `yaml:"secretRef" json:"secretRef"`
 }
 
 type GRPCPool struct {

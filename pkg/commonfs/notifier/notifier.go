@@ -13,11 +13,10 @@ events happen in quick succession. It supports:
 
 Example usage:
 
-	paths := []string{"/tmp/watchdir"}
-
 	// Create a new notifier with a delay of 200ms and up to 5 events per delay
 	notifier, err := notifier.Create(paths,
-		notifier.WithEventHandler(func(events []fsnotify.Event) {
+		notifier.OnPaths("/tmp/watchdir"),
+		notifier.WithEventHandler(func(path string, events []fsnotify.Event) {
 			fmt.Println("Received events:", events)
 		}),
 		notifier.WithLimitDelay(200*time.Millisecond),
@@ -76,6 +75,11 @@ type Notifier struct {
 	watcher *watcher.Watcher // Underlying filesystem watcher
 }
 
+type Event struct {
+	Path   string
+	Events []fsnotify.Event
+}
+
 // Option is a function type for configuring Notifier.
 type Option func(*Notifier) error
 
@@ -85,6 +89,24 @@ func WithEventHandler(handler func(string, []fsnotify.Event)) Option {
 		w.eventHandler = handler
 		return nil
 	}
+}
+
+// WithEventChainAsHandler sets up an event handler that delivers batched fsnotify events
+// into the provided channel instead of invoking a direct callback.
+//
+// This option is useful when you prefer to decouple event handling logic from the watcher
+// by processing events asynchronously through a channel. Each emitted Event groups
+// together all fsnotify events for a given path during a batch.
+func WithEventChainAsHandler(ch chan<- Event) Option {
+	return WithEventHandler(func(path string, events []fsnotify.Event) {
+		select {
+		case ch <- Event{Path: path, Events: events}:
+			// successfully sent
+		default:
+			slog.Error("notifier events couldn't be delivered",
+				"path", path, "events", events)
+		}
+	})
 }
 
 // WithSimpleHandler sets a simple callback invoked when events are accumulated, without event details.

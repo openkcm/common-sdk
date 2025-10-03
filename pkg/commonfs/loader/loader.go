@@ -1,13 +1,44 @@
-// Package loader provides a file-system–based key loader with live updates.
+// Package loader provides a file-system based resource loader with live updates.
 //
-// It monitors a directory for resource files (such as signing keys), extracts
-// a key identifier (KeyID) from file paths based on configurable rules,
-// and stores the file contents in a key–value storage backend.
+// The loader watches one or more filesystem locations for resource files (for
+// example: cryptographic keys, configuration blobs, certificates) and keeps an
+// in-memory key->bytes storage synchronized with the file system. It supports
+// configurable KeyID extraction strategies, optional extension filtering,
+// recursive (subfolder) watching and event filtering.
 //
-// Typical use cases include:
-//   - Cryptographic key management
-//   - Dynamic configuration loading
-//   - Hot-reloading of resources from disk
+// Key concepts
+//   - Location (path): a directory that the loader has been instructed to watch.
+//   - KeyID: the identifier under which a file's contents are stored in the
+//     storage backend. The KeyID is derived from the file path using a
+//     configurable strategy (see KeyIDType).
+//   - Storage: a pluggable key->[]byte storage implementing
+//     keyvalue.StringToBytesStorage. By default, an in-memory storage is used.
+//   - Watcher: a filesystem watcher (fsnotify based) that forwards events to
+//     the loader so it can add/update/remove resources in storage.
+//
+// Behavior
+//   - On Start the loader performs an initial scan of all configured locations
+//     and loads every file that matches the configured rules into storage.
+//   - Subsequent file system events (create/write/remove/rename by default) are
+//     processed and the storage is updated accordingly.
+//   - Files that are directories, unreadable, empty or that do not match the
+//     KeyID extraction rules are skipped.
+//   - Temporary editors that create files with suffix "~" are handled: the
+//     trailing "~" is ignored for both the file path and the computed KeyID.
+//
+// Typical usage
+//
+//	ldr, err := Create(
+//	    OnPath("/etc/keys"),
+//	    WithExtension(".pem"),
+//	    WithKeyIDType(FileNameWithoutExtension),
+//	)
+//	if err != nil { ... }
+//	if err := ldr.Start(); err != nil { ... }
+//	defer ldr.Close()
+//
+// The package is suitable for hot-reloading workloads where files on disk
+// represent resources that should be immediately reflected in memory.
 package loader
 
 import (
