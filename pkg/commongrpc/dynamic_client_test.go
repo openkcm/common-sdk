@@ -55,91 +55,6 @@ func writeTempFile(t *testing.T, dir, name, content string) string {
 	return path
 }
 
-// setupGRPCClientConfig prepares a GRPCClient configuration with optional mTLS.
-func setupGRPCClientConfig(t *testing.T, tmpDir string, withSecretRef bool) *commoncfg.GRPCClient {
-	t.Helper()
-	cfg := &commoncfg.GRPCClient{
-		Address: "localhost:12345",
-	}
-
-	if !withSecretRef {
-		return cfg
-	}
-
-	certPEM, keyPEM := generateSelfSignedCert(t)
-	certFile := writeTempFile(t, tmpDir, "tls.crt", string(certPEM))
-	keyFile := writeTempFile(t, tmpDir, "tls.key", string(keyPEM))
-
-	cfg.SecretRef = &commoncfg.SecretRef{
-		Type: commoncfg.MTLSSecretType,
-		MTLS: commoncfg.MTLS{
-			Cert: commoncfg.SourceRef{
-				Source: commoncfg.FileSourceValue,
-				File: commoncfg.CredentialFile{
-					Path:   certFile,
-					Format: commoncfg.BinaryFileFormat,
-				},
-			},
-			CertKey: commoncfg.SourceRef{
-				Source: commoncfg.FileSourceValue,
-				File: commoncfg.CredentialFile{
-					Path:   keyFile,
-					Format: commoncfg.BinaryFileFormat,
-				},
-			},
-		},
-	}
-
-	return cfg
-}
-
-func TestDynamicClientConn(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name          string
-		withSecretRef bool
-		expectError   bool
-	}{
-		{"without SecretRef", false, false},
-		{"with SecretRef", true, false},
-	}
-
-	for _, tt := range tests {
-		tt := tt // capture range variable for parallel test
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			runDynamicClientConnTest(t, tt.withSecretRef, tt.expectError)
-		})
-	}
-}
-
-// runDynamicClientConnTest encapsulates the core logic for testing DynamicClientConn
-func runDynamicClientConnTest(t *testing.T, withSecretRef bool, expectError bool) {
-	tmpDir := t.TempDir()
-	cfg := buildGRPCClientConfig(t, tmpDir, withSecretRef)
-
-	conn, err := commongrpc.NewDynamicClientConn(cfg, 50*time.Millisecond)
-
-	if expectError {
-		if err == nil {
-			t.Fatal("expected error, got none")
-		}
-		return
-	}
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if conn != nil {
-		t.Cleanup(func() { _ = conn.Close() })
-		if conn.ClientConn == nil {
-			t.Error("expected ClientConn to be initialized")
-		}
-	}
-}
-
 // buildGRPCClientConfig returns a GRPCClient config with optional mTLS setup
 func buildGRPCClientConfig(t *testing.T, tmpDir string, withSecretRef bool) *commoncfg.GRPCClient {
 	t.Helper()
@@ -176,11 +91,58 @@ func buildGRPCClientConfig(t *testing.T, tmpDir string, withSecretRef bool) *com
 	return cfg
 }
 
+// runDynamicClientConnTest encapsulates the core logic for testing DynamicClientConn
+func runDynamicClientConnTest(t *testing.T, withSecretRef bool, expectError bool) {
+	tmpDir := t.TempDir()
+	cfg := buildGRPCClientConfig(t, tmpDir, withSecretRef)
+
+	conn, err := commongrpc.NewDynamicClientConn(cfg, 50*time.Millisecond)
+
+	if expectError {
+		if err == nil {
+			t.Fatal("expected error, got none")
+		}
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if conn != nil {
+		t.Cleanup(func() { _ = conn.Close() })
+		if conn.ClientConn == nil {
+			t.Error("expected ClientConn to be initialized")
+		}
+	}
+}
+
+func TestDynamicClientConn(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		withSecretRef bool
+		expectError   bool
+	}{
+		{"without SecretRef", false, false},
+		{"with SecretRef", true, false},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			runDynamicClientConnTest(t, tt.withSecretRef, tt.expectError)
+		})
+	}
+}
+
 func TestDynamicClientConnRefreshOnCertChange(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
-	cfg := setupGRPCClientConfig(t, tmpDir, true)
+	cfg := buildGRPCClientConfig(t, tmpDir, true)
 	conn, err := commongrpc.NewDynamicClientConn(cfg, 50*time.Millisecond)
 	if err != nil {
 		t.Fatalf("failed to create DynamicClientConn: %v", err)
