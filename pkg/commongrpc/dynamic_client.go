@@ -4,6 +4,24 @@
 // One of the core features of this package is the ability to automatically refresh
 // gRPC client connections when underlying TLS certificates or keys are updated on disk.
 // This enables long-lived clients to handle certificate rotation without downtime.
+//
+// Typical usage:
+//
+//	cfg := &commoncfg.GRPCClient{
+//	    Address: "my-grpc-server:443",
+//	    SecretRef: &commoncfg.SecretRef{
+//	        .....
+//	    },
+//	}
+//
+//	client, err := commongrpc.NewDynamicClientConn(cfg, 2*time.Second)
+//	if err != nil {
+//	    log.Fatalf("failed to create grpc client: %v", err)
+//	}
+//	defer client.Close()
+//
+//	grpcConn := client.ClientConn
+//	myService := pb.NewMyServiceClient(grpcConn)
 package commongrpc
 
 import (
@@ -28,8 +46,8 @@ import (
 // always maintain a valid secure connection.
 //
 // DynamicClientConn uses fsnotify to watch for file changes in the configured
-// certificate path. When changes are detected, the client connection is torn
-// down and recreated with the latest credentials.
+// certificate/key/CA paths. When changes are detected, the client connection is
+// torn down and recreated with the latest credentials.
 type DynamicClientConn struct {
 	*grpc.ClientConn
 
@@ -41,29 +59,25 @@ type DynamicClientConn struct {
 }
 
 // NewDynamicClientConn creates a new DynamicClientConn for the given gRPC client
-// configuration. It establishes a file watcher for mTLS certificate changes
-// if the provided configuration includes a SecretRef with a certificate path.
+// configuration. If a SecretRef is configured, the client will automatically
+// watch the certificate, key, and CA file paths for changes. When a change is
+// detected, the gRPC connection is refreshed in place with the latest credentials.
 //
-// The returned DynamicClientConn will not establish a connection until Start()
-// is called.
+// The throttleInterval parameter defines how frequently refresh events can be
+// triggered. For example, a throttle interval of 2 seconds ensures that multiple
+// rapid file system events (e.g., a cert + key update) result in only one
+// reconnection attempt.
+//
+// If no SecretRef is provided, the client behaves like a normal static gRPC
+// client connection.
 //
 // Example:
 //
-//	cfg := &commoncfg.GRPCClient{
-//	    Address: "my-grpc-server:443",
-//	    SecretRef: &commoncfg.SecretRef{
-//	        Type: commoncfg.MTLSSecretType,
-//	        MTLS: commoncfg.MTLSSecret{
-//	            Cert: commoncfg.FileRef{Path: "/etc/certs/tls.crt"},
-//	            Key:  commoncfg.FileRef{Path: "/etc/certs/tls.key"},
-//	            CA:   commoncfg.FileRef{Path: "/etc/certs/ca.crt"},
-//	        },
-//	    },
+//	client, err := commongrpc.NewDynamicClientConn(cfg, 2*time.Second)
+//	if err != nil {
+//	    return err
 //	}
-//
-//	client, _ := commongrpc.NewDynamicClientConn(cfg)
-//	_ = client.Start()
-//	conn := client.Get()
+//	defer client.Close()
 func NewDynamicClientConn(cfg *commoncfg.GRPCClient, throttleInterval time.Duration, dialOptions ...grpc.DialOption) (*DynamicClientConn, error) {
 	rc := &DynamicClientConn{
 		mu:          sync.Mutex{},
@@ -119,9 +133,9 @@ func NewDynamicClientConn(cfg *commoncfg.GRPCClient, throttleInterval time.Durat
 	return rc, nil
 }
 
-// Close stops the file watcher (if active) and releases the underlying
+// Close stops the file watcher (if active) and closes the underlying
 // gRPC client connection. After calling Close, the DynamicClientConn
-// should not be reused.
+// must not be reused.
 func (dcc *DynamicClientConn) Close() error {
 	if dcc.notifier == nil {
 		return nil
@@ -139,8 +153,9 @@ func (dcc *DynamicClientConn) Close() error {
 	return dcc.ClientConn.Close()
 }
 
-// eventHandler is invoked by the underlying file watcher when the
-// certificate file changes. It triggers a refresh of the client connection.
+// eventHandler is invoked by the file watcher whenever the certificate,
+// key, or CA file changes. It triggers a refresh of the gRPC client
+// connection with updated credentials.
 func (dcc *DynamicClientConn) eventHandler(_ string, _ []fsnotify.Event) {
 	err := dcc.refreshGRPCClientConn()
 	if err != nil {
@@ -148,10 +163,9 @@ func (dcc *DynamicClientConn) eventHandler(_ string, _ []fsnotify.Event) {
 	}
 }
 
-// refreshGRPCClientConn tears down the existing gRPC connection
-// and replaces it with a newly established one based on the latest
-// configuration and credentials. If connection creation fails, the
-// error is logged and the previous connection remains in use.
+// refreshGRPCClientConn closes the existing gRPC connection (if present)
+// and creates a new one using the latest configuration and credentials.
+// If connection creation fails, the existing connection remains unchanged.
 func (dcc *DynamicClientConn) refreshGRPCClientConn() error {
 	newClient, err := NewClient(dcc.cfg, dcc.dialOptions...)
 	if err != nil {
