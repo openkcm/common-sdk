@@ -156,10 +156,12 @@ func (dcc *DynamicClientConn) Close() error {
 // eventHandler is invoked by the file watcher whenever the certificate,
 // key, or CA file changes. It triggers a refresh of the gRPC client
 // connection with updated credentials.
-func (dcc *DynamicClientConn) eventHandler(_ string, _ []fsnotify.Event) {
+func (dcc *DynamicClientConn) eventHandler(path string, _ []fsnotify.Event) {
 	err := dcc.refreshGRPCClientConn()
 	if err != nil {
-		slog.Error("refreshing of dynamic grpc client failed", "error", err)
+		slog.Error("refreshing of dynamic grpc client failed", "watched-path", path, "error", err)
+	} else {
+		slog.Info("refreshing ok for dynamic grpc client", "watched-path", path)
 	}
 }
 
