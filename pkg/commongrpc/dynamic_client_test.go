@@ -16,8 +16,9 @@ import (
 	"github.com/openkcm/common-sdk/pkg/commongrpc"
 )
 
-func generateSelfSignedCert(t *testing.T) (certPEM, keyPEM []byte) {
+func generateSelfSignedCert(t *testing.T) ([]byte, []byte) {
 	t.Helper()
+
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatalf("failed to generate key: %v", err)
@@ -37,17 +38,22 @@ func generateSelfSignedCert(t *testing.T) (certPEM, keyPEM []byte) {
 		t.Fatalf("failed to create certificate: %v", err)
 	}
 
-	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
-	return
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
+
+	return certPEM, keyPEM
 }
 
 func writeTempFile(t *testing.T, dir, name, content string) string {
 	t.Helper()
+
 	path := filepath.Join(dir, name)
-	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+
+	err := os.WriteFile(path, []byte(content), 0600)
+	if err != nil {
 		t.Fatalf("failed to write file %s: %v", path, err)
 	}
+
 	return path
 }
 
@@ -70,7 +76,7 @@ func TestDynamicClientConn(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
+		// capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -109,11 +115,14 @@ func TestDynamicClientConn(t *testing.T) {
 			if tt.expectError && err == nil {
 				t.Fatal("expected error, got none")
 			}
+
 			if err != nil && !tt.expectError {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
 			if conn != nil {
 				t.Cleanup(func() { _ = conn.Close() })
+
 				if conn.ClientConn == nil {
 					t.Error("expected ClientConn to be initialized")
 				}
@@ -157,19 +166,21 @@ func TestDynamicClientConnRefreshOnCertChange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create DynamicClientConn: %v", err)
 	}
+
 	t.Cleanup(func() { _ = conn.Close() })
 
 	oldConn := conn.ClientConn
 
 	certPEM, keyPEM = generateSelfSignedCert(t)
-	certFile = writeTempFile(t, tmpDir, "tls.crt", string(certPEM))
-	keyFile = writeTempFile(t, tmpDir, "tls.key", string(keyPEM))
+	_ = writeTempFile(t, tmpDir, "tls.crt", string(certPEM))
+	_ = writeTempFile(t, tmpDir, "tls.key", string(keyPEM))
 
 	time.Sleep(200 * time.Millisecond) // let refresh trigger
 
 	if conn.ClientConn == nil {
 		t.Fatal("expected ClientConn to be refreshed")
 	}
+
 	if conn.ClientConn == oldConn {
 		t.Error("expected ClientConn to be different after refresh")
 	}
@@ -177,6 +188,7 @@ func TestDynamicClientConnRefreshOnCertChange(t *testing.T) {
 
 func TestDynamicClientConnCloseIdempotent(t *testing.T) {
 	t.Parallel()
+
 	cfg := &commoncfg.GRPCClient{Address: "localhost:12345"}
 
 	conn, err := commongrpc.NewDynamicClientConn(cfg, 50*time.Millisecond)
@@ -184,10 +196,13 @@ func TestDynamicClientConnCloseIdempotent(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if err := conn.Close(); err != nil {
+	err = conn.Close()
+	if err != nil {
 		t.Errorf("first close failed: %v", err)
 	}
-	if err := conn.Close(); err != nil {
+
+	err = conn.Close()
+	if err != nil {
 		t.Errorf("second close failed: %v", err)
 	}
 }
