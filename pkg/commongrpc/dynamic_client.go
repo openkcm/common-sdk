@@ -85,40 +85,11 @@ func NewDynamicClientConn(cfg *commoncfg.GRPCClient, throttleInterval time.Durat
 		dialOptions: dialOptions,
 	}
 
-	if cfg.SecretRef != nil {
-		var paths []string
-
-		certPath := strings.TrimSpace(cfg.SecretRef.MTLS.Cert.File.Path)
-		if certPath != "" {
-			paths = append(paths, filepath.Dir(certPath))
-		}
-
-		keyPath := strings.TrimSpace(cfg.SecretRef.MTLS.CertKey.File.Path)
-		if keyPath != "" {
-			paths = append(paths, filepath.Dir(keyPath))
-		}
-
-		caPath := strings.TrimSpace(cfg.SecretRef.MTLS.ServerCA.File.Path)
-		if caPath != "" {
-			paths = append(paths, filepath.Dir(caPath))
-		}
-
-		nt, err := notifier.Create(
-			notifier.OnPaths(paths...),
-			notifier.WithEventHandler(rc.eventHandler),
-			notifier.WithThrottleInterval(throttleInterval),
-			notifier.WithBurstNumber(0),
-		)
+	if cfg.SecretRef != nil && cfg.SecretRef.Type == commoncfg.MTLSSecretType {
+		err := rc.initAndStartNotifierOnMTLSCredentials(throttleInterval, &cfg.SecretRef.MTLS)
 		if err != nil {
 			return nil, err
 		}
-
-		err = nt.Start()
-		if err != nil {
-			return nil, err
-		}
-
-		rc.notifier = nt
 	}
 
 	err := rc.refreshGRPCClientConn()
@@ -131,6 +102,44 @@ func NewDynamicClientConn(cfg *commoncfg.GRPCClient, throttleInterval time.Durat
 	}
 
 	return rc, nil
+}
+
+func (dcc *DynamicClientConn) initAndStartNotifierOnMTLSCredentials(throttleInterval time.Duration, mtls *commoncfg.MTLS) error {
+	var paths []string
+
+	certPath := strings.TrimSpace(mtls.Cert.File.Path)
+	if certPath != "" {
+		paths = append(paths, filepath.Dir(certPath))
+	}
+
+	keyPath := strings.TrimSpace(mtls.CertKey.File.Path)
+	if keyPath != "" {
+		paths = append(paths, filepath.Dir(keyPath))
+	}
+
+	caPath := strings.TrimSpace(mtls.ServerCA.File.Path)
+	if caPath != "" {
+		paths = append(paths, filepath.Dir(caPath))
+	}
+
+	nt, err := notifier.Create(
+		notifier.OnPaths(paths...),
+		notifier.WithEventHandler(dcc.eventHandler),
+		notifier.WithThrottleInterval(throttleInterval),
+		notifier.WithBurstNumber(0),
+	)
+	if err != nil {
+		return err
+	}
+
+	err = nt.Start()
+	if err != nil {
+		return err
+	}
+
+	dcc.notifier = nt
+
+	return nil
 }
 
 // Close stops the file watcher (if active) and closes the underlying
