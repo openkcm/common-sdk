@@ -106,28 +106,74 @@ func TestDynamicClientConn(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt // capture range variable
+		tt := tt // capture range variable for parallel test
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			tmpDir := t.TempDir()
-			cfg := setupGRPCClientConfig(t, tmpDir, tt.withSecretRef)
-
-			conn, err := commongrpc.NewDynamicClientConn(cfg, 50*time.Millisecond)
-			if tt.expectError && err == nil {
-				t.Fatal("expected error, got none")
-			}
-			if err != nil && !tt.expectError {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if conn != nil {
-				t.Cleanup(func() { _ = conn.Close() })
-				if conn.ClientConn == nil {
-					t.Error("expected ClientConn to be initialized")
-				}
-			}
+			runDynamicClientConnTest(t, tt.withSecretRef, tt.expectError)
 		})
 	}
+}
+
+// runDynamicClientConnTest encapsulates the core logic for testing DynamicClientConn
+func runDynamicClientConnTest(t *testing.T, withSecretRef bool, expectError bool) {
+	tmpDir := t.TempDir()
+	cfg := buildGRPCClientConfig(t, tmpDir, withSecretRef)
+
+	conn, err := commongrpc.NewDynamicClientConn(cfg, 50*time.Millisecond)
+
+	if expectError {
+		if err == nil {
+			t.Fatal("expected error, got none")
+		}
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if conn != nil {
+		t.Cleanup(func() { _ = conn.Close() })
+		if conn.ClientConn == nil {
+			t.Error("expected ClientConn to be initialized")
+		}
+	}
+}
+
+// buildGRPCClientConfig returns a GRPCClient config with optional mTLS setup
+func buildGRPCClientConfig(t *testing.T, tmpDir string, withSecretRef bool) *commoncfg.GRPCClient {
+	t.Helper()
+	cfg := &commoncfg.GRPCClient{Address: "localhost:12345"}
+
+	if !withSecretRef {
+		return cfg
+	}
+
+	certPEM, keyPEM := generateSelfSignedCert(t)
+	certFile := writeTempFile(t, tmpDir, "tls.crt", string(certPEM))
+	keyFile := writeTempFile(t, tmpDir, "tls.key", string(keyPEM))
+
+	cfg.SecretRef = &commoncfg.SecretRef{
+		Type: commoncfg.MTLSSecretType,
+		MTLS: commoncfg.MTLS{
+			Cert: commoncfg.SourceRef{
+				Source: commoncfg.FileSourceValue,
+				File: commoncfg.CredentialFile{
+					Path:   certFile,
+					Format: commoncfg.BinaryFileFormat,
+				},
+			},
+			CertKey: commoncfg.SourceRef{
+				Source: commoncfg.FileSourceValue,
+				File: commoncfg.CredentialFile{
+					Path:   keyFile,
+					Format: commoncfg.BinaryFileFormat,
+				},
+			},
+		},
+	}
+
+	return cfg
 }
 
 func TestDynamicClientConnRefreshOnCertChange(t *testing.T) {
