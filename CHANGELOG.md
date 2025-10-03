@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.5](https://github.com/openkcm/common-sdk/compare/v1.4.4...v1.4.5) (2025-10-03)
+
+
+### Bug Fixes
+
+* common grpc and fs updates ([#135](https://github.com/openkcm/common-sdk/issues/135)) ([e11896a](https://github.com/openkcm/common-sdk/commit/e11896ac611495eb9735e46b1252fc9a920aa8dc))
+
 ## [1.4.4](https://github.com/openkcm/common-sdk/compare/v1.4.3...v1.4.4) (2025-09-29)
 
 
