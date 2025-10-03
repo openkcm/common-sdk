@@ -67,7 +67,7 @@ var (
 type Watcher struct {
 	startMu        sync.Mutex
 	started        bool
-	paths          []string
+	paths          map[string]struct{}
 	recursiveWatch bool
 
 	done    chan struct{}
@@ -129,7 +129,13 @@ func WithEventHandler(handler func(fsnotify.Event)) Option {
 // WithEventChainAsHandler sends all file system events to the provided channel.
 // This is useful for external event processing loops.
 func WithEventChainAsHandler(eventsCh chan<- fsnotify.Event) Option {
-	return WithEventHandler(func(e fsnotify.Event) { eventsCh <- e })
+	return WithEventHandler(func(e fsnotify.Event) {
+		select {
+		case eventsCh <- e:
+		default:
+			slog.Error("watcher event couldn't be delivered", "event", e)
+		}
+	})
 }
 
 // WithErrorEventHandler sets the error handler that will be called
@@ -144,7 +150,14 @@ func WithErrorEventHandler(handler func(error)) Option {
 // WithErrorChainAsHandler sends all watcher errors to the provided channel.
 // This is useful for external error handling loops.
 func WithErrorChainAsHandler(eventsCh chan<- error) Option {
-	return WithErrorEventHandler(func(e error) { eventsCh <- e })
+	return WithErrorEventHandler(func(e error) {
+		select {
+		case eventsCh <- e:
+		default:
+			slog.Error("watcher error as event couldn't be delivered",
+				"error", e)
+		}
+	})
 }
 
 // Create creates a new Watcher with the given options.
@@ -161,7 +174,7 @@ func WithErrorChainAsHandler(eventsCh chan<- error) Option {
 func Create(opts ...Option) (*Watcher, error) {
 	w := &Watcher{
 		startMu: sync.Mutex{},
-		paths:   make([]string, 0),
+		paths:   make(map[string]struct{}),
 	}
 
 	// Apply the options
@@ -178,7 +191,7 @@ func Create(opts ...Option) (*Watcher, error) {
 		return w, nil
 	}
 
-	for _, path := range w.paths {
+	for path := range w.paths {
 		err := w.addRecursive(path)
 		if err != nil {
 			return nil, err
@@ -207,7 +220,7 @@ func (w *Watcher) AddPath(path string) error {
 		return fmt.Errorf("path does not exist: %s", absPath)
 	}
 
-	w.paths = append(w.paths, absPath)
+	w.paths[absPath] = struct{}{}
 
 	return nil
 }
@@ -245,7 +258,7 @@ func (w *Watcher) Start() error {
 
 	w.watcher = watcher
 
-	for _, path := range w.paths {
+	for path := range w.paths {
 		err := w.watcher.Add(path)
 		if err != nil {
 			return err
