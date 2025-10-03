@@ -104,6 +104,27 @@ func NewDynamicClientConn(cfg *commoncfg.GRPCClient, throttleInterval time.Durat
 	return rc, nil
 }
 
+// initAndStartNotifierOnMTLSCredentials initializes and starts a file system notifier
+// for the mTLS certificate, key, and optionally the CA files. The notifier triggers
+// events whenever these files change, allowing dynamic refresh of the gRPC client credentials.
+//
+// Parameters:
+//   - throttleInterval: the minimum duration between consecutive notifier callback invocations.
+//   - mtls: the MTLS configuration containing paths to the client certificate, key, and server CA.
+//
+// Returns:
+//   - error: non-nil if the notifier could not be created or started.
+//
+// Behavior:
+//  1. Collects the directories containing the client certificate, key, and server CA (if provided).
+//     Only the directories are monitored, not the individual files directly.
+//  2. Creates a new notifier instance with:
+//     - monitored paths as collected above
+//     - an event handler that triggers DynamicClientConn refresh
+//     - the specified throttle interval
+//     - zero burst number (only rate limiting based on throttle interval)
+//  3. Starts the notifier and stores it in the DynamicClientConn instance.
+//  4. Returns any errors encountered during creation or startup of the notifier.
 func (dcc *DynamicClientConn) initAndStartNotifierOnMTLSCredentials(throttleInterval time.Duration, mtls *commoncfg.MTLS) error {
 	var paths []string
 
