@@ -19,21 +19,21 @@ import (
 )
 
 const (
-	DefaultFileName      = "config"
-	DefaultFileExtension = YAMLFileFormat
+	DefaultFileName   = "config"
+	DefaultFileFormat = YAMLFileFormat
 )
 
 // Loader is used to load configuration from a `config.yaml` file.
 // It supports loading from multiple paths and can override values with environment variables.
 // It is instantiated by using the NewLoader function that supports multiple options.
 type Loader struct {
-	cfg           any
-	defaults      map[string]any
-	paths         []string
-	envPrefix     string
-	useEnv        bool
-	fileName      string
-	fileExtension FileFormat
+	cfg        any
+	defaults   map[string]any
+	paths      []string
+	envPrefix  string
+	useEnv     bool
+	fileName   string
+	fileFormat FileFormat
 }
 
 type Option func(*Loader)
@@ -44,7 +44,7 @@ func NewLoader(cfg any, options ...Option) *Loader {
 	loader := &Loader{cfg: cfg}
 
 	loader.fileName = DefaultFileName
-	loader.fileExtension = DefaultFileExtension
+	loader.fileFormat = DefaultFileFormat
 
 	for _, o := range options {
 		if o != nil {
@@ -72,8 +72,13 @@ func WithPaths(paths ...string) Option {
 // WithFile sets the file name and type of the config file
 func WithFile(name string, extension FileFormat) Option {
 	return func(l *Loader) {
-		l.fileName = name
-		l.fileExtension = extension
+		if strings.TrimSpace(name) == "" {
+			l.fileName = DefaultFileName
+		} else {
+			l.fileName = name
+		}
+
+		l.fileFormat = extension
 	}
 }
 
@@ -103,7 +108,7 @@ func (l *Loader) LoadConfig() error {
 	}
 
 	v.SetConfigName(l.fileName)
-	v.SetConfigType(string(l.fileExtension))
+	v.SetConfigType(string(l.fileFormat))
 
 	for _, path := range l.paths {
 		v.AddConfigPath(path)

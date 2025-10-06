@@ -145,49 +145,59 @@ func TestWithFile(t *testing.T) {
 
 	yamlCfg := "key1: foo"
 	tests := []struct {
-		name      string
-		file      string
-		extension commoncfg.FileFormat
-		cfg       string
-		isErr     bool
+		name   string
+		file   string
+		format commoncfg.FileFormat
+		cfg    string
+		isErr  bool
 	}{
 		{
-			name:      "Should use default file",
-			file:      commoncfg.DefaultFileName,
-			extension: commoncfg.DefaultFileExtension,
-			cfg:       yamlCfg,
+			name:   "Should use default file",
+			file:   commoncfg.DefaultFileName,
+			format: commoncfg.DefaultFileFormat,
+			cfg:    yamlCfg,
 		},
 		{
-			name:      "Should use file with different name",
-			file:      "test",
-			extension: commoncfg.DefaultFileExtension,
-			cfg:       yamlCfg,
+			name:   "Should use file with different name",
+			file:   "test",
+			format: commoncfg.DefaultFileFormat,
+			cfg:    yamlCfg,
 		},
 		{
-			name:      "Should use file with different supported format",
-			file:      "test",
-			extension: commoncfg.JSONFileFormat,
-			cfg:       "{\"key1\": \"foo\"}",
+			name:   "Should use file with different supported format",
+			file:   "test",
+			format: commoncfg.JSONFileFormat,
+			cfg:    "{\"key1\": \"foo\"}",
 		},
 		{
-			name:      "Should error on file with unsupported format",
-			file:      "test",
-			extension: "test",
-			isErr:     true,
+			name:   "Should error on file with unsupported format",
+			file:   "test",
+			format: "test",
+			isErr:  true,
+		},
+		{
+			name:   "Should use default name on empty file name",
+			file:   "",
+			format: commoncfg.DefaultFileFormat,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			fileName := "config"
+			if tt.file != "" {
+				fileName = tt.file
+			}
+
 			file := filepath.Join(
 				tmpdir,
-				fmt.Sprintf("%s.%s", tt.file, tt.extension),
+				fmt.Sprintf("%s.%s", fileName, tt.format),
 			)
 
 			err := os.WriteFile(file, []byte(tt.cfg), 0o644)
 			assert.NoError(t, err)
 
-			loader := commoncfg.NewLoader(cfg, commoncfg.WithPaths(tmpdir), commoncfg.WithFile(tt.file, tt.extension))
+			loader := commoncfg.NewLoader(cfg, commoncfg.WithPaths(tmpdir), commoncfg.WithFile(tt.file, tt.format))
 			err = loader.LoadConfig()
 
 			if tt.isErr {
