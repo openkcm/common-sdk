@@ -1,4 +1,4 @@
-// Package common defines the necessary types to configure the application.
+// Package commoncfg defines the necessary types to configure the application.
 // This minimal configuration is tailored for logging.
 package commoncfg
 
@@ -28,11 +28,9 @@ type SecretType string
 type Protocol string
 
 const (
-	// Logger format types.
 	JSONLoggerFormat LoggerFormat = "json"
 	TextLoggerFormat LoggerFormat = "text"
 
-	// Logger time types.
 	UnixTimeLogger    LoggerTimeType = "unix"
 	PatternTimeLogger LoggerTimeType = "pattern"
 
@@ -119,7 +117,7 @@ type LoggerFormatter struct {
 	Fields LoggerFields `yaml:"fields" json:"fields"`
 }
 
-// LoggerOtel holds configuration for the OpenTelemetry fields.
+// LoggerOTel holds configuration for the OpenTelemetry fields.
 type LoggerOTel struct {
 	TraceID string `yaml:"traceId" json:"traceId" default:"traceId"`
 	SpanID  string `yaml:"spanId" json:"spanId" default:"spanId"`

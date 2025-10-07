@@ -243,6 +243,7 @@ func WithGRPCServerChecker(grpcCfg commoncfg.GRPCClient) Option {
 			if err != nil {
 				return err
 			}
+
 			return nil
 		},
 	})

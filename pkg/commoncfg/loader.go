@@ -184,6 +184,10 @@ func ExtractValueFromSourceRef(cred *SourceRef) ([]byte, error) {
 
 		switch cred.File.Format {
 		case JSONFileFormat:
+			if strings.TrimSpace(cred.File.JSONPath) == "" {
+				return data, nil
+			}
+
 			result, err := jsonpath.Query(string(data), cred.File.JSONPath)
 			if err != nil {
 				return nil, err
@@ -195,7 +199,9 @@ func ExtractValueFromSourceRef(cred *SourceRef) ([]byte, error) {
 			}
 
 			return []byte(r), nil
-		case BinaryFileFormat:
+		case YAMLFileFormat, BinaryFileFormat:
+			return data, nil
+		default:
 			return data, nil
 		}
 	}
