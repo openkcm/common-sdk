@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.6](https://github.com/openkcm/common-sdk/compare/v1.4.5...v1.4.6) (2025-10-07)
+
+
+### Bug Fixes
+
+* add configurable config file ([#136](https://github.com/openkcm/common-sdk/issues/136)) ([04423f2](https://github.com/openkcm/common-sdk/commit/04423f265e94013d17c0ad3cad1552895c7c0b9c))
+* cover on loading data for new included yaml format ([#138](https://github.com/openkcm/common-sdk/issues/138)) ([0f4f217](https://github.com/openkcm/common-sdk/commit/0f4f21724886bc52998039d6e383dfb1952773e6))
+
 ## [1.4.5](https://github.com/openkcm/common-sdk/compare/v1.4.4...v1.4.5) (2025-10-03)
 
 
