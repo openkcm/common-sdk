@@ -182,22 +182,7 @@ func ExtractValueFromSourceRef(cred *SourceRef) ([]byte, error) {
 			return nil, err
 		}
 
-		switch cred.File.Format {
-		case JSONFileFormat:
-			result, err := jsonpath.Query(string(data), cred.File.JSONPath)
-			if err != nil {
-				return nil, err
-			}
-
-			r, ok := result.(string)
-			if !ok {
-				return nil, errors.New("invalid credential format, expect string value")
-			}
-
-			return []byte(r), nil
-		case BinaryFileFormat:
-			return data, nil
-		}
+		return parseFile(data, cred.File)
 	}
 
 	return nil, errors.New("no credential found, based on given credentials source")
@@ -274,4 +259,33 @@ func env(names ...string) string {
 	}
 
 	return ""
+}
+
+func parseFile(data []byte, file CredentialFile) ([]byte, error) {
+	switch file.Format {
+	case JSONFileFormat:
+		if strings.TrimSpace(file.JSONPath) == "" {
+			return data, nil
+		}
+
+		return jsonQuery(string(data), file.JSONPath)
+	case YAMLFileFormat, BinaryFileFormat:
+		return data, nil
+	default:
+		return data, nil
+	}
+}
+
+func jsonQuery(data, path string) ([]byte, error) {
+	result, err := jsonpath.Query(data, path)
+	if err != nil {
+		return nil, err
+	}
+
+	r, ok := result.(string)
+	if !ok {
+		return nil, errors.New("invalid credential format, expect string value")
+	}
+
+	return []byte(r), nil
 }

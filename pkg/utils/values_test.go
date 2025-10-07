@@ -34,6 +34,7 @@ func TestExtractFromComplexValue(t *testing.T) {
 				inner := base64.StdEncoding.EncodeToString([]byte("final"))
 				mid := utils.Base64Token + "(" + inner + ")"
 				outer := utils.Base64Token + "(" + base64.StdEncoding.EncodeToString([]byte(mid)) + ")"
+
 				return outer
 			}(),
 			want: "final",

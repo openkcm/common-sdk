@@ -55,6 +55,7 @@ func TestCheckGRPCServerHealth(t *testing.T) {
 					IdleTimeout:     3 * time.Second,
 					MaxLifeDuration: 60 * time.Second,
 				}
+
 				return cfg
 			}(),
 		},
