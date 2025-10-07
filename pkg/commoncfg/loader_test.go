@@ -1,6 +1,7 @@
 package commoncfg_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -108,7 +109,7 @@ func TestLoadConfig(t *testing.T) {
 
 			file := filepath.Join(tmpdir, "config.yaml")
 
-			err := os.WriteFile(file, []byte(tc.cfg), 0644)
+			err := os.WriteFile(file, []byte(tc.cfg), 0o644)
 			if err != nil {
 				t.Fatalf("failed to create config file: %v", err)
 			}
@@ -138,6 +139,76 @@ func TestLoadConfig(t *testing.T) {
 	}
 }
 
+func TestWithFile(t *testing.T) {
+	tmpdir := t.TempDir()
+	cfg := &MyConfig{}
+
+	yamlCfg := "key1: foo"
+	tests := []struct {
+		name   string
+		file   string
+		format commoncfg.FileFormat
+		cfg    string
+		isErr  bool
+	}{
+		{
+			name:   "Should use default file",
+			file:   commoncfg.DefaultFileName,
+			format: commoncfg.DefaultFileFormat,
+			cfg:    yamlCfg,
+		},
+		{
+			name:   "Should use file with different name",
+			file:   "test",
+			format: commoncfg.DefaultFileFormat,
+			cfg:    yamlCfg,
+		},
+		{
+			name:   "Should use file with different supported format",
+			file:   "test",
+			format: commoncfg.JSONFileFormat,
+			cfg:    "{\"key1\": \"foo\"}",
+		},
+		{
+			name:   "Should error on file with unsupported format",
+			file:   "test",
+			format: "test",
+			isErr:  true,
+		},
+		{
+			name:   "Should use default name on empty file name",
+			file:   "",
+			format: commoncfg.DefaultFileFormat,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fileName := "config"
+			if tt.file != "" {
+				fileName = tt.file
+			}
+
+			file := filepath.Join(
+				tmpdir,
+				fmt.Sprintf("%s.%s", fileName, tt.format),
+			)
+
+			err := os.WriteFile(file, []byte(tt.cfg), 0o644)
+			assert.NoError(t, err)
+
+			loader := commoncfg.NewLoader(cfg, commoncfg.WithPaths(tmpdir), commoncfg.WithFile(tt.file, tt.format))
+			err = loader.LoadConfig()
+
+			if tt.isErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestWithEnvOverride(t *testing.T) {
 	// Arrange
 	config := "key1: value1\nkey2: 42\nsub:\n  key3: value3"
@@ -146,7 +217,7 @@ func TestWithEnvOverride(t *testing.T) {
 
 	file := filepath.Join(tmpdir, "config.yaml")
 
-	err := os.WriteFile(file, []byte(config), 0644)
+	err := os.WriteFile(file, []byte(config), 0o644)
 	if err != nil {
 		t.Fatalf("failed to create config file: %v", err)
 	}

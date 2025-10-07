@@ -50,12 +50,11 @@ const (
 	FileSourceValue     SourceValueType = "file"
 
 	JSONFileFormat   FileFormat = "json"
+	YAMLFileFormat   FileFormat = "yaml"
 	BinaryFileFormat FileFormat = "binary"
 )
 
-var (
-	ErrFeatureNotFound = errors.New("feature not found")
-)
+var ErrFeatureNotFound = errors.New("feature not found")
 
 type BaseConfig struct {
 	Application  Application  `yaml:"application" json:"application"`
@@ -73,6 +72,7 @@ func (fg FeatureGates) IsFeatureEnabled(feature string) bool {
 	v, ok := fg[feature]
 	return ok && v
 }
+
 func (fg FeatureGates) Feature(feature string) (bool, error) {
 	if v, ok := fg[feature]; !ok {
 		return false, ErrFeatureNotFound

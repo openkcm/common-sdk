@@ -18,22 +18,33 @@ import (
 	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
+const (
+	DefaultFileName   = "config"
+	DefaultFileFormat = YAMLFileFormat
+)
+
 // Loader is used to load configuration from a `config.yaml` file.
 // It supports loading from multiple paths and can override values with environment variables.
 // It is instantiated by using the NewLoader function that supports multiple options.
 type Loader struct {
-	cfg       any
-	defaults  map[string]any
-	paths     []string
-	envPrefix string
-	useEnv    bool
+	cfg        any
+	defaults   map[string]any
+	paths      []string
+	envPrefix  string
+	useEnv     bool
+	fileName   string
+	fileFormat FileFormat
 }
 
 type Option func(*Loader)
 
 // NewLoader creates a new config loader
+// Uses config.yaml as default config file
 func NewLoader(cfg any, options ...Option) *Loader {
 	loader := &Loader{cfg: cfg}
+
+	loader.fileName = DefaultFileName
+	loader.fileFormat = DefaultFileFormat
 
 	for _, o := range options {
 		if o != nil {
@@ -55,6 +66,19 @@ func WithDefaults(defaults map[string]any) Option {
 func WithPaths(paths ...string) Option {
 	return func(l *Loader) {
 		l.paths = paths
+	}
+}
+
+// WithFile sets the file name and type of the config file
+func WithFile(name string, extension FileFormat) Option {
+	return func(l *Loader) {
+		if strings.TrimSpace(name) == "" {
+			l.fileName = DefaultFileName
+		} else {
+			l.fileName = name
+		}
+
+		l.fileFormat = extension
 	}
 }
 
@@ -83,8 +107,8 @@ func (l *Loader) LoadConfig() error {
 		v.SetDefault(key, val)
 	}
 
-	v.SetConfigName("config")
-	v.SetConfigType("yaml")
+	v.SetConfigName(l.fileName)
+	v.SetConfigType(string(l.fileFormat))
 
 	for _, path := range l.paths {
 		v.AddConfigPath(path)
