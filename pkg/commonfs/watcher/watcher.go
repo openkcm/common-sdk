@@ -287,7 +287,6 @@ func (w *Watcher) Close() error {
 	defer func() {
 		w.started = false
 		close(w.done)
-		w.done = nil
 	}()
 
 	return w.watcher.Close()
