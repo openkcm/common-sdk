@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.7](https://github.com/openkcm/common-sdk/compare/v1.4.6...v1.4.7) (2025-10-10)
+
+
+### Bug Fixes
+
+* assigning nil to chan that is still in use ([#143](https://github.com/openkcm/common-sdk/issues/143)) ([1db0043](https://github.com/openkcm/common-sdk/commit/1db0043793cbf7cd48e64b626a01b457db1fb3fe))
+* **deps:** bump go.opentelemetry.io/collector/pdata from 1.42.0 to 1.43.0 ([#141](https://github.com/openkcm/common-sdk/issues/141)) ([2f25d93](https://github.com/openkcm/common-sdk/commit/2f25d93041fb4ad8cd20cc65fdf8f3b1d2d67335))
+* **deps:** bump golang.org/x/time from 0.13.0 to 0.14.0 ([#142](https://github.com/openkcm/common-sdk/issues/142)) ([1b5cb2f](https://github.com/openkcm/common-sdk/commit/1b5cb2f11e0b2fb2c1093d8bd46985f52a5cb9ae))
+* **deps:** bump google.golang.org/grpc from 1.75.1 to 1.76.0 ([#140](https://github.com/openkcm/common-sdk/issues/140)) ([5910ed7](https://github.com/openkcm/common-sdk/commit/5910ed7c0fe1f76e26bdb597e577c88b9c8b50a8))
+
 ## [1.4.6](https://github.com/openkcm/common-sdk/compare/v1.4.5...v1.4.6) (2025-10-07)
 
 
