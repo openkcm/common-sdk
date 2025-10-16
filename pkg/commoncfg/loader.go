@@ -137,10 +137,6 @@ func (l *Loader) LoadConfig() error {
 			Wrapf(err, "Unable to unmarshall configuration")
 	}
 
-	for key, val := range l.defaults {
-		v.SetDefault(key, val)
-	}
-
 	return nil
 }
 
