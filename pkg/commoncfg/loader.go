@@ -11,7 +11,6 @@ import (
 
 	"github.com/davidhoo/jsonpath"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/mcuadros/go-defaults"
 	"github.com/samber/oops"
 	"github.com/spf13/viper"
 
@@ -138,7 +137,9 @@ func (l *Loader) LoadConfig() error {
 			Wrapf(err, "Unable to unmarshall configuration")
 	}
 
-	defaults.SetDefaults(l.cfg)
+	for key, val := range l.defaults {
+		v.SetDefault(key, val)
+	}
 
 	return nil
 }
