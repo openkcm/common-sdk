@@ -318,6 +318,15 @@ type GRPCClientAttributes struct {
 	KeepaliveTimeout time.Duration `yaml:"keepaliveTimeout" json:"keepaliveTimeout" default:"40s"`
 }
 
+type HTTPClient struct {
+	Timeout            time.Duration `yaml:"timeout" json:"timeout" default:"10s"`
+	RootCAs            *SourceRef    `yaml:"rootCAs" json:"rootCAs"`
+	InsecureSkipVerify bool          `yaml:"insecureSkipVerify" json:"insecureSkipVerify"`
+	MinVersion         uint16        `yaml:"minVersion" json:"minVersion"`
+	Cert               *SourceRef    `yaml:"cert" json:"cert"`
+	CertKey            *SourceRef    `yaml:"certKey" json:"certKey"`
+}
+
 // BuildInfo holds metadata about the build
 type BuildInfo struct {
 	rawJSON json.RawMessage

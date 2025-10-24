@@ -226,6 +226,50 @@ func LoadMTLSCACertPool(cfg *MTLS) (*x509.CertPool, error) {
 	return caCertPool, nil
 }
 
+func LoadCACertPool(certRef *SourceRef) (*x509.CertPool, error) {
+	if certRef == nil {
+		return nil, errors.New("certificate source reference is nil")
+	}
+
+	caCertPool := x509.NewCertPool()
+
+	caCert, err := ExtractValueFromSourceRef(certRef)
+	if err != nil {
+		return nil, err
+	}
+
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	return caCertPool, nil
+}
+
+func LoadClientCertificate(certRef, keyRef *SourceRef) (*tls.Certificate, error) {
+	if certRef == nil {
+		return nil, errors.New("certificate source reference is nil")
+	}
+
+	if keyRef == nil {
+		return nil, errors.New("key source reference is nil")
+	}
+
+	certPEMBlock, err := ExtractValueFromSourceRef(certRef)
+	if err != nil {
+		return nil, err
+	}
+
+	keyPEMBlock, err := ExtractValueFromSourceRef(keyRef)
+	if err != nil {
+		return nil, err
+	}
+
+	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cert, nil
+}
+
 func LoadMTLSConfig(cfg *MTLS) (*tls.Config, error) {
 	cert, err := LoadMTLSClientCertificate(cfg)
 	if err != nil {
