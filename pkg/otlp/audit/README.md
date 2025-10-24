@@ -114,6 +114,8 @@ auditLogger.SendEvent(ctx, event)
 | `cmkEnable`              |                          `NewCmkEnableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
 | `cmkDisable`             |                                   `NewCmkDisableEvent(metadata EventMetadata, cmkID string)`                                    |
 | `cmkRotate`              |                                    `NewCmkRotateEvent(metadata EventMetadata, cmkID string)`                                    |
+| `cmkAvailable`           |                                 `NewCmkAvailableEvent(metadata EventMetadata, cmkID string)`                                    |
+| `cmkUnavailable`         |                               `NewCmkUnavailableEvent(metadata EventMetadata, cmkID string)`                                    |
 | `unauthenticatedRequest` |                                    `NewUnauthenticatedRequestEvent(metadata EventMetadata)`                                     |
 | `unauthorizedRequest`    |                                      `NewUnauthorizedRequestEvent(metadata EventMetadata)`                                      |
 

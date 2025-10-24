@@ -39,6 +39,8 @@ const (
 	CmkEnableEvent              = "cmkEnable"
 	CmkDisableEvent             = "cmkDisable"
 	CmkRotateEvent              = "cmkRotate"
+	CmkAvailableEvent           = "cmkAvailable"
+	CmkUnavailableEvent         = "cmkUnavailable"
 	UnauthorizedRequestEvent    = "unauthorizedRequest"
 	UnauthenticatedRequestEvent = "unauthenticatedRequest"
 )
