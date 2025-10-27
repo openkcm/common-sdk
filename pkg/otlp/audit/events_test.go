@@ -1840,6 +1840,18 @@ func TestCmkEvents(t *testing.T) {
 				t.Errorf("NewCmkRotateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
+			_, err = NewCmkAvailableEvent(tt.args.metadata, tt.args.cmkID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCmkAvailableEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			_, err = NewCmkUnavailableEvent(tt.args.metadata, tt.args.cmkID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCmkUnavailableEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 		})
 	}
 }

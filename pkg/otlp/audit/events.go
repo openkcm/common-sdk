@@ -397,6 +397,16 @@ func NewCmkRotateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) 
 	return createEvent(m)
 }
 
+func NewCmkAvailableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+	m := newEventProperties(cmkID, CmkAvailableEvent, metadata)
+	return createEvent(m)
+}
+
+func NewCmkUnavailableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+	m := newEventProperties(cmkID, CmkUnavailableEvent, metadata)
+	return createEvent(m)
+}
+
 func NewUnauthorizedRequestEvent(metadata EventMetadata) (plog.Logs, error) {
 	uid, ok := metadata[UserInitiatorIDKey]
 	if !ok {
