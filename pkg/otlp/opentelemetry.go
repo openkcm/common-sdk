@@ -333,10 +333,6 @@ func initTraceGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 	options = append(options, sec)
 	options = append(options, otlptracegrpc.WithEndpoint(string(host)))
 
-	if cfg.Traces.URL != "" {
-		options = append(options, otlptracegrpc.WithEndpointURL(cfg.Traces.URL))
-	}
-
 	return otlptracegrpc.New(ctx, options...)
 }
 
@@ -474,10 +470,6 @@ func initMetricGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 	options = append(options, sec)
 	options = append(options, otlpmetricgrpc.WithEndpoint(string(host)))
 
-	if cfg.Metrics.URL != "" {
-		options = append(options, otlpmetricgrpc.WithEndpointURL(cfg.Metrics.URL))
-	}
-
 	return otlpmetricgrpc.New(ctx, options...)
 }
 
@@ -611,10 +603,6 @@ func initLoggerGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 	options := []otlploggrpc.Option{}
 	options = append(options, sec)
 	options = append(options, otlploggrpc.WithEndpoint(string(host)))
-
-	if cfg.Logs.URL != "" {
-		options = append(options, otlploggrpc.WithEndpointURL(cfg.Logs.URL))
-	}
 
 	return otlploggrpc.New(ctx, options...)
 }
