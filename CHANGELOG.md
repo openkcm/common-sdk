@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.0](https://github.com/openkcm/common-sdk/compare/v1.4.7...v1.5.0) (2025-10-28)
+
+
+### Features
+
+* add audit log events cmkAvailable and cmkUnavailable ([#147](https://github.com/openkcm/common-sdk/issues/147)) ([a56f745](https://github.com/openkcm/common-sdk/commit/a56f7452fcaf0737596c57f32bbf8e586081e975))
+* general HTTP client support ([#148](https://github.com/openkcm/common-sdk/issues/148)) ([12349ad](https://github.com/openkcm/common-sdk/commit/12349ad087ba4661b4e401d87c99158bdb79ed38))
+
+
+### Bug Fixes
+
+* **deps:** bump go.opentelemetry.io/collector/pdata from 1.43.0 to 1.44.0 ([#146](https://github.com/openkcm/common-sdk/issues/146)) ([5fa3bc3](https://github.com/openkcm/common-sdk/commit/5fa3bc309d214828937e863e5facf5be26de7228))
+* Remove telemetry url config for gRPC exporters ([#149](https://github.com/openkcm/common-sdk/issues/149)) ([9ff68dd](https://github.com/openkcm/common-sdk/commit/9ff68ddbd68500f84eea3daa5ff18ef1db6d35db))
+
 ## [1.4.7](https://github.com/openkcm/common-sdk/compare/v1.4.6...v1.4.7) (2025-10-10)
 
 
