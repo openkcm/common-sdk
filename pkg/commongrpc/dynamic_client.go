@@ -198,7 +198,7 @@ func (dcc *DynamicClientConn) HasClientConn() bool {
 	dcc.mu.RLock()
 	defer dcc.mu.RUnlock()
 
-	return dcc.ClientConn != nil // <— Note: fixed bug: originally compared “== nil”
+	return dcc.ClientConn != nil
 }
 
 // eventHandler is invoked by the file watcher whenever the certificate,
