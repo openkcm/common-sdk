@@ -11,6 +11,7 @@ import (
 
 	"github.com/davidhoo/jsonpath"
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/mcuadros/go-defaults"
 	"github.com/samber/oops"
 	"github.com/spf13/viper"
 
@@ -136,6 +137,19 @@ func (l *Loader) LoadConfig() error {
 			In("Config Loader").
 			Wrapf(err, "Unable to unmarshall configuration")
 	}
+
+	// Loading the configuration fields tag defaults
+	// Usage
+	//     type ExampleBasic struct {
+	//         Foo bool   `default:"true"`
+	//         Bar string `default:"33"`
+	//         Qux int8
+	//         Dur time.Duration `default:"2m3s"`
+	//     }
+	//
+	//      foo := &ExampleBasic{}
+	//      SetDefaults(foo)
+	defaults.SetDefaults(l.cfg)
 
 	return nil
 }
