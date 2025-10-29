@@ -51,7 +51,7 @@ import (
 type DynamicClientConn struct {
 	*grpc.ClientConn
 
-	mu          sync.Mutex
+	mu          sync.RWMutex
 	cfg         *commoncfg.GRPCClient
 	dialOptions []grpc.DialOption
 
@@ -80,7 +80,7 @@ type DynamicClientConn struct {
 //	defer client.Close()
 func NewDynamicClientConn(cfg *commoncfg.GRPCClient, throttleInterval time.Duration, dialOptions ...grpc.DialOption) (*DynamicClientConn, error) {
 	rc := &DynamicClientConn{
-		mu:          sync.Mutex{},
+		mu:          sync.RWMutex{},
 		cfg:         cfg,
 		dialOptions: dialOptions,
 	}
@@ -181,6 +181,24 @@ func (dcc *DynamicClientConn) Close() error {
 	defer dcc.mu.Unlock()
 
 	return dcc.ClientConn.Close()
+}
+
+// IsClientConnNil returns true if the underlying ClientConn is nil.
+// It acquires a read (shared) lock so that concurrent readers can check safely.
+func (dcc *DynamicClientConn) IsClientConnNil() bool {
+	dcc.mu.RLock()
+	defer dcc.mu.RUnlock()
+
+	return dcc.ClientConn == nil
+}
+
+// HasClientConn returns true if the underlying ClientConn is non-nil.
+// It acquires a read (shared) lock so that concurrent readers can check safely.
+func (dcc *DynamicClientConn) HasClientConn() bool {
+	dcc.mu.RLock()
+	defer dcc.mu.RUnlock()
+
+	return dcc.ClientConn != nil // <— Note: fixed bug: originally compared “== nil”
 }
 
 // eventHandler is invoked by the file watcher whenever the certificate,
