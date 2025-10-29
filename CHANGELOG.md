@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/openkcm/common-sdk/compare/v1.5.0...v1.5.1) (2025-10-29)
+
+
+### Bug Fixes
+
+* add back the loading defaults from fields tags ([#151](https://github.com/openkcm/common-sdk/issues/151)) ([8065e68](https://github.com/openkcm/common-sdk/commit/8065e68632ad2e23bda0e579f13cbc83ca37040c))
+
 ## [1.5.0](https://github.com/openkcm/common-sdk/compare/v1.4.7...v1.5.0) (2025-10-28)
 
 
