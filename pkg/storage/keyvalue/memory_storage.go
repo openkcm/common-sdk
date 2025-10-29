@@ -107,6 +107,7 @@ func (ms *MemoryStorage[K, V]) Get(key K) (V, bool) {
 	defer ms.mu.RUnlock()
 
 	value, exist := ms.data[key]
+
 	return value, exist
 }
 
