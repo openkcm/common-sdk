@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.2](https://github.com/openkcm/common-sdk/compare/v1.5.1...v1.5.2) (2025-10-30)
+
+
+### Bug Fixes
+
+* race conditions ([#153](https://github.com/openkcm/common-sdk/issues/153)) ([2c08833](https://github.com/openkcm/common-sdk/commit/2c08833931e9f2383034b95e6b1dfe5c34f214b9))
+* switch defaults library ([#154](https://github.com/openkcm/common-sdk/issues/154)) ([4b9dd38](https://github.com/openkcm/common-sdk/commit/4b9dd3856c715260189d511e8182c406fcd16913))
+
 ## [1.5.1](https://github.com/openkcm/common-sdk/compare/v1.5.0...v1.5.1) (2025-10-29)
 
 
