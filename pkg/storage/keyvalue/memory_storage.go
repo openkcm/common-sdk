@@ -21,6 +21,8 @@
 //	fmt.Println(storage.IsEmpty()) // true
 package keyvalue
 
+import "sync"
+
 // MemoryStorage is a simple in-memory implementation of a generic key–value store.
 //
 // It is backed by a Go map and supports storing, retrieving, removing, and
@@ -30,6 +32,7 @@ package keyvalue
 // MemoryStorage is safe for use by a single goroutine at a time. For concurrent
 // use, wrap it with synchronization (e.g., sync.Mutex).
 type MemoryStorage[K comparable, V any] struct {
+	mu   sync.RWMutex
 	data map[K]V
 }
 
@@ -41,6 +44,7 @@ type MemoryStorage[K comparable, V any] struct {
 //	storage.Store("x", 42)
 func NewMemoryStorage[K comparable, V any]() *MemoryStorage[K, V] {
 	return &MemoryStorage[K, V]{
+		mu:   sync.RWMutex{},
 		data: make(map[K]V),
 	}
 }
@@ -56,6 +60,9 @@ func (ms *MemoryStorage[K, V]) AsReadStorage() ReadStorage[K, V] {
 //
 // If the key already exists, its value is overwritten.
 func (ms *MemoryStorage[K, V]) Store(key K, value V) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
 	ms.data[key] = value
 }
 
@@ -66,6 +73,9 @@ func (ms *MemoryStorage[K, V]) Store(key K, value V) {
 //   - true if the storage contained one or more items
 //   - false if it was already empty
 func (ms *MemoryStorage[K, V]) Clean() bool {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
 	exists := len(ms.data) > 0
 	for k := range ms.data {
 		delete(ms.data, k)
@@ -81,6 +91,9 @@ func (ms *MemoryStorage[K, V]) Clean() bool {
 //	storage := keyvalue.NewMemoryStorage[string, int]()
 //	fmt.Println(storage.IsEmpty()) // true
 func (ms *MemoryStorage[K, V]) IsEmpty() bool {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
 	return len(ms.data) == 0
 }
 
@@ -90,11 +103,18 @@ func (ms *MemoryStorage[K, V]) IsEmpty() bool {
 //   - value: the value if found (zero value of V if not found)
 //   - bool: true if the key exists, false otherwise
 func (ms *MemoryStorage[K, V]) Get(key K) (V, bool) {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
 	value, exist := ms.data[key]
+
 	return value, exist
 }
 
 func (ms *MemoryStorage[K, V]) List() []K {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
 	keys := make([]K, 0)
 	for k := range ms.data {
 		keys = append(keys, k)
@@ -109,6 +129,9 @@ func (ms *MemoryStorage[K, V]) List() []K {
 //   - true if the key was found and removed
 //   - false if the key did not exist
 func (ms *MemoryStorage[K, V]) Remove(key K) bool {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
 	_, exist := ms.data[key]
 	if exist {
 		delete(ms.data, key)

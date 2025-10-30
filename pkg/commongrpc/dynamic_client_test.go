@@ -168,7 +168,7 @@ func TestDynamicClientConnRefreshOnCertChange(t *testing.T) {
 
 	time.Sleep(200 * time.Millisecond) // allow refresh
 
-	if conn.ClientConn == nil {
+	if conn.IsClientConnNil() {
 		t.Fatal("expected ClientConn to be refreshed")
 	}
 
