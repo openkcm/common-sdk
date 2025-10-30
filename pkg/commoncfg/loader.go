@@ -9,9 +9,9 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/creasty/defaults"
 	"github.com/davidhoo/jsonpath"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/mcuadros/go-defaults"
 	"github.com/samber/oops"
 	"github.com/spf13/viper"
 
@@ -148,10 +148,8 @@ func (l *Loader) LoadConfig() error {
 	//     }
 	//
 	//      foo := &ExampleBasic{}
-	//      SetDefaults(foo)
-	defaults.SetDefaults(l.cfg)
-
-	return nil
+	//      Set(foo)
+	return defaults.Set(l.cfg)
 }
 
 func UpdateConfigVersion(cfg *BaseConfig, buildInfo string) error {
