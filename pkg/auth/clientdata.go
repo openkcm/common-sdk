@@ -7,6 +7,7 @@
 // - the client region (e.g. x509 client certificates representing a remote service)
 // - the client issuer
 // - the client groups (e.g. user groups or service groups)
+// - the raw JWT claims from the original ID token
 // At the gateway, the client data is encoded and signed using a private key.
 // Consuming services can decode the client data and verify the signature using a public key.
 package auth
@@ -40,12 +41,13 @@ const (
 )
 
 type ClientData struct {
-	Subject string   `json:"sub"`
-	Type    string   `json:"type"`
-	Email   string   `json:"mail"`
-	Region  string   `json:"reg"`
-	Issuer  string   `json:"issuer"`
-	Groups  []string `json:"groups,omitempty"`
+	Subject   string   `json:"sub"`
+	Type      string   `json:"type"`
+	Email     string   `json:"mail"`
+	Region    string   `json:"reg"`
+	Issuer    string   `json:"issuer"`
+	Groups    []string `json:"groups,omitempty"`
+	RawClaims string   `json:"claims,omitempty"`
 
 	// KeyID is a unique identifier for the key used to sign the client data.
 	// This way the consumer can determine which key to use to verify the signature
