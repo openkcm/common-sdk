@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/openkcm/common-sdk/compare/v2.0.0...v2.0.1) (2025-11-10)
+
+
+### Bug Fixes
+
+* import paths for v2 ([#160](https://github.com/openkcm/common-sdk/issues/160)) ([2affe3e](https://github.com/openkcm/common-sdk/commit/2affe3e64abbade6e791ff5c5448b51ce3aca968))
+
 ## [2.0.0](https://github.com/openkcm/common-sdk/compare/v1.5.2...v2.0.0) (2025-11-10)
 
 
