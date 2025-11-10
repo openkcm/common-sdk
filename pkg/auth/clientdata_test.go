@@ -19,11 +19,23 @@ func TestEndToEnd(t *testing.T) {
 	rsaPublicKey := &rsaPrivateKey.PublicKey
 
 	defClientData := &auth.ClientData{
-		Subject:            "test-subject",
-		Type:               "test-type",
-		Email:              "test-email",
-		Region:             "test-region",
-		Issuer:             "test-issuer",
+		// Mandatory user attributes
+		Identifier: "test-subject",
+		Email:      "test-email",
+		GivenName:  "test-given-name",
+		FamilyName: "test-family-name",
+		Groups:     []string{"group1", "group2"},
+
+		// Optional user attributes
+		Type:   "test-type",
+		Region: "test-region",
+
+		// Authentication context
+		AuthContext: map[string]string{
+			"issuer":    "test-issuer",
+			"client_id": "test-client-id",
+		},
+
 		SignatureAlgorithm: auth.SignatureAlgorithmRS256,
 	}
 
