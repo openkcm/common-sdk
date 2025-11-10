@@ -46,7 +46,8 @@
   "release-search-depth": 400,
   "packages": {
     ".": {
-      "release-type": "go"
+      "release-type": "go",
+      "bump-minor-pre-major": true
     }
   },
   "changelog": {
