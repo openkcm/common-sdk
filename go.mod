@@ -1,4 +1,4 @@
-module github.com/openkcm/common-sdk
+module github.com/openkcm/common-sdk/v2
 
 go 1.24.2
 

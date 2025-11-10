@@ -12,7 +12,7 @@ import (
 	slogctx "github.com/veqryn/slog-context"
 	slogotel "github.com/veqryn/slog-context/otel"
 
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
 )
 
 var (

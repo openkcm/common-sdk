@@ -11,7 +11,7 @@ This document explains how to use the common-sdk logging. The SDK is built on to
 Use `InitAsDefault` to initialize and set the logger globally for your service:
 
 ```go
-import "github.com/openkcm/common-sdk/pkg/logger"
+import "github.com/openkcm/common-sdk/v2/pkg/logger"
 
 config := &commoncfg.BaseConfig{}
 err := commoncfg.LoadConfig(config, defaults, "./your/config/path")

@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/pkg/otlp"
+	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/v2/pkg/otlp"
 )
 
 func TestCreateAttributesFrom(t *testing.T) {

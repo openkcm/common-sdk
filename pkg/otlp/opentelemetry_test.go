@@ -15,8 +15,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	config "github.com/openkcm/common-sdk/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/pkg/otlp"
+	config "github.com/openkcm/common-sdk/v2/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/v2/pkg/otlp"
 )
 
 func Test_OTLP_Init_Log(t *testing.T) {
