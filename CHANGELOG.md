@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0](https://github.com/openkcm/common-sdk/compare/v1.5.2...v2.0.0) (2025-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **auth:** redesign client data struct ([#158](https://github.com/openkcm/common-sdk/issues/158))
+
+### Features
+
+* **auth:** redesign client data struct ([#158](https://github.com/openkcm/common-sdk/issues/158)) ([f95d2a6](https://github.com/openkcm/common-sdk/commit/f95d2a6866462ad3750975b0471558ddfe769703))
+* define raw claims in client data ([#156](https://github.com/openkcm/common-sdk/issues/156)) ([48c91f8](https://github.com/openkcm/common-sdk/commit/48c91f8fe6901aa810bd53b7090e98bffbca03ab))
+
 ## [1.5.2](https://github.com/openkcm/common-sdk/compare/v1.5.1...v1.5.2) (2025-10-30)
 
 
