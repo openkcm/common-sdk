@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/openkcm/common-sdk/compare/v1.5.2...v1.6.0) (2025-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **auth:** redesign client data struct ([#158](https://github.com/openkcm/common-sdk/issues/158))
+
+
+### Miscellaneous Chores
+
+* reset version to 1.6.0 ([adab21a](https://github.com/openkcm/common-sdk/commit/adab21a72f74b2d56c549eb0d1714af843f234e9))
+
 ## [1.5.2](https://github.com/openkcm/common-sdk/compare/v1.5.1...v1.5.2) (2025-10-30)
 
 
