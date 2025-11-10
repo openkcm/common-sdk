@@ -13,8 +13,8 @@ import (
 	slogctx "github.com/veqryn/slog-context"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/v2/pkg/grpcpool"
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/grpcpool"
 )
 
 var (

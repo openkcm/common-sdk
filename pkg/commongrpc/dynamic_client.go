@@ -34,8 +34,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"google.golang.org/grpc"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/v2/pkg/commonfs/notifier"
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/commonfs/notifier"
 )
 
 // DynamicClientConn represents a gRPC client connection that automatically

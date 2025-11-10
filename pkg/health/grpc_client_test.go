@@ -9,8 +9,8 @@ import (
 
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/v2/pkg/health"
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/health"
 )
 
 func TestCheckGRPCServerHealth(t *testing.T) {

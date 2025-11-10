@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
 
 type masking struct {

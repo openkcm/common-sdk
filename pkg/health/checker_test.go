@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/openkcm/common-sdk/v2/pkg/health"
+	"github.com/openkcm/common-sdk/pkg/health"
 )
 
 func TestEvaluateAvailabilityStatus(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/openkcm/common-sdk/v2/pkg/grpcpool"
+	"github.com/openkcm/common-sdk/pkg/grpcpool"
 )
 
 func TestNew(t *testing.T) {

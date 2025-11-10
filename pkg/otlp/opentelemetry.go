@@ -34,8 +34,8 @@ import (
 	slogctx "github.com/veqryn/slog-context"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/v2/pkg/logger"
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/logger"
 )
 
 const (

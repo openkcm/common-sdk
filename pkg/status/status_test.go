@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/v2/pkg/status"
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/status"
 )
 
 func TestStartDisabled(t *testing.T) {

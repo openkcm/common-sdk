@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/v2/pkg/commongrpc"
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/commongrpc"
 )
 
 // generateSelfSignedCert creates a temporary self-signed certificate and key for testing.

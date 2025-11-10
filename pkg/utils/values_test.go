@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openkcm/common-sdk/v2/pkg/utils"
+	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 func TestExtractFromComplexValue(t *testing.T) {

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/openkcm/common-sdk/v2/pkg/health"
+	"github.com/openkcm/common-sdk/pkg/health"
 )
 
 type checkerMock struct {

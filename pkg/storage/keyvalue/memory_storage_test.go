@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/openkcm/common-sdk/v2/pkg/storage/keyvalue"
+	"github.com/openkcm/common-sdk/pkg/storage/keyvalue"
 )
 
 func TestNewMemoryStorage(t *testing.T) {

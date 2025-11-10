@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commonfs/loader"
-	"github.com/openkcm/common-sdk/v2/pkg/storage/keyvalue"
+	"github.com/openkcm/common-sdk/pkg/commonfs/loader"
+	"github.com/openkcm/common-sdk/pkg/storage/keyvalue"
 )
 
 const (

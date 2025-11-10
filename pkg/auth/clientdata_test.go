@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openkcm/common-sdk/v2/pkg/auth"
+	"github.com/openkcm/common-sdk/pkg/auth"
 )
 
 func TestEndToEnd(t *testing.T) {

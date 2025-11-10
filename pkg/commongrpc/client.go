@@ -45,9 +45,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/v2/pkg/grpcpool"
-	"github.com/openkcm/common-sdk/v2/pkg/otlp"
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/grpcpool"
+	"github.com/openkcm/common-sdk/pkg/otlp"
 )
 
 var (

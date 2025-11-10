@@ -15,7 +15,7 @@ import (
 	"github.com/samber/oops"
 	"github.com/spf13/viper"
 
-	"github.com/openkcm/common-sdk/v2/pkg/utils"
+	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 const (

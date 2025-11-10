@@ -45,8 +45,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"golang.org/x/time/rate"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commonfs/watcher"
-	"github.com/openkcm/common-sdk/v2/pkg/utils"
+	"github.com/openkcm/common-sdk/pkg/commonfs/watcher"
+	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 // Notifier accumulates filesystem events and errors and triggers

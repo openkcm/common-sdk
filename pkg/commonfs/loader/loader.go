@@ -52,9 +52,9 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/openkcm/common-sdk/v2/pkg/commonfs/watcher"
-	"github.com/openkcm/common-sdk/v2/pkg/storage/keyvalue"
-	"github.com/openkcm/common-sdk/v2/pkg/utils"
+	"github.com/openkcm/common-sdk/pkg/commonfs/watcher"
+	"github.com/openkcm/common-sdk/pkg/storage/keyvalue"
+	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 // KeyIDType defines how the loader generates Key IDs from file paths.
