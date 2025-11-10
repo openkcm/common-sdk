@@ -9,7 +9,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/openkcm/common-sdk/pkg/commonfs/watcher"
+	"github.com/openkcm/common-sdk/v2/pkg/commonfs/watcher"
 )
 
 // --- Helpers ---

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openkcm/common-sdk/internal/testutils"
+	"github.com/openkcm/common-sdk/v2/internal/testutils"
 )
 
 type TestStruct struct {
