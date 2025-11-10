@@ -41,13 +41,19 @@ const (
 )
 
 type ClientData struct {
-	Subject   string   `json:"sub"`
-	Type      string   `json:"type"`
-	Email     string   `json:"mail"`
-	Region    string   `json:"reg"`
-	Issuer    string   `json:"issuer"`
-	Groups    []string `json:"groups,omitempty"`
-	RawClaims string   `json:"claims,omitempty"`
+	// Mandatory user attributes
+	Identifier string   `json:"identifier"`
+	Email      string   `json:"email"`
+	GivenName  string   `json:"given_name"`
+	FamilyName string   `json:"family_name"`
+	Groups     []string `json:"groups"`
+
+	// Optional user attributes
+	Type   string `json:"type"`
+	Region string `json:"region"`
+
+	// Authentication context
+	AuthContext map[string]string `json:"auth_context"`
 
 	// KeyID is a unique identifier for the key used to sign the client data.
 	// This way the consumer can determine which key to use to verify the signature
