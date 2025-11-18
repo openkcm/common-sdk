@@ -153,20 +153,20 @@ func (l *Loader) LoadConfig() error {
 }
 
 func UpdateConfigVersion(cfg *BaseConfig, buildInfo string) error {
-	cfg.Application.BuildInfo = BuildInfo{
-		rawJSON: []byte(buildInfo),
-	}
-
 	if bi, ok := debug.ReadBuildInfo(); ok {
 		cfg.Application.RuntimeBuildInfo = bi
 	}
 
-	buildInfo, err := utils.ExtractFromComplexValue(buildInfo)
+	decodedBuildInfo, err := utils.ExtractFromComplexValue(buildInfo)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal([]byte(buildInfo), &cfg.Application.BuildInfo)
+	cfg.Application.BuildInfo = BuildInfo{
+		rawJSON: []byte(decodedBuildInfo),
+	}
+
+	err = json.Unmarshal([]byte(decodedBuildInfo), &cfg.Application.BuildInfo)
 	if err != nil {
 		return err
 	}
