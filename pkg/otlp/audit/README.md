@@ -72,6 +72,15 @@ eventMetadata, _ := otlpaudit.NewEventMetadata("userInitID", "tenantID", "eventC
 event, _ := otlpaudit.NewCmkCreateEvent(eventMetadata, "cmkID")
 auditLogger.SendEvent(ctx, event) 
 ```
+#### Additional Properties
+
+There is also a functionality of additional properties introduced that allow to add properties to OTLP logs separate from those belonging to specific event types. Please keep in mind that they'll be propagated to **every** event. The additional properties are loaded via config as a literal:
+```
+additionalProperties: |
+    property1: x
+    property2: y
+```
+
 
 ## Event catalog
 | Event type               |                                                       Function signature                                                        |  
