@@ -88,6 +88,7 @@ func TestStart(t *testing.T) {
 
 	// wait for the status server to start
 	start := time.Now()
+
 	for {
 		time.Sleep(100 * time.Millisecond)
 

@@ -8,6 +8,7 @@ require (
 	github.com/davidhoo/jsonpath v1.0.4
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/samber/oops v1.19.4
 	github.com/samber/slog-formatter v1.2.0

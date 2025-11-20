@@ -1,5 +1,7 @@
 package otlpaudit
 
+import "slices"
+
 const (
 	ConfigCreateEvent           = "configurationCreate"
 	ConfigReadEvent             = "configurationRead"
@@ -80,11 +82,5 @@ const (
 )
 
 func isOneOf[T comparable](val T, trgts ...T) bool {
-	for _, trgt := range trgts {
-		if trgt == val {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(trgts, val)
 }
