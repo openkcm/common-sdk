@@ -162,10 +162,6 @@ func UpdateConfigVersion(cfg *BaseConfig, buildInfo string) error {
 		return err
 	}
 
-	cfg.Application.BuildInfo = BuildInfo{
-		rawJSON: []byte(decodedBuildInfo),
-	}
-
 	err = json.Unmarshal([]byte(decodedBuildInfo), &cfg.Application.BuildInfo)
 	if err != nil {
 		return err

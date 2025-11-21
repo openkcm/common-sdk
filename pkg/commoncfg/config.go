@@ -3,7 +3,6 @@
 package commoncfg
 
 import (
-	"encoding/json"
 	"errors"
 	"runtime/debug"
 	"time"
@@ -329,17 +328,17 @@ type HTTPClient struct {
 
 // BuildInfo holds metadata about the build
 type BuildInfo struct {
-	rawJSON json.RawMessage
+	Component `mapstructure:",squash"`
 
-	Branch    string `json:"branch"`
-	Org       string `json:"org"`
-	Product   string `json:"product"`
-	Repo      string `json:"repo"`
-	SHA       string `json:"sha"`
-	Version   string `json:"version"`
-	BuildTime string `json:"buildTime"`
+	BuildTime            string      `json:"buildTime"`
+	AdditionalComponents []Component `json:"additionalComponents"`
 }
 
-func (bi *BuildInfo) String() string {
-	return string(bi.rawJSON)
+type Component struct {
+	Branch  string `json:"branch"`
+	Org     string `json:"org"`
+	Product string `json:"product"`
+	Repo    string `json:"repo"`
+	SHA     string `json:"sha"`
+	Version string `json:"version"`
 }

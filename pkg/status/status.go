@@ -2,6 +2,7 @@ package status
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -68,7 +69,7 @@ func versionHandlerFunc(buildVersion string) func(w http.ResponseWriter, r *http
 }
 
 // registerDefaultHandlers registers the default http handlers for the status server
-func registerDefaultHandlers(cfg *commoncfg.BaseConfig,
+func registerDefaultHandlers(ctx context.Context, cfg *commoncfg.BaseConfig,
 	mux *http.ServeMux,
 	probeHandlers map[string]func(http.ResponseWriter, *http.Request),
 ) {
@@ -80,7 +81,14 @@ func registerDefaultHandlers(cfg *commoncfg.BaseConfig,
 		prof.RegisterPProfHandlers(mux)
 	}
 
-	mux.HandleFunc("/version", versionHandlerFunc(cfg.Application.BuildInfo.String()))
+	info, err := json.Marshal(cfg.Application.BuildInfo)
+	if err != nil {
+		slogctx.Error(ctx, "Failed to marshal application build info: %v", err)
+
+		info = []byte(`{"version":"unknown"}`)
+	}
+
+	mux.HandleFunc("/version", versionHandlerFunc(string(info)))
 
 	for name, fn := range probeHandlers {
 		mux.HandleFunc("/probe/"+name, fn)
@@ -93,7 +101,7 @@ func createStatusServer(ctx context.Context,
 	mux *http.ServeMux,
 	probeHandlers map[string]func(http.ResponseWriter, *http.Request),
 ) *http.Server {
-	registerDefaultHandlers(cfg, mux, probeHandlers)
+	registerDefaultHandlers(ctx, cfg, mux, probeHandlers)
 
 	slogctx.Info(ctx, "Creating status server", "address", cfg.Status.Address)
 
