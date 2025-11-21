@@ -330,15 +330,15 @@ type HTTPClient struct {
 type BuildInfo struct {
 	Component `mapstructure:",squash"`
 
-	BuildTime            string      `json:"buildTime"`
-	AdditionalComponents []Component `json:"additionalComponents"`
+	Components []Component `json:"components,omitempty"`
 }
 
 type Component struct {
-	Branch  string `json:"branch"`
-	Org     string `json:"org"`
-	Product string `json:"product"`
-	Repo    string `json:"repo"`
-	SHA     string `json:"sha"`
-	Version string `json:"version"`
+	Branch    string `json:"branch"`
+	Org       string `json:"org"`
+	Product   string `json:"product"`
+	Repo      string `json:"repo"`
+	SHA       string `json:"sha"`
+	Version   string `json:"version"`
+	BuildTime string `json:"buildTime"`
 }
