@@ -334,11 +334,12 @@ type BuildInfo struct {
 }
 
 type Component struct {
-	Branch    string `json:"branch"`
-	Org       string `json:"org"`
-	Product   string `json:"product"`
-	Repo      string `json:"repo"`
-	SHA       string `json:"sha"`
-	Version   string `json:"version"`
-	BuildTime string `json:"buildTime"`
+	Name      string `json:"name,omitempty"`
+	Branch    string `json:"branch,omitempty"`
+	Org       string `json:"org,omitempty"`
+	Product   string `json:"product,omitempty"`
+	Repo      string `json:"repo,omitempty"`
+	SHA       string `json:"sha,omitempty"`
+	Version   string `json:"version,omitempty"`
+	BuildTime string `json:"buildTime,omitempty"`
 }
