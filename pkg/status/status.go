@@ -63,7 +63,7 @@ func versionHandlerFunc(cfg *commoncfg.Application) func(w http.ResponseWriter, 
 
 		info, err := json.Marshal(cfg.BuildInfo)
 		if err != nil {
-			slogctx.Error(req.Context(), "Failed to marshal application build info: %v", err)
+			slogctx.Error(req.Context(), "Failed to marshal application build info", "error", err)
 
 			info = []byte(`{"version":"unknown"}`)
 		}
