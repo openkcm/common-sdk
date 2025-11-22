@@ -76,7 +76,7 @@ func versionHandlerFunc(cfg *commoncfg.Application) func(w http.ResponseWriter, 
 }
 
 // registerDefaultHandlers registers the default http handlers for the status server
-func registerDefaultHandlers(_ context.Context, cfg *commoncfg.BaseConfig,
+func registerDefaultHandlers(cfg *commoncfg.BaseConfig,
 	mux *http.ServeMux,
 	probeHandlers map[string]func(http.ResponseWriter, *http.Request),
 ) {
@@ -101,7 +101,7 @@ func createStatusServer(ctx context.Context,
 	mux *http.ServeMux,
 	probeHandlers map[string]func(http.ResponseWriter, *http.Request),
 ) *http.Server {
-	registerDefaultHandlers(ctx, cfg, mux, probeHandlers)
+	registerDefaultHandlers(cfg, mux, probeHandlers)
 
 	slogctx.Info(ctx, "Creating status server", "address", cfg.Status.Address)
 
