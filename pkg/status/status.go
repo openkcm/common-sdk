@@ -57,11 +57,18 @@ func WithCustom(name string, handler func(http.ResponseWriter, *http.Request)) P
 
 // versionHandlerFunc returns a handler function that writes the version information
 // to the response. This is used in the status server.
-func versionHandlerFunc(buildVersion string) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, _ *http.Request) {
+func versionHandlerFunc(cfg *commoncfg.Application) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		_, err := w.Write([]byte(buildVersion))
+		info, err := json.Marshal(cfg.BuildInfo)
+		if err != nil {
+			slogctx.Error(req.Context(), "Failed to marshal application build info: %v", err)
+
+			info = []byte(`{"version":"unknown"}`)
+		}
+
+		_, err = w.Write(info)
 		if err != nil {
 			return
 		}
@@ -69,7 +76,7 @@ func versionHandlerFunc(buildVersion string) func(w http.ResponseWriter, r *http
 }
 
 // registerDefaultHandlers registers the default http handlers for the status server
-func registerDefaultHandlers(ctx context.Context, cfg *commoncfg.BaseConfig,
+func registerDefaultHandlers(_ context.Context, cfg *commoncfg.BaseConfig,
 	mux *http.ServeMux,
 	probeHandlers map[string]func(http.ResponseWriter, *http.Request),
 ) {
@@ -81,14 +88,7 @@ func registerDefaultHandlers(ctx context.Context, cfg *commoncfg.BaseConfig,
 		prof.RegisterPProfHandlers(mux)
 	}
 
-	info, err := json.Marshal(cfg.Application.BuildInfo)
-	if err != nil {
-		slogctx.Error(ctx, "Failed to marshal application build info: %v", err)
-
-		info = []byte(`{"version":"unknown"}`)
-	}
-
-	mux.HandleFunc("/version", versionHandlerFunc(string(info)))
+	mux.HandleFunc("/version", versionHandlerFunc(&cfg.Application))
 
 	for name, fn := range probeHandlers {
 		mux.HandleFunc("/probe/"+name, fn)
