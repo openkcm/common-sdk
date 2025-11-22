@@ -21,7 +21,7 @@ import (
 
 func Test_OTLP_Init_Log(t *testing.T) {
 	minimalLogger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	appCfg := &config.Application{Name: "test-service", BuildInfo: config.BuildInfo{Version: "1.0.0"}}
+	appCfg := &config.Application{Name: "test-service", BuildInfo: config.BuildInfo{Component: config.Component{Version: "1.0.0"}}}
 	logCfg := &config.Logger{}
 
 	tests := []struct {
@@ -182,7 +182,7 @@ func Test_OTLP_Init_Trace(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	appCfg := &config.Application{Name: "test-service", BuildInfo: config.BuildInfo{Version: "1.0.0"}}
+	appCfg := &config.Application{Name: "test-service", BuildInfo: config.BuildInfo{Component: config.Component{Version: "1.0.0"}}}
 	logCfg := &config.Logger{}
 
 	tests := []struct {
@@ -322,7 +322,7 @@ func Test_OTLP_Init_Metric(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
-	appCfg := &config.Application{Name: "test-service", BuildInfo: config.BuildInfo{Version: "1.0.0"}}
+	appCfg := &config.Application{Name: "test-service", BuildInfo: config.BuildInfo{Component: config.Component{Version: "1.0.0"}}}
 	logCfg := &config.Logger{}
 
 	tests := []struct {
