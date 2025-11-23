@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"runtime/debug"
+	"strings"
 
 	"github.com/openkcm/common-sdk/pkg/utils"
 )
@@ -33,9 +34,17 @@ func UpdateComponentsOfBuildInfo(cfg *BaseConfig, components ...string) error {
 
 	lerr := make([]error, 0)
 	for _, component := range components {
+		if component == "" {
+			continue
+		}
+
 		decodedBuildInfo, err := utils.ExtractFromComplexValue(component)
 		if err != nil {
 			lerr = append(lerr, err)
+			continue
+		}
+
+		if !strings.HasPrefix(decodedBuildInfo, "{") && !strings.HasSuffix(decodedBuildInfo, "}") {
 			continue
 		}
 
