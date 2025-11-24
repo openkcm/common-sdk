@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.1](https://github.com/openkcm/common-sdk/compare/v1.6.0...v1.6.1) (2025-11-24)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/samber/oops from 1.19.3 to 1.19.4 ([#166](https://github.com/openkcm/common-sdk/issues/166)) ([756023b](https://github.com/openkcm/common-sdk/commit/756023b4e8a38e08772ac82be38aaad0d3d06d40))
+* **deps:** bump github.com/samber/slog-multi from 1.5.0 to 1.6.0 ([#167](https://github.com/openkcm/common-sdk/issues/167)) ([d1debc4](https://github.com/openkcm/common-sdk/commit/d1debc48a2865505c426cf2deebf97f90706e462))
+* **deps:** bump go.opentelemetry.io/collector/pdata from 1.45.0 to 1.46.0 ([#165](https://github.com/openkcm/common-sdk/issues/165)) ([a2ca7fc](https://github.com/openkcm/common-sdk/commit/a2ca7fc550834897fd113138dc45de518aad14e2))
+* **deps:** bump google.golang.org/grpc from 1.76.0 to 1.77.0 ([#170](https://github.com/openkcm/common-sdk/issues/170)) ([2ff7df3](https://github.com/openkcm/common-sdk/commit/2ff7df3db4bfdb582f589d2864b451568565fe55))
+* include components to BuildInfo for version endpoint ([#173](https://github.com/openkcm/common-sdk/issues/173)) ([eed00e4](https://github.com/openkcm/common-sdk/commit/eed00e4ab32a2c20436f0ef0d5350f59a33285c7))
+* inject as build information the decoded value if applicable ([#169](https://github.com/openkcm/common-sdk/issues/169)) ([f064951](https://github.com/openkcm/common-sdk/commit/f0649518655999bea38d5512b8e93237b166de98))
+* retract v2 ([#175](https://github.com/openkcm/common-sdk/issues/175)) ([e11231d](https://github.com/openkcm/common-sdk/commit/e11231de094346fb18623422a9b7358b9b10949a))
+
 ## [1.6.0](https://github.com/openkcm/common-sdk/compare/v1.5.2...v1.6.0) (2025-11-10)
 
 
