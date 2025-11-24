@@ -84,3 +84,9 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
+
+retract (
+	v2.0.2+incompatible // created by accident
+	v2.0.1+incompatible // created by accident
+	v2.0.0+incompatible // created by accident
+)
