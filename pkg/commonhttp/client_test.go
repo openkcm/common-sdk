@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openkcm/common-sdk/internal/testutils"
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/pkg/commonhttp"
+	"github.com/openkcm/common-sdk/v2/internal/testutils"
+	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/v2/pkg/commonhttp"
 )
 
 func TestNewClient(t *testing.T) {

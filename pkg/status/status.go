@@ -12,8 +12,8 @@ import (
 
 	slogctx "github.com/veqryn/slog-context"
 
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/pkg/prof"
+	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/v2/pkg/prof"
 )
 
 const (

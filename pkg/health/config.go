@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
 )
 
 type (

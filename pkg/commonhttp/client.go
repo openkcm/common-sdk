@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
 )
 
 func NewClient(cfg *commoncfg.HTTPClient) (*http.Client, error) {

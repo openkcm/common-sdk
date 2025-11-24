@@ -1,4 +1,4 @@
-module github.com/openkcm/common-sdk
+module github.com/openkcm/common-sdk/v2
 
 go 1.24.2
 
@@ -83,4 +83,10 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20251022142026-3a174f9686a8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
+)
+
+retract (
+	v2.0.2
+	v2.0.1
+	v2.0.0
 )

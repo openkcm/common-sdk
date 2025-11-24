@@ -3,7 +3,7 @@ package otlp
 import (
 	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
 )
 
 // CreateAttributesFrom builds a slice of OTEL attributes from the application config and optional extra attributes.

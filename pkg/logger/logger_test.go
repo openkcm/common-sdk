@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openkcm/common-sdk/internal/testutils"
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/pkg/logger"
+	"github.com/openkcm/common-sdk/v2/internal/testutils"
+	"github.com/openkcm/common-sdk/v2/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/v2/pkg/logger"
 )
 
 func TestInitAsDefaultWithWriter(t *testing.T) {
