@@ -2,6 +2,7 @@ package status
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -56,11 +57,18 @@ func WithCustom(name string, handler func(http.ResponseWriter, *http.Request)) P
 
 // versionHandlerFunc returns a handler function that writes the version information
 // to the response. This is used in the status server.
-func versionHandlerFunc(buildVersion string) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, _ *http.Request) {
+func versionHandlerFunc(cfg *commoncfg.Application) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		_, err := w.Write([]byte(buildVersion))
+		info, err := json.Marshal(cfg.BuildInfo)
+		if err != nil {
+			slogctx.Error(req.Context(), "Failed to marshal application build info", "error", err)
+
+			info = []byte(`{"version":"unknown"}`)
+		}
+
+		_, err = w.Write(info)
 		if err != nil {
 			return
 		}
@@ -80,7 +88,7 @@ func registerDefaultHandlers(cfg *commoncfg.BaseConfig,
 		prof.RegisterPProfHandlers(mux)
 	}
 
-	mux.HandleFunc("/version", versionHandlerFunc(cfg.Application.BuildInfo.String()))
+	mux.HandleFunc("/version", versionHandlerFunc(&cfg.Application))
 
 	for name, fn := range probeHandlers {
 		mux.HandleFunc("/probe/"+name, fn)
