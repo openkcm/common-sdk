@@ -160,7 +160,6 @@ func TestUpdateConfigVersion(t *testing.T) {
 }
 
 func TestUpdateBuildInfoComponents(t *testing.T) {
-
 	main := `{
 		"branch":"main",
 		"org": "openkcm",
@@ -266,13 +265,14 @@ func TestUpdateBuildInfoComponents(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			cfg := &commoncfg.BaseConfig{}
+
 			err := commoncfg.UpdateConfigVersion(cfg, tt.main)
 			if tt.wantMainErr {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 
 			err = commoncfg.UpdateComponentsOfBuildInfo(cfg, tt.components...)
@@ -280,6 +280,7 @@ func TestUpdateBuildInfoComponents(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.wantComps, cfg.Application.BuildInfo)

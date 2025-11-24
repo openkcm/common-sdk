@@ -33,6 +33,7 @@ func UpdateComponentsOfBuildInfo(cfg *BaseConfig, components ...string) error {
 	}
 
 	lerr := make([]error, 0)
+
 	for _, component := range components {
 		if component == "" {
 			continue
@@ -49,6 +50,7 @@ func UpdateComponentsOfBuildInfo(cfg *BaseConfig, components ...string) error {
 		}
 
 		comp := Component{}
+
 		err = json.Unmarshal([]byte(decodedBuildInfo), &comp)
 		if err != nil {
 			lerr = append(lerr, err)
