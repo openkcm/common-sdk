@@ -3,10 +3,8 @@ package commoncfg
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"os"
-	"runtime/debug"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -14,8 +12,6 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/samber/oops"
 	"github.com/spf13/viper"
-
-	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 const (
@@ -150,28 +146,6 @@ func (l *Loader) LoadConfig() error {
 	//      foo := &ExampleBasic{}
 	//      Set(foo)
 	return defaults.Set(l.cfg)
-}
-
-func UpdateConfigVersion(cfg *BaseConfig, buildInfo string) error {
-	if bi, ok := debug.ReadBuildInfo(); ok {
-		cfg.Application.RuntimeBuildInfo = bi
-	}
-
-	decodedBuildInfo, err := utils.ExtractFromComplexValue(buildInfo)
-	if err != nil {
-		return err
-	}
-
-	cfg.Application.BuildInfo = BuildInfo{
-		rawJSON: []byte(decodedBuildInfo),
-	}
-
-	err = json.Unmarshal([]byte(decodedBuildInfo), &cfg.Application.BuildInfo)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func ExtractValueFromSourceRef(cred *SourceRef) ([]byte, error) {
