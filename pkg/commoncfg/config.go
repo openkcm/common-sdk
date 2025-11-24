@@ -334,7 +334,6 @@ type BuildInfo struct {
 }
 
 type Component struct {
-	Name      string `json:"name,omitempty"`
 	Branch    string `json:"branch,omitempty"`
 	Org       string `json:"org,omitempty"`
 	Product   string `json:"product,omitempty"`
