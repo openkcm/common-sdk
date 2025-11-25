@@ -72,6 +72,7 @@ func NewClientFromOAuth2(clientAuth *commoncfg.OAuth2) (*http.Client, error) {
 		if err != nil {
 			return nil, fmt.Errorf("OAuth2 credentials missing URL: %w", err)
 		}
+
 		rt.TokenURL = string(tokenURL)
 	}
 
@@ -146,6 +147,7 @@ func loadMTLS(mtls *commoncfg.MTLS, rt *clientOAuth2RoundTripper) error {
 //     and authentication method type.
 //   - rt: pointer to the clientOAuth2RoundTripper to populate with extracted credential values.
 func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2RoundTripper) {
+	// error was ignored as the creds.ClientSecret is optional
 	secretVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret)
 	if secretVal != nil && string(secretVal) != "" {
 		switch creds.AuthMethod {
@@ -157,13 +159,16 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 			rt.ClientSecretJWT = pointers.To(string(secretVal))
 		}
 	}
+
 	switch creds.AuthMethod {
 	case commoncfg.OAuth2PrivateKeyJWT:
+		// error was ignored as the creds.ClientAssertion is optional
 		assertionVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertion)
 		if assertionVal != nil && string(assertionVal) != "" {
 			rt.ClientAssertion = pointers.To[string](string(assertionVal))
 		}
 
+		// error was ignored as the creds.ClientAssertionType is optional
 		assertionTypeVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType)
 		if assertionTypeVal != nil && string(assertionTypeVal) != "" {
 			rt.ClientAssertionType = pointers.To[string](string(assertionTypeVal))
@@ -321,7 +326,7 @@ func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response,
 
 	case t.ClientAssertion != nil && t.ClientAssertionType != nil:
 		// private_key_jwt → inject JWT assertion
-		jwtToken, err := t.getJWT("private_key_jwt", *t.ClientAssertion)
+		jwtToken, err := t.requestJWT("private_key_jwt", *t.ClientAssertion)
 		if err != nil {
 			return nil, err
 		}
@@ -331,7 +336,7 @@ func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response,
 
 	case t.ClientSecretJWT != nil:
 		// client_secret_jwt → generate JWT signed with shared secret
-		jwtToken, err := t.getJWT("client_secret_jwt", *t.ClientSecretJWT)
+		jwtToken, err := t.requestJWT("client_secret_jwt", *t.ClientSecretJWT)
 		if err != nil {
 			return nil, err
 		}
@@ -346,7 +351,7 @@ func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	return t.Next.RoundTrip(&newReq)
 }
 
-// getJWT generates or retrieves a cached JWT for the specified key and secret.
+// requestJWT generates or retrieves a cached JWT for the specified key and secret.
 //
 // This method is used internally by clientOAuth2RoundTripper to provide
 // JWT-based authentication for both `client_secret_jwt` and `private_key_jwt`
@@ -370,7 +375,7 @@ func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response,
 // Returns:
 //   - string: the signed JWT
 //   - error: if signing the JWT fails
-func (t *clientOAuth2RoundTripper) getJWT(key, secret string) (string, error) {
+func (t *clientOAuth2RoundTripper) requestJWT(key, secret string) (string, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 

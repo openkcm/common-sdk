@@ -85,6 +85,7 @@ func (fg FeatureGates) Feature(feature string) (bool, error) {
 	if !ok {
 		return false, ErrFeatureNotFound
 	}
+
 	return v, nil
 }
 
