@@ -147,8 +147,11 @@ func loadMTLS(mtls *commoncfg.MTLS, rt *clientOAuth2RoundTripper) error {
 //     and authentication method type.
 //   - rt: pointer to the clientOAuth2RoundTripper to populate with extracted credential values.
 func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2RoundTripper) {
-	// error was ignored as the creds.ClientSecret is optional
-	secretVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret)
+
+	secretVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret)
+	if err != nil {
+		// error was ignored internationally as the creds.ClientSecret is optional
+	}
 	if secretVal != nil && string(secretVal) != "" {
 		switch creds.AuthMethod {
 		case commoncfg.OAuth2ClientSecretPost:
@@ -162,14 +165,18 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 
 	switch creds.AuthMethod {
 	case commoncfg.OAuth2PrivateKeyJWT:
-		// error was ignored as the creds.ClientAssertion is optional
-		assertionVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertion)
+		assertionVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertion)
+		if err != nil {
+			// error was ignored internationally as the creds.ClientAssertion is optional
+		}
 		if assertionVal != nil && string(assertionVal) != "" {
 			rt.ClientAssertion = pointers.To[string](string(assertionVal))
 		}
 
-		// error was ignored as the creds.ClientAssertionType is optional
-		assertionTypeVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType)
+		assertionTypeVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType)
+		if err != nil {
+			// error was ignored internationally as the creds.ClientAssertionType is optional
+		}
 		if assertionTypeVal != nil && string(assertionTypeVal) != "" {
 			rt.ClientAssertionType = pointers.To[string](string(assertionTypeVal))
 		}
