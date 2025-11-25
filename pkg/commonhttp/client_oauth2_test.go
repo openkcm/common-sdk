@@ -17,6 +17,8 @@ import (
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
 
+const tokenURL = "https://example.com/token"
+
 // helper to create SourceRef from a literal value for testing
 func strRef(value string) *commoncfg.SourceRef {
 	return &commoncfg.SourceRef{
@@ -67,7 +69,7 @@ func TestNewClientFromOAuth2(t *testing.T) {
 					AuthMethod:   "jwt",
 					ClientSecret: strRef("secret"),
 				},
-				URL: strRef("https://example.com/token"),
+				URL: strRef(tokenURL),
 			},
 			wantErr: false,
 			check: func(client *http.Client) {
@@ -92,7 +94,7 @@ func TestNewClientFromOAuth2(t *testing.T) {
 					AuthMethod:      "private",
 					ClientAssertion: strRef("jwt"),
 				},
-				URL: strRef("https://example.com/token"),
+				URL: strRef(tokenURL),
 			},
 			wantErr:    true,
 			errMessage: "clientAssertionType is required",
@@ -105,7 +107,7 @@ func TestNewClientFromOAuth2(t *testing.T) {
 					AuthMethod:          "private",
 					ClientAssertionType: strRef("urn:ietf:params:oauth:client-assertion-type:jwt-bearer"),
 				},
-				URL: strRef("https://example.com/token"),
+				URL: strRef(tokenURL),
 			},
 			wantErr:    true,
 			errMessage: "invalid OAuth2 config: clientAssertionType cannot be provided without clientAssertion",
