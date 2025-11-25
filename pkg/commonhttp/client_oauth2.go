@@ -66,8 +66,12 @@ func NewClientFromOAuth2(clientAuth *commoncfg.OAuth2) (*http.Client, error) {
 		jwtCache: make(map[string]cachedJWT),
 	}
 
-	tokenURL, _ := commoncfg.ExtractValueFromSourceRef(clientAuth.URL)
-	if tokenURL != nil && string(tokenURL) != "" {
+	// error has been ignored intentionally as value might be not present
+	if clientAuth.URL != nil {
+		tokenURL, err := commoncfg.ExtractValueFromSourceRef(clientAuth.URL)
+		if err != nil {
+			return nil, fmt.Errorf("OAuth2 credentials missing URL: %w", err)
+		}
 		rt.TokenURL = string(tokenURL)
 	}
 
@@ -143,19 +147,17 @@ func loadMTLS(mtls *commoncfg.MTLS, rt *clientOAuth2RoundTripper) error {
 //   - rt: pointer to the clientOAuth2RoundTripper to populate with extracted credential values.
 func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2RoundTripper) {
 	secretVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret)
-	switch creds.AuthMethod {
-	case commoncfg.OAuth2ClientSecretPost:
-		if secretVal != nil && string(secretVal) != "" {
+	if secretVal != nil && string(secretVal) != "" {
+		switch creds.AuthMethod {
+		case commoncfg.OAuth2ClientSecretPost:
 			rt.ClientSecretPost = pointers.To(string(secretVal))
-		}
-	case commoncfg.OAuth2ClientSecretBasic:
-		if secretVal != nil && string(secretVal) != "" {
+		case commoncfg.OAuth2ClientSecretBasic:
 			rt.ClientSecretBasic = pointers.To(string(secretVal))
-		}
-	case commoncfg.OAuth2ClientSecretJWT:
-		if secretVal != nil && string(secretVal) != "" {
+		case commoncfg.OAuth2ClientSecretJWT:
 			rt.ClientSecretJWT = pointers.To(string(secretVal))
 		}
+	}
+	switch creds.AuthMethod {
 	case commoncfg.OAuth2PrivateKeyJWT:
 		assertionVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertion)
 		if assertionVal != nil && string(assertionVal) != "" {

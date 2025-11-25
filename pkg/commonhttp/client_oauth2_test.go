@@ -56,6 +56,7 @@ func TestNewClientFromOAuth2(t *testing.T) {
 			config: &commoncfg.OAuth2{
 				Credentials: commoncfg.OAuth2Credentials{
 					ClientID:     *strRef("id"),
+					AuthMethod:   "post",
 					ClientSecret: strRef("secret"),
 				},
 			},
@@ -72,6 +73,7 @@ func TestNewClientFromOAuth2(t *testing.T) {
 			config: &commoncfg.OAuth2{
 				Credentials: commoncfg.OAuth2Credentials{
 					ClientID:            *strRef("id"),
+					AuthMethod:          "private",
 					ClientAssertion:     strRef("jwt"),
 					ClientAssertionType: strRef("urn:ietf:params:oauth:client-assertion-type:jwt-bearer"),
 				},

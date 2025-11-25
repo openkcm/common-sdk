@@ -81,11 +81,11 @@ func (fg FeatureGates) IsFeatureEnabled(feature string) bool {
 }
 
 func (fg FeatureGates) Feature(feature string) (bool, error) {
-	if v, ok := fg[feature]; !ok {
+	v, ok := fg[feature]
+	if !ok {
 		return false, ErrFeatureNotFound
-	} else {
-		return v, nil
 	}
+	return v, nil
 }
 
 // Application holds minimal application configuration.
