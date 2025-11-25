@@ -103,13 +103,27 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 		rt.ClientAssertion = pointers.To(string(assertion))
 	}
 
-	if creds.ClientAssertionType != nil && *creds.ClientAssertionType != "" {
-		rt.ClientAssertionType = creds.ClientAssertionType
+	if assertionType, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType); assertionType != nil && string(assertionType) != "" {
+		rt.ClientAssertionType = pointers.To(string(assertionType))
 	}
 
+	// --- Validate combinations ---
+
+	// A: both secret and assertion → invalid
 	if rt.ClientSecret != nil && rt.ClientAssertion != nil {
-		return errors.New("invalid OAuth2 config: both clientSecret and clientAssertion provided")
+		return errors.New("invalid OAuth2 config: cannot provide both clientSecret and clientAssertion")
 	}
+
+	// B + C: assertion and assertionType must appear together
+	if (rt.ClientAssertion != nil) != (rt.ClientAssertionType != nil) {
+		if rt.ClientAssertion != nil {
+			return errors.New("invalid OAuth2 config: clientAssertionType is required when using clientAssertion")
+		}
+		return errors.New("invalid OAuth2 config: clientAssertionType cannot be provided without clientAssertion")
+	}
+
+	// D: If none of the above matched, it's valid.
+	// Even clientSecret=nil AND clientAssertion=nil is valid when mTLS is used.
 
 	return nil
 }
@@ -143,9 +157,13 @@ type clientOAuth2RoundTripper struct {
 // The modified request is then forwarded to the underlying transport.
 func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	newReq := *req
+	// Shallow copy of URL is required before modification
 	urlCopy := *req.URL
 	q := urlCopy.Query()
 
+	// NOTE: This injects credentials into Query Params.
+	// Ensure your specific Identity Provider supports this.
+	// Standard OAuth2 often prefers Basic Auth Header or POST Body.
 	q.Set("client_id", t.ClientID)
 
 	switch {

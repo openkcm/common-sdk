@@ -221,13 +221,13 @@ type OAuth2Credentials struct {
 	ClientSecret *SourceRef `yaml:"clientSecret,omitempty" json:"clientSecret,omitempty"`
 
 	// Option B: private_key_jwt authentication (RFC 7523)
-	ClientAssertionType *string    `yaml:"clientAssertionType,omitempty" json:"clientAssertionType,omitempty"`
+	ClientAssertionType *SourceRef `yaml:"clientAssertionType,omitempty" json:"clientAssertionType,omitempty"`
 	ClientAssertion     *SourceRef `yaml:"clientAssertion,omitempty" json:"clientAssertion,omitempty"`
 }
 
 // SourceRef defines a reference to a source for retrieving a value.
 type SourceRef struct {
-	Source SourceValueType `yaml:"source" json:"source"`
+	Source SourceValueType `yaml:"source" json:"source" default:"embedded"`
 	Env    string          `yaml:"env" json:"env"`
 	File   CredentialFile  `yaml:"file" json:"file"`
 	Value  string          `yaml:"value" json:"value"`
