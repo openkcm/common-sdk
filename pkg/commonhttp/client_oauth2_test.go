@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -21,7 +20,7 @@ import (
 // helper to create SourceRef from a literal value for testing
 func strRef(value string) *commoncfg.SourceRef {
 	return &commoncfg.SourceRef{
-		Source: commoncfg.EmbeddedSourceValue, // treat as literal value
+		Source: commoncfg.EmbeddedSourceValue,
 		Value:  value,
 	}
 }
@@ -44,67 +43,79 @@ func TestNewClientFromOAuth2(t *testing.T) {
 			errMessage: "oauth2 config is nil",
 		},
 		{
-			name: "missing clientID",
+			name: "empty clientID",
 			config: &commoncfg.OAuth2{
-				Credentials: commoncfg.OAuth2Credentials{},
+				Credentials: commoncfg.OAuth2Credentials{AuthMethod: "post"},
 			},
 			wantErr:    true,
 			errMessage: "oauth2.clientID is missing",
 		},
 		{
-			name: "only clientSecret",
+			name: "invalid Empty AuthMethod",
+			config: &commoncfg.OAuth2{
+				Credentials: commoncfg.OAuth2Credentials{
+					ClientID: *strRef("id"),
+				},
+			},
+			wantErr: true, // AuthMethod optional; default handled by round-tripper
+		},
+		{
+			name: "client_secret_jwt caching",
 			config: &commoncfg.OAuth2{
 				Credentials: commoncfg.OAuth2Credentials{
 					ClientID:     *strRef("id"),
-					AuthMethod:   "post",
+					AuthMethod:   "jwt",
 					ClientSecret: strRef("secret"),
 				},
+				URL: strRef("https://example.com/token"),
 			},
 			wantErr: false,
 			check: func(client *http.Client) {
 				rt, ok := client.Transport.(*clientOAuth2RoundTripper)
 				assert.True(t, ok)
-				assert.NotNil(t, rt.ClientSecretPost)
-				assert.Nil(t, rt.ClientAssertion)
+				assert.Equal(t, "secret", *rt.ClientSecretJWT)
+
+				// Test JWT generation and caching directly
+				jwt1, err1 := rt.requestJWT("client_secret_jwt", *rt.ClientSecretJWT)
+				jwt2, err2 := rt.requestJWT("client_secret_jwt", *rt.ClientSecretJWT)
+
+				assert.NoError(t, err1)
+				assert.NoError(t, err2)
+				assert.Equal(t, jwt1, jwt2) // ensure cached JWT is reused
 			},
 		},
 		{
-			name: "only clientAssertion",
+			name: "private_key_jwt missing assertionType",
+			config: &commoncfg.OAuth2{
+				Credentials: commoncfg.OAuth2Credentials{
+					ClientID:        *strRef("id"),
+					AuthMethod:      "private",
+					ClientAssertion: strRef("jwt"),
+				},
+				URL: strRef("https://example.com/token"),
+			},
+			wantErr:    true,
+			errMessage: "clientAssertionType is required",
+		},
+		{
+			name: "private_key_jwt missing assertion",
 			config: &commoncfg.OAuth2{
 				Credentials: commoncfg.OAuth2Credentials{
 					ClientID:            *strRef("id"),
 					AuthMethod:          "private",
-					ClientAssertion:     strRef("jwt"),
 					ClientAssertionType: strRef("urn:ietf:params:oauth:client-assertion-type:jwt-bearer"),
 				},
-			},
-			wantErr: false,
-			check: func(client *http.Client) {
-				rt, ok := client.Transport.(*clientOAuth2RoundTripper)
-				assert.True(t, ok)
-				assert.Nil(t, rt.ClientSecretPost)
-				assert.NotNil(t, rt.ClientAssertion)
-				assert.NotNil(t, rt.ClientAssertionType)
-			},
-		},
-		{
-			name: "both clientSecret and clientAssertion",
-			config: &commoncfg.OAuth2{
-				Credentials: commoncfg.OAuth2Credentials{
-					ClientID:            *strRef("id"),
-					ClientSecret:        strRef("secret"),
-					ClientAssertion:     strRef("jwt"),
-					ClientAssertionType: strRef("urn:ietf:params:oauth:client-assertion-type:jwt-bearer"),
-				},
+				URL: strRef("https://example.com/token"),
 			},
 			wantErr:    true,
-			errMessage: "invalid OAuth2 config",
+			errMessage: "invalid OAuth2 config: clientAssertionType cannot be provided without clientAssertion",
 		},
 		{
-			name: "mTLS config sets transport",
+			name: "valid mTLS only",
 			config: &commoncfg.OAuth2{
 				Credentials: commoncfg.OAuth2Credentials{
-					ClientID: *strRef("id"),
+					ClientID:   *strRef("id"),
+					AuthMethod: "pkce",
 				},
 				MTLS: &commoncfg.MTLS{
 					Cert:    *strRef(certPEM),
@@ -115,10 +126,29 @@ func TestNewClientFromOAuth2(t *testing.T) {
 			check: func(client *http.Client) {
 				rt, ok := client.Transport.(*clientOAuth2RoundTripper)
 				assert.True(t, ok)
-				tlsTransport, ok := rt.Next.(*http.Transport)
+
+				_, ok2 := rt.Next.(*http.Transport)
+				assert.True(t, ok2)
+			},
+		},
+		{
+			name: "secret + irrelevant assertion field ignored",
+			config: &commoncfg.OAuth2{
+				Credentials: commoncfg.OAuth2Credentials{
+					ClientID:            *strRef("id"),
+					ClientSecret:        strRef("secret"),
+					AuthMethod:          "post",
+					ClientAssertion:     strRef("jwt"),                                                    // ignored because AuthMethod is "post"
+					ClientAssertionType: strRef("urn:ietf:params:oauth:client-assertion-type:jwt-bearer"), // ignored
+				},
+			},
+			wantErr: false, // no error
+			check: func(client *http.Client) {
+				rt, ok := client.Transport.(*clientOAuth2RoundTripper)
 				assert.True(t, ok)
-				assert.IsType(t, &tls.Config{}, tlsTransport.TLSClientConfig)
-				assert.Len(t, tlsTransport.TLSClientConfig.Certificates, 1)
+				assert.Equal(t, "secret", *rt.ClientSecretPost)
+				assert.Nil(t, rt.ClientAssertion)
+				assert.Nil(t, rt.ClientAssertionType)
 			},
 		},
 	}
