@@ -214,7 +214,7 @@ func WithInterceptors(interceptors ...Interceptor) Option {
 // version number, Git SHA, build date, etc. These values will be available in Result.Info. If you use the
 // default HTTP handler of this library (see NewHandler) or convert the Result to JSON on your own,
 // these values will be available in the "info" field.
-func WithInfo(values map[string]interface{}) Option {
+func WithInfo(values map[string]any) Option {
 	return func(cfg *checkerConfig) {
 		cfg.info = values
 	}
@@ -228,7 +228,7 @@ func WithInfo(values map[string]interface{}) Option {
 // Values added by these functions will still be available in Result.Info and reflected in the
 // "info" field if you are using the default HTTP handler (see NewHandler) or converting Result to JSON.
 // The functions will be executed in order.
-func WithInfoFunc(infoFuncs ...func(info map[string]interface{})) Option {
+func WithInfoFunc(infoFuncs ...func(info map[string]any)) Option {
 	return func(cfg *checkerConfig) {
 		cfg.infoFuncs = infoFuncs
 	}
