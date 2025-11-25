@@ -164,8 +164,9 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 		}
 	}
 
+	switch creds.AuthMethod {
 	// Load private_key_jwt credentials
-	if creds.AuthMethod == commoncfg.OAuth2PrivateKeyJWT {
+	case commoncfg.OAuth2PrivateKeyJWT:
 		assertionVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertion)
 		if err != nil { //nolint: staticcheck
 			// error ignored intentionally as creds.ClientSecret is optional
@@ -183,7 +184,10 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 		if assertionTypeVal != nil {
 			assignSecret(assertionTypeVal, &rt.ClientAssertionType)
 		}
+	case commoncfg.OAuth2None:
+		// doing nothing
 	}
+
 }
 
 func assignSecret(val []byte, target **string) {

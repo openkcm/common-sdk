@@ -58,7 +58,7 @@ const (
 	OAuth2ClientSecretPost  OAuth2ClientAuthMethod = "post"    // POST body
 	OAuth2ClientSecretJWT   OAuth2ClientAuthMethod = "jwt"     // JWT signed w/ HMAC(secret)
 	OAuth2PrivateKeyJWT     OAuth2ClientAuthMethod = "private" // JWT signed w/ private key
-	OAuth2None              OAuth2ClientAuthMethod = "pkce"    // PKCE public clients
+	OAuth2None              OAuth2ClientAuthMethod = "none"    // PKCE public clients
 )
 
 var ErrFeatureNotFound = errors.New("feature not found")
