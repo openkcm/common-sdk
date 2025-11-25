@@ -147,12 +147,6 @@ func loadMTLS(mtls *commoncfg.MTLS, rt *clientOAuth2RoundTripper) error {
 //     and authentication method type.
 //   - rt: pointer to the clientOAuth2RoundTripper to populate with extracted credential values.
 func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2RoundTripper) {
-	assignSecret := func(val []byte, target **string) {
-		if val != nil && len(val) > 0 {
-			*target = pointers.To(string(val))
-		}
-	}
-
 	// Load client secret if applicable
 	secretVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret)
 	if err != nil {
@@ -186,6 +180,12 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 		if assertionTypeVal != nil {
 			assignSecret(assertionTypeVal, &rt.ClientAssertionType)
 		}
+	}
+}
+
+func assignSecret(val []byte, target **string) {
+	if val != nil && len(val) > 0 {
+		*target = pointers.To(string(val))
 	}
 }
 
