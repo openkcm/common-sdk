@@ -149,9 +149,10 @@ func loadMTLS(mtls *commoncfg.MTLS, rt *clientOAuth2RoundTripper) error {
 func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2RoundTripper) {
 	// Load client secret if applicable
 	secretVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret)
-	if err != nil {
+	if err != nil { //nolint: staticcheck
 		// error ignored intentionally as creds.ClientSecret is optional
 	}
+
 	if secretVal != nil {
 		switch creds.AuthMethod {
 		case commoncfg.OAuth2ClientSecretPost:
@@ -166,17 +167,19 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 	// Load private_key_jwt credentials
 	if creds.AuthMethod == commoncfg.OAuth2PrivateKeyJWT {
 		assertionVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertion)
-		if err != nil {
+		if err != nil { //nolint: staticcheck
 			// error ignored intentionally as creds.ClientSecret is optional
 		}
+
 		if assertionVal != nil {
 			assignSecret(assertionVal, &rt.ClientAssertion)
 		}
 
 		assertionTypeVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType)
-		if err != nil {
+		if err != nil { //nolint: staticcheck
 			// error ignored intentionally as creds.ClientSecret is optional
 		}
+
 		if assertionTypeVal != nil {
 			assignSecret(assertionTypeVal, &rt.ClientAssertionType)
 		}
@@ -184,7 +187,7 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 }
 
 func assignSecret(val []byte, target **string) {
-	if val != nil && len(val) > 0 {
+	if len(val) > 0 {
 		*target = pointers.To(string(val))
 	}
 }
