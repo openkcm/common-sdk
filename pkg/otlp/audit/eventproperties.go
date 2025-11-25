@@ -2,6 +2,7 @@ package otlpaudit
 
 import (
 	"reflect"
+	"slices"
 )
 
 type eventProperties map[string]any
@@ -20,13 +21,7 @@ func (m eventProperties) hasValues(keys ...string) bool {
 }
 
 func hasValues(values ...any) bool {
-	for _, value := range values {
-		if isZeroVal(value) {
-			return false
-		}
-	}
-
-	return true
+	return !slices.ContainsFunc(values, isZeroVal[any])
 }
 
 func isZeroVal[T comparable](v T) bool {

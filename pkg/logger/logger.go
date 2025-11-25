@@ -74,6 +74,7 @@ func InitHandlerWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app commoncf
 	setLogLevel(logLevel, cfgLogger.Level)
 
 	formatters := []slogformatter.Formatter{}
+
 	switch cfgLogger.Formatter.Time.Type {
 	case commoncfg.UnixTimeLogger:
 		precision, err := time.ParseDuration(cfgLogger.Formatter.Time.Precision)

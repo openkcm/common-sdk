@@ -194,7 +194,7 @@ func valuesPresent(m pcommon.Map, keys ...string) bool {
 func loadConfigForTests(t *testing.T, err error) (*commoncfg.BaseConfig, error) {
 	t.Helper()
 
-	defaults := map[string]interface{}{}
+	defaults := map[string]any{}
 
 	if err != nil {
 		t.Errorf("createTempConfigFrom() error = %v", err)

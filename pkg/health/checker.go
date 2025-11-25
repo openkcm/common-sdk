@@ -12,8 +12,8 @@ import (
 type (
 	checkerConfig struct {
 		timeout              time.Duration
-		info                 map[string]interface{}
-		infoFuncs            []func(map[string]interface{})
+		info                 map[string]any
+		infoFuncs            []func(map[string]any)
 		checks               map[string]*Check
 		cacheTTL             time.Duration
 		statusChangeListener func(context.Context, State)
@@ -39,7 +39,7 @@ type (
 
 	jsonCheckResult struct {
 		Status    string    `json:"status"`
-		Timestamp time.Time `json:"timestamp,omitempty"`
+		Timestamp time.Time `json:"timestamp,omitempty"` //nolint:modernize
 		Error     string    `json:"error,omitempty"`
 	}
 
@@ -96,7 +96,7 @@ type (
 	// detailed information about the individual checks.
 	Result struct {
 		// Info contains additional information about this health result.
-		Info map[string]interface{} `json:"info,omitempty"`
+		Info map[string]any `json:"info,omitempty"`
 		// Status is the aggregated system availability status.
 		Status AvailabilityStatus `json:"status"`
 		// Details contains health information for all checked components.
@@ -114,7 +114,7 @@ type (
 		// Status is the availability status of a component.
 		Status AvailabilityStatus `json:"status"`
 		// Timestamp holds the time when the check was executed.
-		Timestamp time.Time `json:"timestamp,omitempty"`
+		Timestamp time.Time `json:"timestamp,omitempty"` //nolint:modernize
 		// Error contains the check error message, if the check failed.
 		Error error `json:"error,omitempty"`
 	}
@@ -568,7 +568,7 @@ func withInterceptors(interceptors []Interceptor, target InterceptorFunc) Interc
 	return chain
 }
 
-func refreshInfoMap(infoMap map[string]interface{}, infoFuncs []func(map[string]interface{})) {
+func refreshInfoMap(infoMap map[string]any, infoFuncs []func(map[string]any)) {
 	if len(infoFuncs) == 0 {
 		return
 	}
@@ -577,7 +577,7 @@ func refreshInfoMap(infoMap map[string]interface{}, infoFuncs []func(map[string]
 		return
 	}
 
-	target := make(map[string]interface{})
+	target := make(map[string]any)
 	for _, infoFunc := range infoFuncs {
 		infoFunc(target)
 	}
