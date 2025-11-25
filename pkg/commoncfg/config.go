@@ -26,6 +26,10 @@ type SecretType string
 // Protocol represents the communication protocol.
 type Protocol string
 
+// All supported OAuth2 client authentication methods.
+// Based on OAuth2 RFC6749, JWT RFC7523 and OIDC specs.
+type OAuth2ClientAuthMethod string
+
 const (
 	JSONLoggerFormat LoggerFormat = "json"
 	TextLoggerFormat LoggerFormat = "text"
@@ -49,6 +53,12 @@ const (
 	JSONFileFormat   FileFormat = "json"
 	YAMLFileFormat   FileFormat = "yaml"
 	BinaryFileFormat FileFormat = "binary"
+
+	OAuth2ClientSecretBasic OAuth2ClientAuthMethod = "basic"   // Basic auth header
+	OAuth2ClientSecretPost  OAuth2ClientAuthMethod = "post"    // POST body
+	OAuth2ClientSecretJWT   OAuth2ClientAuthMethod = "jwt"     // JWT signed w/ HMAC(secret)
+	OAuth2PrivateKeyJWT     OAuth2ClientAuthMethod = "private" // JWT signed w/ private key
+	OAuth2None              OAuth2ClientAuthMethod = "pkce"    // PKCE public clients
 )
 
 var ErrFeatureNotFound = errors.New("feature not found")
@@ -209,13 +219,15 @@ type BasicAuth struct {
 
 // OAuth2 holds client id and secret auth configuration
 type OAuth2 struct {
-	URL         SourceRef         `yaml:"url" json:"url"`
+	URL         *SourceRef        `yaml:"url" json:"url"`
 	Credentials OAuth2Credentials `yaml:"credentials" json:"credentials"`
 	MTLS        *MTLS             `yaml:"mtls" json:"mtls"`
 }
 
 type OAuth2Credentials struct {
 	ClientID SourceRef `yaml:"clientID" json:"clientID"`
+
+	AuthMethod OAuth2ClientAuthMethod `yaml:"authMethod" json:"authMethod" default:"post"`
 
 	// Option A: client_secret authentication
 	ClientSecret *SourceRef `yaml:"clientSecret,omitempty" json:"clientSecret,omitempty"`

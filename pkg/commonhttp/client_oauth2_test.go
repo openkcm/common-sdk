@@ -63,7 +63,7 @@ func TestNewClientFromOAuth2(t *testing.T) {
 			check: func(client *http.Client) {
 				rt, ok := client.Transport.(*clientOAuth2RoundTripper)
 				assert.True(t, ok)
-				assert.NotNil(t, rt.ClientSecret)
+				assert.NotNil(t, rt.ClientSecretPost)
 				assert.Nil(t, rt.ClientAssertion)
 			},
 		},
@@ -73,14 +73,14 @@ func TestNewClientFromOAuth2(t *testing.T) {
 				Credentials: commoncfg.OAuth2Credentials{
 					ClientID:            *strRef("id"),
 					ClientAssertion:     strRef("jwt"),
-					ClientAssertionType: &[]string{"urn:ietf:params:oauth:client-assertion-type:jwt-bearer"}[0],
+					ClientAssertionType: strRef("urn:ietf:params:oauth:client-assertion-type:jwt-bearer"),
 				},
 			},
 			wantErr: false,
 			check: func(client *http.Client) {
 				rt, ok := client.Transport.(*clientOAuth2RoundTripper)
 				assert.True(t, ok)
-				assert.Nil(t, rt.ClientSecret)
+				assert.Nil(t, rt.ClientSecretPost)
 				assert.NotNil(t, rt.ClientAssertion)
 				assert.NotNil(t, rt.ClientAssertionType)
 			},
@@ -92,7 +92,7 @@ func TestNewClientFromOAuth2(t *testing.T) {
 					ClientID:            *strRef("id"),
 					ClientSecret:        strRef("secret"),
 					ClientAssertion:     strRef("jwt"),
-					ClientAssertionType: &[]string{"urn:ietf:params:oauth:client-assertion-type:jwt-bearer"}[0],
+					ClientAssertionType: strRef("urn:ietf:params:oauth:client-assertion-type:jwt-bearer"),
 				},
 			},
 			wantErr:    true,
