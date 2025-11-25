@@ -44,6 +44,7 @@ func NewClient(cfg *commoncfg.HTTPClient) (*http.Client, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load root CAs: %w", err)
 		}
+
 		tlsConfig.RootCAs = certPool
 	}
 
@@ -53,6 +54,7 @@ func NewClient(cfg *commoncfg.HTTPClient) (*http.Client, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load client certificate: %w", err)
 		}
+
 		tlsConfig.Certificates = []tls.Certificate{*cert}
 	}
 
