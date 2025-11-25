@@ -154,7 +154,11 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 	}
 
 	// Load client secret if applicable
-	if secretVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret); secretVal != nil {
+	secretVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret)
+	if err != nil {
+		// error ignored intentionally as creds.ClientSecret is optional
+	}
+	if secretVal != nil {
 		switch creds.AuthMethod {
 		case commoncfg.OAuth2ClientSecretPost:
 			assignSecret(secretVal, &rt.ClientSecretPost)
@@ -167,10 +171,19 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 
 	// Load private_key_jwt credentials
 	if creds.AuthMethod == commoncfg.OAuth2PrivateKeyJWT {
-		if assertionVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertion); assertionVal != nil {
+		assertionVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertion)
+		if err != nil {
+			// error ignored intentionally as creds.ClientSecret is optional
+		}
+		if assertionVal != nil {
 			assignSecret(assertionVal, &rt.ClientAssertion)
 		}
-		if assertionTypeVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType); assertionTypeVal != nil {
+
+		assertionTypeVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType)
+		if err != nil {
+			// error ignored intentionally as creds.ClientSecret is optional
+		}
+		if assertionTypeVal != nil {
 			assignSecret(assertionTypeVal, &rt.ClientAssertionType)
 		}
 	}
