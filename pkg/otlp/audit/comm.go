@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	slogctx "github.com/veqryn/slog-context"
 	"net/http"
 
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -56,6 +57,8 @@ func (auditLogger *AuditLogger) SendEvent(ctx context.Context, logs plog.Logs) e
 	if err != nil {
 		return err
 	}
+
+	slogctx.Debug(ctx, "sent audit log with no error")
 
 	return nil
 }
