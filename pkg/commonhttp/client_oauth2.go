@@ -1,6 +1,3 @@
-// Package commonhttp provides utilities to create HTTP clients
-// configured with OAuth2 credentials and optional mutual TLS (mTLS).
-
 package commonhttp
 
 import (
@@ -17,24 +14,38 @@ import (
 	"github.com/openkcm/common-sdk/pkg/pointers"
 )
 
-// NewClientFromOAuth2 creates an *http.Client configured with OAuth2 credentials
-// and optional mTLS transport.
+// NewClientFromOAuth2 creates a new HTTP client configured with OAuth2 credentials
+// and optional mutual TLS (mTLS) transport.
 //
-// The client supports two types of OAuth2 authentication:
-//  1. client_secret: requires ClientID and ClientSecretPost
-//  2. private_key_jwt: requires ClientID, ClientAssertion, and ClientAssertionType
+// This function prepares an *http.Client that automatically injects OAuth2 credentials
+// into outgoing requests using a custom RoundTripper. The client can use multiple
+// OAuth2 authentication methods and optionally mTLS.
 //
-// Only one authentication method may be provided. If both clientSecret and
-// clientAssertion are configured, this function returns an error.
+// Supported authentication methods:
+//   - post (client_secret_post): injects "client_id" and "client_secret" into the
+//     request query parameters (or POST body, depending on usage).
+//   - basic (client_secret_basic): sets the HTTP Basic Authorization header with
+//     clientID and clientSecret.
+//   - jwt (client_secret_jwt): generates a JWT signed with a shared secret, injected
+//     as "client_assertion" with type "urn:ietf:params:oauth:client-assertion-type:jwt-bearer".
+//   - private (private_key_jwt): uses a JWT assertion provided in ClientAssertion along
+//     with ClientAssertionType, injected as query parameters.
+//   - none: PKCE flow (no client_secret required)
 //
-// If MTLS is provided, the client's transport will use the TLS configuration.
+// Only one authentication method may be configured at a time. If multiple conflicting
+// credentials are provided, this function returns an error.
+//
+// If mTLS configuration is provided, the client's transport will use the specified
+// TLS certificates for client authentication.
 //
 // Parameters:
-//   - clientAuth: a pointer to an OAuth2 configuration containing credentials and optional mTLS.
+//   - clientAuth: pointer to an OAuth2 configuration containing credentials, optional mTLS,
+//     and the authentication method to use.
 //
 // Returns:
-//   - *http.Client: the configured HTTP client
-//   - error: if the configuration is invalid or mTLS loading fails
+//   - *http.Client: an HTTP client that automatically applies the specified OAuth2 credentials
+//     and mTLS configuration to requests.
+//   - error: if the configuration is invalid, required fields are missing, or mTLS loading fails.
 func NewClientFromOAuth2(clientAuth *commoncfg.OAuth2) (*http.Client, error) {
 	if clientAuth == nil {
 		return nil, errors.New("oauth2 config is nil")
@@ -77,14 +88,22 @@ func NewClientFromOAuth2(clientAuth *commoncfg.OAuth2) (*http.Client, error) {
 	return &http.Client{Transport: rt}, nil
 }
 
-// loadMTLS configures the HTTP transport to use mutual TLS (mTLS).
+// loadMTLS configures the HTTP transport to use mutual TLS (mTLS) for a given
+// clientOAuth2RoundTripper.
+//
+// This function reads the certificate, key, and optional CA configuration from
+// the provided MTLS configuration and sets up a tls.Config for the RoundTripper's
+// underlying transport.
 //
 // Parameters:
-//   - mtls: MTLS configuration (cert, key, server CA)
-//   - rt: pointer to the clientOAuth2RoundTripper that will hold the transport
+//   - mtls: pointer to an MTLS configuration containing paths or sources for
+//     client certificate, client key, and server CA. If nil, no mTLS
+//     configuration is applied.
+//   - rt: pointer to a clientOAuth2RoundTripper that will have its transport
+//     wrapped with the TLS configuration.
 //
 // Returns:
-//   - error: if loading the TLS configuration fails
+//   - error: if loading the certificates or creating the TLS configuration fails.
 func loadMTLS(mtls *commoncfg.MTLS, rt *clientOAuth2RoundTripper) error {
 	if mtls == nil {
 		return nil
@@ -100,16 +119,28 @@ func loadMTLS(mtls *commoncfg.MTLS, rt *clientOAuth2RoundTripper) error {
 	return nil
 }
 
-// loadOAuth2Credentials populates the HTTP RoundTripper with OAuth2 credentials.
+// loadOAuth2Credentials populates the clientOAuth2RoundTripper with OAuth2 credentials.
 //
-// Supports the main authentication methods:
-//   - client_secret_post: sets ClientSecretPost
-//   - client_secret_basic: sets ClientSecretBasic
-//   - client_secret_jwt: sets ClientSecretJWT
-//   - private_key_jwt: sets ClientAssertion and ClientAssertionType
+// This function extracts values from the provided OAuth2 configuration and
+// sets the corresponding fields in the round-tripper for use in HTTP requests.
 //
-// It does NOT validate combinations — validate() should be called separately
-// to ensure that conflicting credentials are not used.
+// Supported authentication methods:
+//   - post: sets ClientSecretPost for client_secret_post authentication.
+//   - basic: sets ClientSecretBasic for client_secret_basic authentication.
+//   - jwt: sets ClientSecretJWT for client_secret_jwt authentication.
+//   - private: sets ClientAssertion and ClientAssertionType for private_key_jwt authentication.
+//   - none: no credentials are set (PKCE or unauthenticated flow).
+//
+// Notes:
+//   - This function does NOT perform validation of combinations; call validate()
+//     separately to ensure the configuration is consistent.
+//   - Extracts the actual values from SourceRef fields, such as environment variables,
+//     files, or plain values, using commoncfg.ExtractValueFromSourceRef.
+//
+// Parameters:
+//   - creds: pointer to the OAuth2Credentials containing the source references
+//     and authentication method type.
+//   - rt: pointer to the clientOAuth2RoundTripper to populate with extracted credential values.
 func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2RoundTripper) {
 	secretVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret)
 	switch creds.AuthMethod {
@@ -139,31 +170,29 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 	}
 }
 
-// validateOAuth2Credentials validates an OAuth2 configuration and ensures that
-// the credentials provided are consistent, complete, and follow the expected rules.
+// validate checks the consistency and completeness of an OAuth2 configuration.
 //
-// The validation logic follows three main steps:
-//   1. Basic validation: ensure required fields (ClientID and AuthMethod) are set.
-//   2. Combination validation: ensure that different credentials are not mixed
-//      in invalid ways (e.g., clientSecret with clientAssertion).
-//   3. Auth-method-specific validation: ensure each OAuth2 authentication method
-//      has the necessary fields.
+// It ensures that the provided credentials follow expected rules and do not conflict.
+//
+// The validation performs three main types of checks:
+//  1. Combination validation: ensures that different credential types are not mixed
+//     in invalid ways (e.g., clientSecret combined with clientAssertion).
+//  2. Field presence validation: ensures that required fields are present when a
+//     particular authentication method is used.
+//  3. Authentication method availability: ensures that at least one valid
+//     authentication method (clientSecret, clientAssertion, or mTLS) is configured.
 //
 // Parameters:
-//   - creds: pointer to the OAuth2 configuration to validate
-//   - rt: pointer to the clientOAuth2RoundTripper that holds extracted credential values
+//   - creds: pointer to the OAuth2 configuration to validate.
+//   - rt: pointer to the clientOAuth2RoundTripper holding extracted credential values.
 //
 // Returns:
-//   - error: if the configuration is invalid; otherwise nil
+//   - error: descriptive error if the configuration is invalid; otherwise nil.
 //
 // Validation rules:
-//   - ClientID must not be empty.
-//   - AuthMethod must be provided and recognized.
-//   - clientSecret and clientAssertion cannot be provided simultaneously.
+//   - clientSecret (post, basic, or jwt) and clientAssertion cannot be used together.
 //   - If clientAssertion is provided, clientAssertionType must also be provided, and vice versa.
-//   - At least one authentication method must be configured (clientSecret, clientAssertion, or mTLS).
-//   - Each authentication method must provide the required fields according to its type.
-
+//   - At least one authentication method must be configured: clientSecret, clientAssertion, or mTLS.
 func validate(creds *commoncfg.OAuth2, rt *clientOAuth2RoundTripper) error {
 	// Validate combination of credentials
 	hasSecret := rt.ClientSecretPost != nil || rt.ClientSecretBasic != nil || rt.ClientSecretJWT != nil
@@ -191,29 +220,49 @@ func validate(creds *commoncfg.OAuth2, rt *clientOAuth2RoundTripper) error {
 }
 
 // clientOAuth2RoundTripper is a custom HTTP RoundTripper that automatically
-// injects OAuth2 credentials into query parameters for every request.
+// injects OAuth2 credentials into HTTP requests.
 //
-// into requests. Supports:
-//   - client_secret_post → client_id + client_secret in POST body or query
-//   - client_secret_basic → Authorization header
-//   - client_secret_jwt → client_assertion JWT
-//   - private_key_jwt → client_assertion JWT with type
-//   - mTLS → transport layer TLS certs
+// It supports multiple authentication methods:
+//   - post → client_id + client_secret in POST body or query parameters
+//   - basic → Authorization header
+//   - jwt → client_assertion JWT signed with HMAC(secret)
+//   - private → client_assertion JWT signed with private key
+//   - mTLS → transport layer TLS certificates
 type clientOAuth2RoundTripper struct {
+	// ClientID is the OAuth2 client ID used in all authentication methods.
 	ClientID string
+
+	// TokenURL is the token endpoint URL used as the "aud" claim when generating JWTs.
 	TokenURL string
 
-	ClientSecretPost    *string // client_secret_post
-	ClientSecretBasic   *string // client_secret_basic
-	ClientSecretJWT     *string // client_secret_jwt
-	ClientAssertion     *string // private_key_jwt
+	// ClientSecretPost is used for client_secret_post authentication.
+	// If set, client_id + client_secret are sent in the POST body or query parameters.
+	ClientSecretPost *string
+
+	// ClientSecretBasic is used for client_secret_basic authentication.
+	// If set, client_id + client_secret are sent in the HTTP Basic Auth header.
+	ClientSecretBasic *string
+
+	// ClientSecretJWT is used for client_secret_jwt authentication.
+	// If set, a JWT is signed with this secret and sent as client_assertion.
+	ClientSecretJWT *string
+
+	// ClientAssertion is used for private_key_jwt authentication.
+	// Contains the JWT assertion string signed with a private key.
+	ClientAssertion *string
+
+	// ClientAssertionType is the type of JWT assertion (e.g., "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+	// Required if ClientAssertion is set.
 	ClientAssertionType *string
 
+	// Next is the underlying HTTP RoundTripper to which the requests are forwarded after injecting credentials.
 	Next http.RoundTripper
 
-	// Optional JWT cache to reuse client_secret_jwt or private_key_jwt
+	// jwtCache is an optional in-memory cache of JWTs to avoid regenerating tokens for repeated requests.
 	jwtCache map[string]cachedJWT
-	mu       sync.Mutex
+
+	// mu protects access to the jwtCache map in concurrent requests.
+	mu sync.Mutex
 }
 
 type cachedJWT struct {
@@ -221,14 +270,35 @@ type cachedJWT struct {
 	expiresAt time.Time
 }
 
-// RoundTrip implements the http.RoundTripper interface.
+// RoundTrip implements the http.RoundTripper interface for clientOAuth2RoundTripper.
 //
-// It injects the configured OAuth2 credentials into the request URL's query parameters
-// according to the authentication method:
-//   - client_secret: adds client_id and client_secret
-//   - private_key_jwt: adds client_id, client_assertion_type, and client_assertion
+// It automatically injects OAuth2 credentials into outgoing HTTP requests according
+// to the configured authentication method, then forwards the request to the underlying transport.
 //
-// The modified request is then forwarded to the underlying transport.
+// Supported authentication methods:
+//   - post (client_secret_post): injects "client_id" and "client_secret" into the
+//     request query parameters (or POST body, depending on usage).
+//   - basic (client_secret_basic): sets the HTTP Basic Authorization header with
+//     clientID and clientSecret.
+//   - jwt (client_secret_jwt): generates a JWT signed with a shared secret, injected
+//     as "client_assertion" with type "urn:ietf:params:oauth:client-assertion-type:jwt-bearer".
+//   - private (private_key_jwt): uses a JWT assertion provided in ClientAssertion along
+//     with ClientAssertionType, injected as query parameters.
+//   - mTLS: handled separately via TLS transport configuration.
+//
+// Behavior:
+//   - Always injects the "client_id" parameter.
+//   - Chooses the authentication method based on which credentials are set.
+//   - If multiple methods are set incorrectly, behavior is undefined (validation
+//     should catch conflicts before usage).
+//   - For JWT methods, caches tokens for reuse until expiration.
+//
+// Parameters:
+//   - req: the outgoing HTTP request.
+//
+// Returns:
+//   - *http.Response: the response from the underlying transport.
+//   - error: if credential injection fails or JWT generation fails.
 func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	newReq := *req
 	urlCopy := *req.URL
@@ -274,7 +344,30 @@ func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	return t.Next.RoundTrip(&newReq)
 }
 
-// getJWT returns a JWT for the given key, caching it if still valid.
+// getJWT generates or retrieves a cached JWT for the specified key and secret.
+//
+// This method is used internally by clientOAuth2RoundTripper to provide
+// JWT-based authentication for both `client_secret_jwt` and `private_key_jwt`
+// OAuth2 flows.
+//
+// Behavior:
+//   - If a valid cached JWT exists for the given key, it is returned directly.
+//   - Otherwise, a new JWT is generated, signed with the provided secret, and cached.
+//   - The JWT contains standard claims:
+//   - "iss" (issuer): the client ID
+//   - "sub" (subject): the client ID
+//   - "aud" (audience): the TokenURL
+//   - "iat" (issued at): current Unix timestamp
+//   - "exp" (expiration): current Unix timestamp + 60 seconds
+//   - "jti" (JWT ID): a random UUID
+//
+// Parameters:
+//   - key: a unique identifier for the JWT type (e.g., "client_secret_jwt" or "private_key_jwt")
+//   - secret: the shared secret or private key used to sign the JWT
+//
+// Returns:
+//   - string: the signed JWT
+//   - error: if signing the JWT fails
 func (t *clientOAuth2RoundTripper) getJWT(key, secret string) (string, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
