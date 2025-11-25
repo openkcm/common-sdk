@@ -147,40 +147,32 @@ func loadMTLS(mtls *commoncfg.MTLS, rt *clientOAuth2RoundTripper) error {
 //     and authentication method type.
 //   - rt: pointer to the clientOAuth2RoundTripper to populate with extracted credential values.
 func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2RoundTripper) {
-
-	secretVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret)
-	if err != nil {
-		// error was ignored internationally as the creds.ClientSecret is optional
+	assignSecret := func(val []byte, target **string) {
+		if val != nil && len(val) > 0 {
+			*target = pointers.To(string(val))
+		}
 	}
-	if secretVal != nil && string(secretVal) != "" {
+
+	// Load client secret if applicable
+	if secretVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientSecret); secretVal != nil {
 		switch creds.AuthMethod {
 		case commoncfg.OAuth2ClientSecretPost:
-			rt.ClientSecretPost = pointers.To(string(secretVal))
+			assignSecret(secretVal, &rt.ClientSecretPost)
 		case commoncfg.OAuth2ClientSecretBasic:
-			rt.ClientSecretBasic = pointers.To(string(secretVal))
+			assignSecret(secretVal, &rt.ClientSecretBasic)
 		case commoncfg.OAuth2ClientSecretJWT:
-			rt.ClientSecretJWT = pointers.To(string(secretVal))
+			assignSecret(secretVal, &rt.ClientSecretJWT)
 		}
 	}
 
-	switch creds.AuthMethod {
-	case commoncfg.OAuth2PrivateKeyJWT:
-		assertionVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertion)
-		if err != nil {
-			// error was ignored internationally as the creds.ClientAssertion is optional
+	// Load private_key_jwt credentials
+	if creds.AuthMethod == commoncfg.OAuth2PrivateKeyJWT {
+		if assertionVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertion); assertionVal != nil {
+			assignSecret(assertionVal, &rt.ClientAssertion)
 		}
-		if assertionVal != nil && string(assertionVal) != "" {
-			rt.ClientAssertion = pointers.To[string](string(assertionVal))
+		if assertionTypeVal, _ := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType); assertionTypeVal != nil {
+			assignSecret(assertionTypeVal, &rt.ClientAssertionType)
 		}
-
-		assertionTypeVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType)
-		if err != nil {
-			// error was ignored internationally as the creds.ClientAssertionType is optional
-		}
-		if assertionTypeVal != nil && string(assertionTypeVal) != "" {
-			rt.ClientAssertionType = pointers.To[string](string(assertionTypeVal))
-		}
-	case commoncfg.OAuth2None:
 	}
 }
 
