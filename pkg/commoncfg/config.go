@@ -347,7 +347,7 @@ type HTTPClient struct {
 
 // BuildInfo holds metadata about the build
 type BuildInfo struct {
-	Component `mapstructure:",squash"`
+	Component `mapstructure:",squash" yaml:",inline"`
 
 	Components []Component `json:"components,omitempty"`
 }
