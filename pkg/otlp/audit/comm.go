@@ -67,7 +67,7 @@ func (auditLogger *AuditLogger) SendEvent(ctx context.Context, logs plog.Logs) e
 }
 
 func (auditLogger *AuditLogger) enrichLogs(logs *plog.Logs) error {
-	logRecord, err := getFirstLogRecord(*logs)
+	logRecord, err := firstLogRecord(*logs)
 	if err != nil {
 		return oops.In(domain).
 			Hint("failed to fetch audit logs").
@@ -81,7 +81,7 @@ func (auditLogger *AuditLogger) enrichLogs(logs *plog.Logs) error {
 	return nil
 }
 
-func getFirstLogRecord(ld plog.Logs) (*plog.LogRecord, error) {
+func firstLogRecord(ld plog.Logs) (*plog.LogRecord, error) {
 	exist := ld.ResourceLogs().Len() > 0 &&
 		ld.ResourceLogs().At(0).ScopeLogs().Len() > 0 &&
 		ld.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().Len() > 0
