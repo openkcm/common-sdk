@@ -70,7 +70,7 @@ func (auditLogger *AuditLogger) enrichLogs(logs *plog.Logs) error {
 	logRecord, err := firstLogRecord(*logs)
 	if err != nil {
 		return oops.In(domain).
-			Hint("failed to fetch audit logs").
+			Hint("failed to find audit record log").
 			Wrap(err)
 	}
 
