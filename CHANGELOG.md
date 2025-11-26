@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.6.2](https://github.com/openkcm/common-sdk/compare/v1.6.1...v1.6.2) (2025-11-26)
+
+
+### Bug Fixes
+
+* Fix BuildInfo yaml serialization ([#179](https://github.com/openkcm/common-sdk/issues/179)) ([d82c67b](https://github.com/openkcm/common-sdk/commit/d82c67b76cca1d57063e71265e096b584e35a8e7))
+* introduce a new creation http client using the oauth2 ([#177](https://github.com/openkcm/common-sdk/issues/177)) ([cd5c71b](https://github.com/openkcm/common-sdk/commit/cd5c71bcfcde05a59b6480073a2d9a8e4c227fc1))
+* updated different codes to comply with lints ([#178](https://github.com/openkcm/common-sdk/issues/178)) ([2f10e70](https://github.com/openkcm/common-sdk/commit/2f10e70cd9a622a0c3e5e9fa6c06db8ae414554a))
+
 ## [1.6.1](https://github.com/openkcm/common-sdk/compare/v1.6.0...v1.6.1) (2025-11-24)
 
 
