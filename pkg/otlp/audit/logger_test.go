@@ -151,6 +151,7 @@ func Test_NewLogger(t *testing.T) {
 				if err == nil {
 					t.Fatalf("expected error containing %q, got nil", tt.expectError)
 				}
+
 				if !strings.Contains(err.Error(), tt.expectError.Error()) {
 					t.Fatalf("expected error containing %q, got %q", tt.expectError, err.Error())
 				}
