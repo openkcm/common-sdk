@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -146,8 +147,14 @@ func Test_NewLogger(t *testing.T) {
 			}
 
 			_, err = NewLogger(&cfg.Audit)
-			if (tt.expectError != nil && !errors.Is(err, tt.expectError)) || (err == nil && tt.expectError != nil) {
-				t.Errorf("Expected error '%v', got '%v'", tt.expectError, err)
+			if tt.expectError != nil {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tt.expectError)
+				}
+
+				if !strings.Contains(err.Error(), tt.expectError.Error()) {
+					t.Fatalf("expected error containing %q, got %q", tt.expectError, err.Error())
+				}
 			}
 
 			if err != nil && tt.expectError == nil {

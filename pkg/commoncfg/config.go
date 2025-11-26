@@ -196,9 +196,9 @@ type SecretRef struct {
 
 // MTLS holds mTLS configuration for audit library.
 type MTLS struct {
-	Cert     SourceRef `yaml:"cert" json:"cert"`
-	CertKey  SourceRef `yaml:"certKey" json:"certKey"`
-	ServerCA SourceRef `yaml:"serverCa" json:"serverCa"`
+	Cert     SourceRef  `yaml:"cert" json:"cert"`
+	CertKey  SourceRef  `yaml:"certKey" json:"certKey"`
+	ServerCA *SourceRef `yaml:"serverCa" json:"serverCa"`
 }
 
 // Audit holds the audit log library configuration.

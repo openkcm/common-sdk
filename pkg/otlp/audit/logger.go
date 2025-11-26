@@ -1,8 +1,6 @@
 package otlpaudit
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"net/http"
 	"time"
@@ -36,7 +34,7 @@ func NewLogger(config *commoncfg.Audit) (*AuditLogger, error) {
 	}
 
 	if config.MTLS != nil {
-		tlsConfig, err := loadTLSConfig(config)
+		tlsConfig, err := commoncfg.LoadMTLSConfig(config.MTLS)
 		if err != nil {
 			return nil, err
 		}
@@ -88,35 +86,4 @@ func loadBasicAuth(config *commoncfg.Audit, b basicAuth) (basicAuth, error) {
 	}
 
 	return b, nil
-}
-
-func loadTLSConfig(config *commoncfg.Audit) (*tls.Config, error) {
-	clientCert, err := commoncfg.ExtractValueFromSourceRef(&config.MTLS.Cert)
-	if err != nil {
-		return nil, errors.Join(errLoadMTLSConfigFailed, err)
-	}
-
-	clientKey, err := commoncfg.ExtractValueFromSourceRef(&config.MTLS.CertKey)
-	if err != nil {
-		return nil, err
-	}
-
-	cert, err := tls.X509KeyPair(clientCert, clientKey)
-	if err != nil {
-		return nil, errors.Join(errLoadMTLSConfigFailed, err)
-	}
-
-	serverCA, err := commoncfg.ExtractValueFromSourceRef(&config.MTLS.ServerCA)
-	if err != nil {
-		return nil, errors.Join(errLoadMTLSConfigFailed, err)
-	}
-
-	rootCAs := x509.NewCertPool()
-	rootCAs.AppendCertsFromPEM(serverCA)
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      rootCAs,
-	}
-
-	return tlsConfig, nil
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -17,6 +18,12 @@ import (
 const (
 	DefaultFileName   = "config"
 	DefaultFileFormat = YAMLFileFormat
+)
+
+var (
+	ErrMTLSIsNil           = errors.New("missing mTLS configuration: value is nil")
+	ErrCertificateIsNil    = errors.New("missing certificate configuration: value is nil")
+	ErrKeyCertificateIsNil = errors.New("missing key certificate configuration: value is nil")
 )
 
 // Loader is used to load configuration from a `config.yaml` file.
@@ -172,7 +179,7 @@ func ExtractValueFromSourceRef(cred *SourceRef) ([]byte, error) {
 		return parseFile(data, cred.File)
 	}
 
-	return nil, errors.New("no credential found, based on given credentials source")
+	return nil, fmt.Errorf("no credential found, based on given credentials source: %s", cred.Source)
 }
 
 func LoadValueFromSourceRef(cred SourceRef) ([]byte, error) {
@@ -180,6 +187,10 @@ func LoadValueFromSourceRef(cred SourceRef) ([]byte, error) {
 }
 
 func LoadMTLSClientCertificate(cfg *MTLS) (*tls.Certificate, error) {
+	if cfg == nil {
+		return nil, ErrMTLSIsNil
+	}
+
 	certPEMBlock, err := ExtractValueFromSourceRef(&cfg.Cert)
 	if err != nil {
 		return nil, err
@@ -199,26 +210,17 @@ func LoadMTLSClientCertificate(cfg *MTLS) (*tls.Certificate, error) {
 }
 
 func LoadMTLSCACertPool(cfg *MTLS) (*x509.CertPool, error) {
-	if cfg.ServerCA.Source == "" {
-		// Returns nil instead of NewCertPool if no CA is provided, which means using the system CA pool
-		return nil, nil //nolint:nilnil
+	if cfg == nil {
+		return nil, ErrMTLSIsNil
 	}
 
-	caCertPool := x509.NewCertPool()
-
-	caCert, err := ExtractValueFromSourceRef(&cfg.ServerCA)
-	if err != nil {
-		return nil, err
-	}
-
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	return caCertPool, nil
+	return LoadCACertPool(cfg.ServerCA)
 }
 
 func LoadCACertPool(certRef *SourceRef) (*x509.CertPool, error) {
 	if certRef == nil {
-		return nil, errors.New("certificate source reference is nil")
+		// Returns nil instead of NewCertPool if no CA is provided, which means using the system CA pool
+		return nil, nil //nolint:nilnil
 	}
 
 	caCertPool := x509.NewCertPool()
@@ -235,11 +237,11 @@ func LoadCACertPool(certRef *SourceRef) (*x509.CertPool, error) {
 
 func LoadClientCertificate(certRef, keyRef *SourceRef) (*tls.Certificate, error) {
 	if certRef == nil {
-		return nil, errors.New("certificate source reference is nil")
+		return nil, ErrCertificateIsNil
 	}
 
 	if keyRef == nil {
-		return nil, errors.New("key source reference is nil")
+		return nil, ErrKeyCertificateIsNil
 	}
 
 	certPEMBlock, err := ExtractValueFromSourceRef(certRef)
@@ -261,22 +263,26 @@ func LoadClientCertificate(certRef, keyRef *SourceRef) (*tls.Certificate, error)
 }
 
 func LoadMTLSConfig(cfg *MTLS) (*tls.Config, error) {
-	cert, err := LoadMTLSClientCertificate(cfg)
-	if err != nil {
-		return nil, err
+	if cfg == nil {
+		return nil, ErrMTLSIsNil
 	}
 
-	caCertPool, err := LoadMTLSCACertPool(cfg)
+	cert, err := LoadMTLSClientCertificate(cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{*cert},
-		RootCAs:      caCertPool,
 		MinVersion:   tls.VersionTLS12,
-		MaxVersion:   tls.VersionTLS13,
 	}
+
+	caCertPool, err := LoadCACertPool(cfg.ServerCA)
+	if err != nil {
+		return nil, err
+	}
+
+	tlsConfig.RootCAs = caCertPool
 
 	return tlsConfig, nil
 }

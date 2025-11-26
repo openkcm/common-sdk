@@ -135,7 +135,7 @@ func Test_OTLP_Init_Log(t *testing.T) {
 						Source: config.EmbeddedSourceValue,
 						Value:  string(keyPEM),
 					},
-					ServerCA: config.SourceRef{
+					ServerCA: &config.SourceRef{
 						Source: config.EmbeddedSourceValue,
 						Value:  string(caPEM),
 					},
@@ -288,7 +288,7 @@ func Test_OTLP_Init_Trace(t *testing.T) {
 						Source: config.EmbeddedSourceValue,
 						Value:  string(keyPEM),
 					},
-					ServerCA: config.SourceRef{
+					ServerCA: &config.SourceRef{
 						Source: config.EmbeddedSourceValue,
 						Value:  string(caPEM),
 					},
@@ -428,7 +428,7 @@ func Test_OTLP_Init_Metric(t *testing.T) {
 						Source: config.EmbeddedSourceValue,
 						Value:  string(keyPEM),
 					},
-					ServerCA: config.SourceRef{
+					ServerCA: &config.SourceRef{
 						Source: config.EmbeddedSourceValue,
 						Value:  string(caPEM),
 					},
