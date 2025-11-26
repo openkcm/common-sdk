@@ -4,22 +4,23 @@ application:
 
 audit:
   endpoint: "http://localhost:4043/logs"
-  mtls:
-    cert:
-      source: file
-      file:
-        path: ../../../internal/otlp/audit/testdata/correctMTLS.json
-        format: json
-        jsonPath: "$.otlp-cert"
-    certKey:
-      source: file
-      file:
-        path: ../../../internal/otlp/audit/testdata/correctMTLS.json
-        format: json
-        jsonPath: "$.otlp-key"
-    serverCa:
-      source: file
-      file:
-        path: ../../../internal/otlp/audit/testdata/correctMTLS.json
-        format: json
-        jsonPath: "$.otlp-server-ca"
+  httpClient:
+    mtls:
+      cert:
+        source: file
+        file:
+          path: ../../../internal/otlp/audit/testdata/correctMTLS.json
+          format: json
+          jsonPath: "$.otlp-cert"
+      certKey:
+        source: file
+        file:
+          path: ../../../internal/otlp/audit/testdata/correctMTLS.json
+          format: json
+          jsonPath: "$.otlp-key"
+      serverCa:
+        source: file
+        file:
+          path: ../../../internal/otlp/audit/testdata/correctMTLS.json
+          format: json
+          jsonPath: "$.otlp-server-ca"

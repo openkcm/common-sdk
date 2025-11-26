@@ -4,16 +4,17 @@ application:
 
 audit:
   endpoint: "http://localhost:4043/logs"
-  basicAuth:
-    username:
-      source: file
-      file:
-        path: ../../../internal/otlp/audit/testdata/incorrectBasicAuthCreds.json
-        format: json
-        jsonPath: "$.username"
-    password:
-      source: file
-      file:
-        path: ../../../internal/otlp/audit/testdata/incorrectBasicAuthCreds.json
-        format: json
-        jsonPath: "$.password"
+  httpClient:
+    basicAuth:
+      username:
+        source: file
+        file:
+          path: ../../../internal/otlp/audit/testdata/incorrectBasicAuthCreds.json
+          format: json
+          jsonPath: "$.username"
+      password:
+        source: file
+        file:
+          path: ../../../internal/otlp/audit/testdata/incorrectBasicAuthCreds.json
+          format: json
+          jsonPath: "$.password"

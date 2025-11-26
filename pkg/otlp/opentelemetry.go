@@ -2,6 +2,7 @@ package otlp
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"sync"
@@ -35,7 +36,9 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/commonhttp"
 	"github.com/openkcm/common-sdk/pkg/logger"
+	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
 const (
@@ -307,12 +310,19 @@ func initTraceGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 
 	switch cfg.Traces.SecretRef.Type {
 	case commoncfg.ApiTokenSecretType:
-		credential, err := commoncfg.ExtractValueFromSourceRef(&cfg.Traces.SecretRef.APIToken)
+		token, err := computeAPITokenAuthorizationHeader(&cfg.Traces.SecretRef.APIToken)
 		if err != nil {
 			return nil, err
 		}
 
-		sec = otlptracegrpc.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
+		sec = otlptracegrpc.WithHeaders(map[string]string{"Authorization": token})
+	case commoncfg.BasicSecretType:
+		value, err := computeBasicAuthorizationHeader(&cfg.Traces.SecretRef.Basic)
+		if err != nil {
+			return nil, err
+		}
+
+		sec = otlptracegrpc.WithHeaders(map[string]string{"Authorization": value})
 	case commoncfg.MTLSSecretType:
 		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Traces.SecretRef.MTLS)
 		if err != nil {
@@ -322,6 +332,8 @@ func initTraceGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 		sec = otlptracegrpc.WithTLSCredentials(credentials.NewTLS(tlsConfig))
 	case commoncfg.InsecureSecretType:
 		sec = otlptracegrpc.WithInsecure()
+	default:
+		return nil, fmt.Errorf("trace grpc doesn't unsupport secret type: %s", cfg.Traces.SecretRef.Type)
 	}
 
 	host, err := commoncfg.ExtractValueFromSourceRef(&cfg.Traces.Host)
@@ -343,12 +355,12 @@ func initTraceHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 
 	switch cfg.Traces.SecretRef.Type {
 	case commoncfg.ApiTokenSecretType:
-		credential, err := commoncfg.ExtractValueFromSourceRef(&cfg.Traces.SecretRef.APIToken)
+		client, err := commonhttp.NewClientFromAPIToken(&cfg.Traces.SecretRef.APIToken)
 		if err != nil {
 			return nil, err
 		}
 
-		sec = otlptracehttp.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
+		sec = otlptracehttp.WithHTTPClient(client)
 	case commoncfg.MTLSSecretType:
 		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Traces.SecretRef.MTLS)
 		if err != nil {
@@ -356,6 +368,20 @@ func initTraceHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 		}
 
 		sec = otlptracehttp.WithTLSClientConfig(tlsConfig)
+	case commoncfg.BasicSecretType:
+		httpClient, err := commonhttp.NewClientFromBasic(&cfg.Traces.SecretRef.Basic)
+		if err != nil {
+			return nil, err
+		}
+
+		otlptracehttp.WithHTTPClient(httpClient)
+	case commoncfg.OAuth2SecretType:
+		httpClient, err := commonhttp.NewClientFromOAuth2(&cfg.Traces.SecretRef.OAuth2)
+		if err != nil {
+			return nil, err
+		}
+
+		otlptracehttp.WithHTTPClient(httpClient)
 	case commoncfg.InsecureSecretType:
 		sec = otlptracehttp.WithInsecure()
 	}
@@ -443,12 +469,19 @@ func initMetricGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 	switch cfg.Metrics.SecretRef.Type {
 	case commoncfg.ApiTokenSecretType:
-		credential, err := commoncfg.ExtractValueFromSourceRef(&cfg.Metrics.SecretRef.APIToken)
+		token, err := computeAPITokenAuthorizationHeader(&cfg.Metrics.SecretRef.APIToken)
 		if err != nil {
 			return nil, err
 		}
 
-		sec = otlpmetricgrpc.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
+		sec = otlpmetricgrpc.WithHeaders(map[string]string{"Authorization": token})
+	case commoncfg.BasicSecretType:
+		value, err := computeBasicAuthorizationHeader(&cfg.Metrics.SecretRef.Basic)
+		if err != nil {
+			return nil, err
+		}
+
+		sec = otlpmetricgrpc.WithHeaders(map[string]string{"Authorization": value})
 	case commoncfg.MTLSSecretType:
 		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Metrics.SecretRef.MTLS)
 		if err != nil {
@@ -458,6 +491,8 @@ func initMetricGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 		sec = otlpmetricgrpc.WithTLSCredentials(credentials.NewTLS(tlsConfig))
 	case commoncfg.InsecureSecretType:
 		sec = otlpmetricgrpc.WithInsecure()
+	default:
+		return nil, fmt.Errorf("metric grpc doesn't unsupport secret type: %s", cfg.Metrics.SecretRef.Type)
 	}
 
 	host, err := commoncfg.ExtractValueFromSourceRef(&cfg.Metrics.Host)
@@ -480,12 +515,12 @@ func initMetricHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 	switch cfg.Metrics.SecretRef.Type {
 	case commoncfg.ApiTokenSecretType:
-		credential, err := commoncfg.ExtractValueFromSourceRef(&cfg.Metrics.SecretRef.APIToken)
+		client, err := commonhttp.NewClientFromAPIToken(&cfg.Metrics.SecretRef.APIToken)
 		if err != nil {
 			return nil, err
 		}
 
-		sec = otlpmetrichttp.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
+		sec = otlpmetrichttp.WithHTTPClient(client)
 	case commoncfg.MTLSSecretType:
 		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Metrics.SecretRef.MTLS)
 		if err != nil {
@@ -493,6 +528,20 @@ func initMetricHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 		}
 
 		sec = otlpmetrichttp.WithTLSClientConfig(tlsConfig)
+	case commoncfg.BasicSecretType:
+		httpClient, err := commonhttp.NewClientFromBasic(&cfg.Metrics.SecretRef.Basic)
+		if err != nil {
+			return nil, err
+		}
+
+		otlpmetrichttp.WithHTTPClient(httpClient)
+	case commoncfg.OAuth2SecretType:
+		httpClient, err := commonhttp.NewClientFromOAuth2(&cfg.Metrics.SecretRef.OAuth2)
+		if err != nil {
+			return nil, err
+		}
+
+		otlpmetrichttp.WithHTTPClient(httpClient)
 	case commoncfg.InsecureSecretType:
 		sec = otlpmetrichttp.WithInsecure()
 	}
@@ -578,12 +627,19 @@ func initLoggerGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 	switch cfg.Logs.SecretRef.Type {
 	case commoncfg.ApiTokenSecretType:
-		credential, err := commoncfg.ExtractValueFromSourceRef(&cfg.Logs.SecretRef.APIToken)
+		token, err := computeAPITokenAuthorizationHeader(&cfg.Logs.SecretRef.APIToken)
 		if err != nil {
 			return nil, err
 		}
 
-		sec = otlploggrpc.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
+		sec = otlploggrpc.WithHeaders(map[string]string{"Authorization": token})
+	case commoncfg.BasicSecretType:
+		value, err := computeBasicAuthorizationHeader(&cfg.Logs.SecretRef.Basic)
+		if err != nil {
+			return nil, err
+		}
+
+		sec = otlploggrpc.WithHeaders(map[string]string{"Authorization": value})
 	case commoncfg.MTLSSecretType:
 		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Logs.SecretRef.MTLS)
 		if err != nil {
@@ -593,6 +649,8 @@ func initLoggerGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 		sec = otlploggrpc.WithTLSCredentials(credentials.NewTLS(tlsConfig))
 	case commoncfg.InsecureSecretType:
 		sec = otlploggrpc.WithInsecure()
+	default:
+		return nil, fmt.Errorf("logger grpc doesn't unsupport secret type: %s", cfg.Logs.SecretRef.Type)
 	}
 
 	host, err := commoncfg.ExtractValueFromSourceRef(&cfg.Logs.Host)
@@ -612,12 +670,12 @@ func initLoggerHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 
 	switch cfg.Logs.SecretRef.Type {
 	case commoncfg.ApiTokenSecretType:
-		credential, err := commoncfg.ExtractValueFromSourceRef(&cfg.Logs.SecretRef.APIToken)
+		client, err := commonhttp.NewClientFromAPIToken(&cfg.Logs.SecretRef.APIToken)
 		if err != nil {
 			return nil, err
 		}
 
-		sec = otlploghttp.WithHeaders(map[string]string{"Authorization": "Api-Token " + string(credential)})
+		sec = otlploghttp.WithHTTPClient(client)
 	case commoncfg.MTLSSecretType:
 		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Logs.SecretRef.MTLS)
 		if err != nil {
@@ -625,6 +683,20 @@ func initLoggerHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 		}
 
 		sec = otlploghttp.WithTLSClientConfig(tlsConfig)
+	case commoncfg.BasicSecretType:
+		httpClient, err := commonhttp.NewClientFromBasic(&cfg.Logs.SecretRef.Basic)
+		if err != nil {
+			return nil, err
+		}
+
+		otlploghttp.WithHTTPClient(httpClient)
+	case commoncfg.OAuth2SecretType:
+		httpClient, err := commonhttp.NewClientFromOAuth2(&cfg.Logs.SecretRef.OAuth2)
+		if err != nil {
+			return nil, err
+		}
+
+		otlploghttp.WithHTTPClient(httpClient)
 	case commoncfg.InsecureSecretType:
 		sec = otlploghttp.WithInsecure()
 	}
@@ -640,4 +712,27 @@ func initLoggerHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 		otlploghttp.WithURLPath(cfg.Logs.URL),
 		sec,
 	)
+}
+
+func computeBasicAuthorizationHeader(basicAuth *commoncfg.BasicAuth) (string, error) {
+	username, err := commoncfg.ExtractValueFromSourceRef(&basicAuth.Username)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract basic auth username: %w", err)
+	}
+
+	password, err := commoncfg.ExtractValueFromSourceRef(&basicAuth.Password)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract basic auth password: %w", err)
+	}
+
+	return "Basic " + utils.BasicAuth(string(username), string(password)), nil
+}
+
+func computeAPITokenAuthorizationHeader(token *commoncfg.SourceRef) (string, error) {
+	value, err := commoncfg.ExtractValueFromSourceRef(token)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract api token value: %w", err)
+	}
+
+	return "Api-Token " + string(value), nil
 }

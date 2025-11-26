@@ -204,10 +204,9 @@ type MTLS struct {
 // Audit holds the audit log library configuration.
 type Audit struct {
 	Endpoint string `yaml:"endpoint" json:"endpoint"`
-	// Potential mTLS for the endpoint.
-	MTLS *MTLS `yaml:"mtls" json:"mtls"`
-	// Potential BasicAuth for the endpoint.
-	BasicAuth *BasicAuth `yaml:"basicAuth" json:"basicAuth"`
+
+	HTTPClient HTTPClient `yaml:"httpClient" json:"httpClient"`
+
 	// Optional set of additional properties to be added to OTLP log object. Must be added as a literal string to maintain casing.
 	AdditionalProperties string `yaml:"additionalProperties" json:"additionalProperties"`
 }
@@ -337,12 +336,72 @@ type GRPCClientAttributes struct {
 }
 
 type HTTPClient struct {
-	Timeout            time.Duration `yaml:"timeout" json:"timeout" default:"10s"`
-	RootCAs            *SourceRef    `yaml:"rootCAs" json:"rootCAs"`
-	InsecureSkipVerify bool          `yaml:"insecureSkipVerify" json:"insecureSkipVerify"`
-	MinVersion         uint16        `yaml:"minVersion" json:"minVersion"`
-	Cert               *SourceRef    `yaml:"cert" json:"cert"`
-	CertKey            *SourceRef    `yaml:"certKey" json:"certKey"`
+	Timeout             time.Duration           `yaml:"timeout" json:"timeout" default:"30s"`
+	APIToken            *SourceRef              `yaml:"apiToken" json:"apiToken"`
+	BasicAuth           *BasicAuth              `yaml:"basicAuth" json:"basicAuth"`
+	OAuth2Auth          *OAuth2                 `yaml:"oauth2Auth" json:"oauth2Auth"`
+	MTLS                *MTLS                   `yaml:"mtls" json:"mtls"`
+	TransportAttributes HTTPTransportAttributes `yaml:"transportAttributes" json:"transportAttributes"`
+}
+
+type HTTPTransportAttributes struct {
+	// TLSHandshakeTimeout specifies the maximum amount of time to
+	// wait for a TLS handshake. Zero means no timeout.
+	TLSHandshakeTimeout time.Duration `yaml:"tlsHandshakeTimeout" json:"tlsHandshakeTimeout"`
+
+	// DisableKeepAlives, if true, disables HTTP keep-alives and
+	// will only use the connection to the server for a single
+	// HTTP request.
+	//
+	// This is unrelated to the similarly named TCP keep-alives.
+	DisableKeepAlives bool `yaml:"disableKeepAlives" json:"disableKeepAlives"`
+
+	// DisableCompression, if true, prevents the Transport from
+	// requesting compression with an "Accept-Encoding: gzip"
+	// request header when the Request contains no existing
+	// Accept-Encoding value. If the Transport requests gzip on
+	// its own and gets a gzipped response, it's transparently
+	// decoded in the Response.Body. However, if the user
+	// explicitly requested gzip it is not automatically
+	// uncompressed.
+	DisableCompression bool `yaml:"disableCompression" json:"disableCompression"`
+
+	// MaxIdleConns controls the maximum number of idle (keep-alive)
+	// connections across all hosts. Zero means no limit.
+	MaxIdleConns int `yaml:"maxIdleConns" json:"maxIdleConns"`
+
+	// MaxIdleConnsPerHost, if non-zero, controls the maximum idle
+	// (keep-alive) connections to keep per-host. If zero,
+	// DefaultMaxIdleConnsPerHost is used.
+	MaxIdleConnsPerHost int `yaml:"maxIdleConnsPerHost" json:"maxIdleConnsPerHost"`
+
+	// MaxConnsPerHost optionally limits the total number of
+	// connections per host, including connections in the dialing,
+	// active, and idle states. On limit violation, dials will block.
+	//
+	// Zero means no limit.
+	MaxConnsPerHost int `yaml:"maxConnsPerHost" json:"maxConnsPerHost"`
+
+	// IdleConnTimeout is the maximum amount of time an idle
+	// (keep-alive) connection will remain idle before closing
+	// itself.
+	// Zero means no limit.
+	IdleConnTimeout time.Duration `yaml:"idleConnTimeout" json:"idleConnTimeout"`
+
+	// ResponseHeaderTimeout, if non-zero, specifies the amount of
+	// time to wait for a server's response headers after fully
+	// writing the request (including its body, if any). This
+	// time does not include the time to read the response body.
+	ResponseHeaderTimeout time.Duration `yaml:"responseHeaderTimeout" json:"responseHeaderTimeout"`
+
+	// ExpectContinueTimeout, if non-zero, specifies the amount of
+	// time to wait for a server's first response headers after fully
+	// writing the request headers if the request has an
+	// "Expect: 100-continue" header. Zero means no timeout and
+	// causes the body to be sent immediately, without
+	// waiting for the server to approve.
+	// This time does not include the time to send the request header.
+	ExpectContinueTimeout time.Duration `yaml:"expectContinueTimeout" json:"expectContinueTimeout"`
 }
 
 // BuildInfo holds metadata about the build
