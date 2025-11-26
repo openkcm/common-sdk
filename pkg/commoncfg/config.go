@@ -26,6 +26,10 @@ type SecretType string
 // Protocol represents the communication protocol.
 type Protocol string
 
+// All supported OAuth2 client authentication methods.
+// Based on OAuth2 RFC6749, JWT RFC7523 and OIDC specs.
+type OAuth2ClientAuthMethod string
+
 const (
 	JSONLoggerFormat LoggerFormat = "json"
 	TextLoggerFormat LoggerFormat = "text"
@@ -49,6 +53,12 @@ const (
 	JSONFileFormat   FileFormat = "json"
 	YAMLFileFormat   FileFormat = "yaml"
 	BinaryFileFormat FileFormat = "binary"
+
+	OAuth2ClientSecretBasic OAuth2ClientAuthMethod = "basic"   // Basic auth header
+	OAuth2ClientSecretPost  OAuth2ClientAuthMethod = "post"    // POST body
+	OAuth2ClientSecretJWT   OAuth2ClientAuthMethod = "jwt"     // JWT signed w/ HMAC(secret)
+	OAuth2PrivateKeyJWT     OAuth2ClientAuthMethod = "private" // JWT signed w/ private key
+	OAuth2None              OAuth2ClientAuthMethod = "none"    // PKCE public clients
 )
 
 var ErrFeatureNotFound = errors.New("feature not found")
@@ -71,11 +81,12 @@ func (fg FeatureGates) IsFeatureEnabled(feature string) bool {
 }
 
 func (fg FeatureGates) Feature(feature string) (bool, error) {
-	if v, ok := fg[feature]; !ok {
+	v, ok := fg[feature]
+	if !ok {
 		return false, ErrFeatureNotFound
-	} else {
-		return v, nil
 	}
+
+	return v, nil
 }
 
 // Application holds minimal application configuration.
@@ -209,19 +220,27 @@ type BasicAuth struct {
 
 // OAuth2 holds client id and secret auth configuration
 type OAuth2 struct {
-	URL         SourceRef         `yaml:"url" json:"url"`
+	URL         *SourceRef        `yaml:"url" json:"url"`
 	Credentials OAuth2Credentials `yaml:"credentials" json:"credentials"`
 	MTLS        *MTLS             `yaml:"mtls" json:"mtls"`
 }
 
 type OAuth2Credentials struct {
-	ClientID     SourceRef  `yaml:"clientID" json:"clientID"`
-	ClientSecret *SourceRef `yaml:"clientSecret" json:"clientSecret"`
+	ClientID SourceRef `yaml:"clientID" json:"clientID"`
+
+	AuthMethod OAuth2ClientAuthMethod `yaml:"authMethod" json:"authMethod" default:"post"`
+
+	// Option A: client_secret authentication
+	ClientSecret *SourceRef `yaml:"clientSecret,omitempty" json:"clientSecret,omitempty"`
+
+	// Option B: private_key_jwt authentication (RFC 7523)
+	ClientAssertionType *SourceRef `yaml:"clientAssertionType,omitempty" json:"clientAssertionType,omitempty"`
+	ClientAssertion     *SourceRef `yaml:"clientAssertion,omitempty" json:"clientAssertion,omitempty"`
 }
 
 // SourceRef defines a reference to a source for retrieving a value.
 type SourceRef struct {
-	Source SourceValueType `yaml:"source" json:"source"`
+	Source SourceValueType `yaml:"source" json:"source" default:"embedded"`
 	Env    string          `yaml:"env" json:"env"`
 	File   CredentialFile  `yaml:"file" json:"file"`
 	Value  string          `yaml:"value" json:"value"`

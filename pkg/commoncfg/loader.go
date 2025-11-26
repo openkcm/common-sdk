@@ -149,6 +149,10 @@ func (l *Loader) LoadConfig() error {
 }
 
 func ExtractValueFromSourceRef(cred *SourceRef) ([]byte, error) {
+	if cred == nil {
+		return nil, errors.New("given credential is nil")
+	}
+
 	switch cred.Source {
 	case EmbeddedSourceValue:
 		return []byte(cred.Value), nil
