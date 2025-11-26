@@ -138,9 +138,11 @@ func (dcc *DynamicClientConn) initAndStartNotifierOnMTLSCredentials(throttleInte
 		paths = append(paths, filepath.Dir(keyPath))
 	}
 
-	caPath := strings.TrimSpace(mtls.ServerCA.File.Path)
-	if caPath != "" {
-		paths = append(paths, filepath.Dir(caPath))
+	if mtls.ServerCA != nil {
+		caPath := strings.TrimSpace(mtls.ServerCA.File.Path)
+		if caPath != "" {
+			paths = append(paths, filepath.Dir(caPath))
+		}
 	}
 
 	nt, err := notifier.Create(
