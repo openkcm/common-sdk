@@ -187,7 +187,6 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 	case commoncfg.OAuth2None:
 		// doing nothing
 	}
-
 }
 
 func assignSecret(val []byte, target **string) {
