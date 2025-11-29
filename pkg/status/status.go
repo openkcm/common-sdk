@@ -172,33 +172,6 @@ func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption
 //
 // This function configures and launches the health endpoints (typically `/live` and
 // `/ready`) using the provided base configuration and optional health options.
-// It sets up two independent health handlers:
-//
-//   - Liveness — indicates whether the application is alive.
-//
-//   - Implemented using a checker with autostart disabled.
-//
-//   - Exposed through an HTTP endpoint by the health server.
-//
-//   - Intended to signal if the process should be restarted.
-//
-//   - Readiness — indicates whether the application is ready to serve traffic.
-//
-//   - Configured with user-defined health options plus:
-//
-//   - Disabled autostart (must be triggered manually).
-//
-//   - Timeout based on BaseConfig.Status.Timeout.
-//
-//   - A status listener that logs detailed state transitions.
-//
-//   - Tracks the health of internal dependencies such as databases,
-//     cache systems, external services, etc.
-//
-// A listener callback is registered for readiness state transitions.
-// It logs the aggregated health state, including individual component
-// statuses and results, making it easier to observe readiness changes
-// during startup or degradation events.
 //
 // Parameters:
 //   - ctx: The parent context for controlling the lifecycle of the health server.
