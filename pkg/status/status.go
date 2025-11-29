@@ -168,7 +168,7 @@ func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption
 	return nil
 }
 
-// ServeStatus starts the application's liveness and readiness health check server.
+// Serve starts the application's liveness and readiness health check server.
 //
 // This function configures and launches the health endpoints (typically `/live` and
 // `/ready`) using the provided base configuration and optional health options.
@@ -192,10 +192,10 @@ func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption
 //   - error: Non-nil if the health server fails to start; wrapped with contextual
 //     application name for improved observability.
 //
-// ServeStatus is intended for applications that follow Kubernetes-style probing
+// Serve is intended for applications that follow Kubernetes-style probing
 // conventions (liveness/readiness) or require structured health state management
 // for orchestration and monitoring tools.
-func ServeStatus(ctx context.Context, baseConfig *commoncfg.BaseConfig, ops ...health.Option) error {
+func Serve(ctx context.Context, baseConfig *commoncfg.BaseConfig, ops ...health.Option) error {
 	liveness := WithLiveness(
 		health.NewHandler(
 			health.NewChecker(health.WithDisabledAutostart()),
