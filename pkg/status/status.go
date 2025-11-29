@@ -168,6 +168,60 @@ func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption
 	return nil
 }
 
+// ServeStatus starts the application's liveness and readiness health check server.
+//
+// This function configures and launches the health endpoints (typically `/live` and
+// `/ready`) using the provided base configuration and optional health options.
+// It sets up two independent health handlers:
+//
+//   - Liveness — indicates whether the application is alive.
+//
+//   - Implemented using a checker with autostart disabled.
+//
+//   - Exposed through an HTTP endpoint by the health server.
+//
+//   - Intended to signal if the process should be restarted.
+//
+//   - Readiness — indicates whether the application is ready to serve traffic.
+//
+//   - Configured with user-defined health options plus:
+//
+//   - Disabled autostart (must be triggered manually).
+//
+//   - Timeout based on BaseConfig.Status.Timeout.
+//
+//   - A status listener that logs detailed state transitions.
+//
+//   - Tracks the health of internal dependencies such as databases,
+//     cache systems, external services, etc.
+//
+// A listener callback is registered for readiness state transitions.
+// It logs the aggregated health state, including individual component
+// statuses and results, making it easier to observe readiness changes
+// during startup or degradation events.
+//
+// Parameters:
+//   - ctx: The parent context for controlling the lifecycle of the health server.
+//     Cancelling the context will stop the server gracefully.
+//   - baseConfig: Common application configuration containing status server settings,
+//     including timeout values and standard metadata.
+//   - ops: Optional variadic list of additional health.Option values, allowing callers
+//     to extend or override readiness configuration (e.g., register checkers).
+//
+// Behavior:
+//  1. Constructs a liveness handler using disabled autostart semantics.
+//  2. Builds a readiness handler composed of the provided health options, timeout,
+//     and a status-logging listener.
+//  3. Delegates to Start(...) to launch the health server with both handlers.
+//  4. Returns an error if the server startup fails.
+//
+// Returns:
+//   - error: Non-nil if the health server fails to start; wrapped with contextual
+//     application name for improved observability.
+//
+// ServeStatus is intended for applications that follow Kubernetes-style probing
+// conventions (liveness/readiness) or require structured health state management
+// for orchestration and monitoring tools.
 func ServeStatus(ctx context.Context, baseConfig *commoncfg.BaseConfig, ops ...health.Option) error {
 	liveness := WithLiveness(
 		health.NewHandler(
