@@ -1817,6 +1817,12 @@ func TestCmkEvents(t *testing.T) {
 				return
 			}
 
+			_, err = NewCmkDetachEvent(tt.args.metadata, tt.args.cmkID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCmkDetachEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
 			_, err = NewCmkDisableEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkDisableEvent() error = %v, wantErr %v", err, tt.wantErr)
@@ -1850,6 +1856,12 @@ func TestCmkEvents(t *testing.T) {
 			_, err = NewCmkUnavailableEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkUnavailableEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			_, err = NewCmkTenantDeleteEvent(tt.args.metadata, tt.args.cmkID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCmkTenantDeleteEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 		})
