@@ -6,7 +6,7 @@ require (
 	github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0
 	github.com/creasty/defaults v1.8.0
 	github.com/davidhoo/jsonpath v1.0.4
-	github.com/envoyproxy/go-control-plane/envoy v1.35.0
+	github.com/envoyproxy/go-control-plane/envoy v1.36.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
