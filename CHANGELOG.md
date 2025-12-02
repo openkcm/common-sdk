@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.0](https://github.com/openkcm/common-sdk/compare/v1.6.2...v1.7.0) (2025-12-02)
+
+
+### Features
+
+* add fingerprint package ([#185](https://github.com/openkcm/common-sdk/issues/185)) ([371564f](https://github.com/openkcm/common-sdk/commit/371564f7495f386a5b02e298dbb1eac07c6deb58))
+* add jwtsigning package with signing and verification logic ([#168](https://github.com/openkcm/common-sdk/issues/168)) ([38e8ae1](https://github.com/openkcm/common-sdk/commit/38e8ae1ab1c3a7eec0df83096ac13bda99a58d35))
+* new audit events for CMK detachment and CMK tenant deletion ([92980a0](https://github.com/openkcm/common-sdk/commit/92980a0f420e8162c216284d531cdda2a51dc291)), closes [#186](https://github.com/openkcm/common-sdk/issues/186)
+
 ## [1.6.2](https://github.com/openkcm/common-sdk/compare/v1.6.1...v1.6.2) (2025-11-26)
 
 
