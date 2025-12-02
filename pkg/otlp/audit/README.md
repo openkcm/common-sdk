@@ -117,8 +117,10 @@ additionalProperties: |
 | `cmkOffboarding`         |                            `NewCmkOffboardingEvent(metadata EventMetadata, cmkID, systemID string)`                             |
 | `cmkSwitch`              |                          `NewCmkSwitchEvent(metadata EventMetadata, cmkID, cmkIDOld, cmkIDNew string)`                          |
 | `cmkTenantModification`  |                  `NewCmkTenantModificationEvent(metadata EventMetadata, cmkID, systemID string, c CmkAction)`                   |
+| `cmkTenantDelete`        |                       `NewCmkTenantDeleteEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                        |
 | `cmkCreate`              |                          `NewCmkCreateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
 | `cmkDelete`              |                          `NewCmkDeleteEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
+| `cmkDetach`              |                          `NewCmkDetachEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
 | `cmkRestore`             |                          `NewCmkRestoreEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                          |
 | `cmkEnable`              |                          `NewCmkEnableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error)`                           |
 | `cmkDisable`             |                                   `NewCmkDisableEvent(metadata EventMetadata, cmkID string)`                                    |
