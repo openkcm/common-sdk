@@ -367,6 +367,11 @@ func NewCmkTenantModificationEvent(metadata EventMetadata, cmkID, systemID strin
 	return createEvent(m)
 }
 
+func NewCmkTenantDeleteEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+	m := newEventProperties(cmkID, CmkTenantDeleteEvent, metadata)
+	return createEvent(m)
+}
+
 func NewCmkCreateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
 	m := newEventProperties(cmkID, CmkCreateEvent, metadata)
 	return createEvent(m)
@@ -374,6 +379,11 @@ func NewCmkCreateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) 
 
 func NewCmkDeleteEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
 	m := newEventProperties(cmkID, CmkDeleteEvent, metadata)
+	return createEvent(m)
+}
+
+func NewCmkDetachEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+	m := newEventProperties(cmkID, CmkDetachEvent, metadata)
 	return createEvent(m)
 }
 
