@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/openkcm/common-sdk/compare/v1.7.0...v1.8.0) (2025-12-03)
+
+
+### Features
+
+* csrf ([#190](https://github.com/openkcm/common-sdk/issues/190)) ([9c4ba9c](https://github.com/openkcm/common-sdk/commit/9c4ba9c804476eb7378c2b6335983196b7a274d0))
+
 ## [1.7.0](https://github.com/openkcm/common-sdk/compare/v1.6.2...v1.7.0) (2025-12-02)
 
 
