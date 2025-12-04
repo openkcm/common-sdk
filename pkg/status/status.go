@@ -14,6 +14,7 @@ import (
 	slogctx "github.com/veqryn/slog-context"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/health"
 	"github.com/openkcm/common-sdk/pkg/prof"
 )
 
@@ -112,7 +113,7 @@ func createStatusServer(ctx context.Context,
 	}
 }
 
-// StartStatusServer starts the status server using the given probesConfig.
+// Start starts the status server using the given probesConfig.
 func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption) error {
 	if !cfg.Status.Enabled {
 		return nil
@@ -132,13 +133,11 @@ func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption
 
 	server := createStatusServer(ctx, cfg, mux, prCfg.handlers)
 
-	slogctx.Info(ctx, "Starting status listener", "address", server.Addr)
-
 	var lc net.ListenConfig
 
 	listener, err := lc.Listen(ctx, "tcp", server.Addr)
 	if err != nil {
-		return oops.In("Status Server").
+		return oops.In(cfg.Application.Name).
 			WithContext(ctx).
 			Wrapf(err, "Failed creating status listener")
 	}
@@ -150,8 +149,6 @@ func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slogctx.Error(ctx, "ErrorField serving status http endpoint", "error", err)
 		}
-
-		slogctx.Info(ctx, "Stopped status server")
 	}()
 
 	<-ctx.Done()
@@ -161,12 +158,80 @@ func Start(ctx context.Context, cfg *commoncfg.BaseConfig, probes ...ProbeOption
 
 	err = server.Shutdown(shutdownCtx)
 	if err != nil {
-		return oops.In("Status Server").
+		return oops.In(cfg.Application.Name).
 			WithContext(ctx).
 			Wrapf(err, "Failed shutting down status server")
 	}
 
-	slogctx.Info(ctx, "Completed graceful shutdown of status server")
+	slogctx.Info(ctx, "Stopped status server")
 
 	return nil
+}
+
+// Serve starts the application's liveness and readiness health check server.
+//
+// This function configures and launches the health endpoints (typically `/live` and
+// `/ready`) using the provided base configuration and optional health options.
+//
+// Parameters:
+//   - ctx: The parent context for controlling the lifecycle of the health server.
+//     Cancelling the context will stop the server gracefully.
+//   - baseConfig: Common application configuration containing status server settings,
+//     including timeout values and standard metadata.
+//   - ops: Optional variadic list of additional health.Option values, allowing callers
+//     to extend or override readiness configuration (e.g., register checkers).
+//
+// Behavior:
+//  1. Constructs a liveness handler using disabled autostart semantics.
+//  2. Builds a readiness handler composed of the provided health options, timeout,
+//     and a status-logging listener.
+//  3. Delegates to Start(...) to launch the health server with both handlers.
+//  4. Returns an error if the server startup fails.
+//
+// Returns:
+//   - error: Non-nil if the health server fails to start; wrapped with contextual
+//     application name for improved observability.
+//
+// Serve is intended for applications that follow Kubernetes-style probing
+// conventions (liveness/readiness) or require structured health state management
+// for orchestration and monitoring tools.
+func Serve(ctx context.Context, baseConfig *commoncfg.BaseConfig, ops ...health.Option) error {
+	liveness := WithLiveness(
+		health.NewHandler(
+			health.NewChecker(health.WithDisabledAutostart()),
+		),
+	)
+
+	healthOptions := make([]health.Option, 0)
+	healthOptions = append(healthOptions,
+		health.WithDisabledAutostart(),
+		health.WithTimeout(baseConfig.Status.Timeout),
+		health.WithStatusListener(func(ctx context.Context, state health.State) {
+			subctx := slogctx.With(ctx, "status", state.Status)
+			//nolint:fatcontext
+			for name, substate := range state.CheckState {
+				subctx = slogctx.WithGroup(subctx, name)
+				subctx = slogctx.With(subctx,
+					"status", substate.Status,
+					"result", substate.Result,
+				)
+			}
+
+			slogctx.Info(subctx, "readiness status changed")
+		}),
+	)
+	healthOptions = append(healthOptions, ops...)
+
+	readiness := WithReadiness(
+		health.NewHandler(
+			health.NewChecker(healthOptions...),
+		),
+	)
+
+	err := Start(ctx, baseConfig, liveness, readiness)
+	if err != nil {
+		return oops.In(baseConfig.Application.Name).Wrapf(err, "Failed starting status server")
+	}
+
+	return err
 }
