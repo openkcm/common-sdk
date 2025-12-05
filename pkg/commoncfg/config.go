@@ -102,6 +102,8 @@ type Status struct {
 	Enabled bool `yaml:"enabled" json:"enabled"`
 	// Status.Address is the address to listen on for status reporting
 	Address string `yaml:"address" json:"address" default:":8888"`
+	// Timeout defines a timeout duration for all checks
+	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"10s"`
 	// Status.Profiling enables profiling on the status server
 	Profiling bool `yaml:"profiling" json:"profiling"`
 }
