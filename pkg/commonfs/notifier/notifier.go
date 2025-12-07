@@ -265,10 +265,9 @@ func (n *Notifier) AddPath(path string) error {
 		return fmt.Errorf("path does not exist: %s", absPath)
 	}
 
-	n.paths = append(n.paths, absPath)
-
 	_, ok := n.cacheEvents[absPath]
 	if !ok {
+		n.paths = append(n.paths, absPath)
 		n.cacheEvents[absPath] = make([]fsnotify.Event, 0)
 	}
 

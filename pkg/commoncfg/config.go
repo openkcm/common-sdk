@@ -201,9 +201,8 @@ type MTLS struct {
 	Cert    SourceRef `yaml:"cert" json:"cert"`
 	CertKey SourceRef `yaml:"certKey" json:"certKey"`
 
-	// ServerCA or RootCA not both, as the ServerCA has precedence, rootCA was added to remove the name confusion
-	ServerCA *SourceRef `yaml:"serverCa" json:"serverCa"`
-	RootCA   *SourceRef `yaml:"rootCa" json:"rootCa"`
+	ServerCA *SourceRef  `yaml:"serverCa" json:"serverCa"`
+	RootCAs  []SourceRef `yaml:"rootCAs,omitempty" json:"rootCAs,omitempty"`
 
 	Attributes *TLSAttributes `yaml:"attributes" json:"attributes"`
 }
