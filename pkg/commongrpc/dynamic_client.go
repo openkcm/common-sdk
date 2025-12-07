@@ -143,6 +143,11 @@ func (dcc *DynamicClientConn) initAndStartNotifierOnMTLSCredentials(throttleInte
 		if caPath != "" {
 			paths = append(paths, filepath.Dir(caPath))
 		}
+	} else if mtls.RootCA != nil {
+		caPath := strings.TrimSpace(mtls.RootCA.File.Path)
+		if caPath != "" {
+			paths = append(paths, filepath.Dir(caPath))
+		}
 	}
 
 	nt, err := notifier.Create(

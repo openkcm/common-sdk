@@ -198,9 +198,40 @@ type SecretRef struct {
 
 // MTLS holds mTLS configuration for audit library.
 type MTLS struct {
-	Cert     SourceRef  `yaml:"cert" json:"cert"`
-	CertKey  SourceRef  `yaml:"certKey" json:"certKey"`
+	Cert    SourceRef `yaml:"cert" json:"cert"`
+	CertKey SourceRef `yaml:"certKey" json:"certKey"`
+
+	// ServerCA or RootCA not both, as the ServerCA has precedence, rootCA was added to remove the name confusion
 	ServerCA *SourceRef `yaml:"serverCa" json:"serverCa"`
+	RootCA   *SourceRef `yaml:"rootCa" json:"rootCa"`
+
+	Attributes *TLSAttributes `yaml:"attributes" json:"attributes"`
+}
+
+type TLSAttributes struct {
+	// InsecureSkipVerify controls whether a client verifies the server's
+	// certificate chain and host name. If InsecureSkipVerify is true, crypto/tls
+	// accepts any certificate presented by the server and any host name in that
+	// certificate. In this mode, TLS is susceptible to machine-in-the-middle
+	// attacks unless custom verification is used. This should be used only for
+	// testing or in combination with VerifyConnection or VerifyPeerCertificate.
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify" json:"insecureSkipVerify"`
+	// ServerName is used to verify the hostname on the returned
+	// certificates unless InsecureSkipVerify is given. It is also included
+	// in the client's handshake to support virtual hosting unless it is
+	// an IP address.
+	ServerName string `yaml:"serverName" json:"serverName"`
+
+	// SessionTicketsDisabled may be set to true to disable session ticket and
+	// PSK (resumption) support. Note that on clients, session ticket support is
+	// also disabled if ClientSessionCache is nil.
+	SessionTicketsDisabled bool `yaml:"sessionTicketsDisabled" json:"sessionTicketsDisabled"`
+
+	// DynamicRecordSizingDisabled disables adaptive sizing of TLS records.
+	// When true, the largest possible TLS record size is always used. When
+	// false, the size of TLS records may be adjusted in an attempt to
+	// improve latency.
+	DynamicRecordSizingDisabled bool `yaml:"dynamicRecordSizingDisabled" json:"dynamicRecordSizingDisabled"`
 }
 
 // Audit holds the audit log library configuration.
