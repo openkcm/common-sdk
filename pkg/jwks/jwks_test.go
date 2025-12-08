@@ -263,7 +263,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		newJWKS := &jwks.JWKS{
 			Keys: []jwks.Key{
 				{
-					Kty:    "RSA1",
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS2561",
 					Use:    "sig1",
 					KeyOps: []string{"verify1"},
@@ -340,6 +340,215 @@ func TestDecode(t *testing.T) {
 			assert.ErrorIs(t, err, jwks.ErrCertificateNotFound)
 			assert.NotNil(t, subj)
 		})
+
+		t.Run("file has an invalid key", func(t *testing.T) {
+			// given
+			file := filepath.Join(t.TempDir(), uuid.NewString()+".json")
+			fw, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0o600)
+			assert.NoError(t, err)
+
+			defer fw.Close()
+
+			fr, err := os.Open(file)
+			assert.NoError(t, err)
+
+			defer fr.Close()
+
+			missingAlgKey := jwks.JWKS{
+				Keys: []jwks.Key{
+					{
+						Kty:    jwks.KeyTypeRSA,
+						Alg:    "alg",
+						Use:    "use",
+						KeyOps: []string{"use"},
+						Kid:    "kid",
+						X5c:    []string{"cert1"},
+						N:      "n",
+						E:      "e",
+					},
+					{
+						Kty:    jwks.KeyTypeRSA,
+						Alg:    "",
+						Use:    "use",
+						KeyOps: []string{"use"},
+						Kid:    "kid",
+						X5c:    []string{"cert1"},
+						N:      "n",
+						E:      "e",
+					},
+				},
+			}
+
+			// write a empty json
+			err = missingAlgKey.Encode(fw)
+			assert.NoError(t, err)
+
+			// when
+			err = missingAlgKey.Decode(fr)
+
+			// then
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, jwks.ErrInvalidKey)
+			assert.NotNil(t, missingAlgKey)
+		})
+	})
+}
+
+func TestKeyValidate(t *testing.T) {
+	t.Run("should return error if", func(t *testing.T) {
+		// given
+		tts := []struct {
+			name string
+			subj jwks.Key
+		}{
+			{
+				name: "key type is empty",
+				subj: jwks.Key{
+					Kty: "",
+				},
+			},
+			{
+				name: "alg is empty",
+				subj: jwks.Key{
+					Kty: jwks.KeyTypeRSA,
+					Alg: "",
+				},
+			},
+			{
+				name: "use is empty",
+				subj: jwks.Key{
+					Kty: jwks.KeyTypeRSA,
+					Alg: "PS256",
+					Use: "",
+				},
+			},
+			{
+				name: "keyops is nil",
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
+					Alg:    "PS256",
+					Use:    "sec",
+					KeyOps: nil,
+				},
+			},
+
+			{
+				name: "keyops is empty",
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
+					Alg:    "PS256",
+					Use:    "sec",
+					KeyOps: []string{},
+				},
+			},
+			{
+				name: "keyops is having empty values",
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
+					Alg:    "PS256",
+					Use:    "sec",
+					KeyOps: []string{"rec", " ", "sig"},
+				},
+			},
+			{
+				name: "kid is empty",
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
+					Alg:    "PS256",
+					Use:    "sec",
+					KeyOps: []string{"rec", "sig"},
+					Kid:    "",
+				},
+			},
+			{
+				name: "x5c is nil",
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
+					Alg:    "PS256",
+					Use:    "sec",
+					KeyOps: []string{"rec", "sig"},
+					Kid:    "kid",
+					X5c:    nil,
+				},
+			},
+			{
+				name: "x5c is empty",
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
+					Alg:    "PS256",
+					Use:    "sec",
+					KeyOps: []string{"rec", "sig"},
+					Kid:    "kid",
+					X5c:    []string{},
+				},
+			},
+			{
+				name: "x5c is having empty values",
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
+					Alg:    "PS256",
+					Use:    "sec",
+					KeyOps: []string{"rec", "sig"},
+					Kid:    "kid",
+					X5c:    []string{"cert1", " ", "cert2"},
+				},
+			},
+			{
+				name: "n is empty ",
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
+					Alg:    "PS256",
+					Use:    "sec",
+					KeyOps: []string{"rec", "sig"},
+					Kid:    "kid",
+					X5c:    []string{"cert1", "cert2"},
+					N:      "",
+				},
+			},
+			{
+				name: "e is empty ",
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
+					Alg:    "PS256",
+					Use:    "sec",
+					KeyOps: []string{"rec", "sig"},
+					Kid:    "kid",
+					X5c:    []string{"cert1", "cert2"},
+					N:      "n",
+					E:      "",
+				},
+			},
+		}
+
+		for _, tt := range tts {
+			t.Run(tt.name, func(t *testing.T) {
+				// when
+				err := tt.subj.Validate()
+
+				// then
+				assert.Error(t, err)
+				assert.ErrorIs(t, err, jwks.ErrInvalidKey)
+			})
+		}
+	})
+	t.Run("should not return error if key is valid", func(t *testing.T) {
+		// given
+		subj := jwks.Key{
+			Kty:    jwks.KeyTypeRSA,
+			Alg:    "PS256",
+			Use:    "use",
+			KeyOps: []string{"rec", "sig"},
+			Kid:    "kid",
+			X5c:    []string{"cert1", "cert2"},
+			N:      "n",
+			E:      "e",
+		}
+
+		// when
+		err := subj.Validate()
+
+		// then
+		assert.NoError(t, err)
 	})
 }
 

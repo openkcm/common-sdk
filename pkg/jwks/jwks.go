@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
+	"strings"
 )
 
 // JWKS represents a JSON Web Key Set, containing multiple JWK keys.
@@ -53,6 +55,8 @@ var (
 	ErrDuplicateKID = errors.New("duplicate kid")
 	// ErrKeyTypeUnsupported is returned when an unsupported key type is encountered.
 	ErrKeyTypeUnsupported = errors.New("key type unsupported")
+	// ErrInvalidKey is returned when key validation fails.
+	ErrInvalidKey = errors.New("invalid key")
 )
 
 // New constructs a JWKS from one or more KeyInput values.
@@ -99,13 +103,61 @@ func (j *JWKS) Encode(w io.Writer) error {
 // It returns an error if decoding fails or if no keys are found in the JWKS.
 // If the JWKS contains no keys, ErrCertificateNotFound is returned.
 func (j *JWKS) Decode(r io.Reader) error {
-	err := json.NewDecoder(r).Decode(j)
+	// this will make sure the old data is in not replaced incase of an error
+	tJWKS := JWKS{}
+
+	err := json.NewDecoder(r).Decode(&tJWKS)
 	if err != nil {
 		return err
 	}
 
-	if len(j.Keys) == 0 {
+	if len(tJWKS.Keys) == 0 {
 		return ErrCertificateNotFound
+	}
+
+	for _, key := range tJWKS.Keys {
+		err := key.Validate()
+		if err != nil {
+			return err
+		}
+	}
+
+	j.Keys = tJWKS.Keys
+
+	return nil
+}
+
+func (k Key) Validate() error {
+	if k.Kty != KeyTypeRSA {
+		return fmt.Errorf("%w %s", ErrInvalidKey, "type is invalid")
+	}
+
+	if isEmpty(k.Alg) {
+		return fmt.Errorf("%w %s", ErrInvalidKey, "alg is invalid")
+	}
+
+	if isEmpty(k.Use) {
+		return fmt.Errorf("%w %s", ErrInvalidKey, "use is invalid")
+	}
+
+	if hasEmptyValues(k.KeyOps) {
+		return fmt.Errorf("%w %s", ErrInvalidKey, "keyops is empty")
+	}
+
+	if isEmpty(k.Kid) {
+		return fmt.Errorf("%w %s", ErrInvalidKey, "kid is invalid")
+	}
+
+	if hasEmptyValues(k.X5c) {
+		return fmt.Errorf("%w %s", ErrInvalidKey, "x5c is empty")
+	}
+
+	if isEmpty(k.N) {
+		return fmt.Errorf("%w %s", ErrInvalidKey, "n is invalid")
+	}
+
+	if isEmpty(k.E) {
+		return fmt.Errorf("%w %s", ErrInvalidKey, "e is invalid")
 	}
 
 	return nil
@@ -152,4 +204,18 @@ func (i Input) build() (Key, error) {
 	}
 
 	return key, nil
+}
+
+// hasEmptyValues checks if the provided slice of strings contains any empty values.
+func hasEmptyValues(values []string) bool {
+	if len(values) == 0 {
+		return true
+	}
+
+	return slices.ContainsFunc(values, isEmpty)
+}
+
+// isEmpty returns true if the given string is empty or contains only whitespace.
+func isEmpty(s string) bool {
+	return strings.TrimSpace(s) == ""
 }
