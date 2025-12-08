@@ -33,12 +33,12 @@ type Key struct {
 
 // Input is used to build JWKS from a set of keys and certificates.
 type Input struct {
-	Kty     KeyType
-	Alg     string
-	Use     string
-	KeyOps  []string
-	Kid     string
-	X5Certs []x509.Certificate
+	Kty       KeyType
+	Alg       string
+	Use       string
+	KeyOps    []string
+	Kid       string
+	X509Certs []x509.Certificate
 }
 
 // KeyTypeRSA is the constant for RSA key type.
@@ -58,25 +58,25 @@ var (
 // New constructs a JWKS from one or more KeyInput values.
 // It ensures each key has a unique KID and at least one certificate.
 func New(inputs ...Input) (*JWKS, error) {
-	kids := make(map[string]struct{}, len(inputs))
+	processedKids := make(map[string]struct{}, len(inputs))
 
 	result := &JWKS{
 		Keys: make([]Key, 0, len(inputs)),
 	}
 
 	for _, input := range inputs {
-		if len(input.X5Certs) == 0 {
+		if len(input.X509Certs) == 0 {
 			return nil, ErrCertificateNotFound
 		}
 
 		kid := input.Kid
 
-		_, ok := kids[kid]
+		_, ok := processedKids[kid]
 		if ok {
 			return nil, fmt.Errorf("%w %s", ErrDuplicateKID, kid)
 		}
 
-		kids[kid] = struct{}{}
+		processedKids[kid] = struct{}{}
 
 		keys, err := input.build()
 		if err != nil {
@@ -116,11 +116,11 @@ func (j *JWKS) Decode(r io.Reader) error {
 // For RSA keys, it extracts the modulus (N) and exponent (E) from the first certificate's public key.
 // Returns an error if the key type is unsupported or if the RSA public key cannot be found.
 func (i Input) build() (Key, error) {
-	x5cs := make([]string, 0, len(i.X5Certs))
+	x5cs := make([]string, 0, len(i.X509Certs))
 
 	var firstCert x509.Certificate
 
-	for i, cert := range i.X5Certs {
+	for i, cert := range i.X509Certs {
 		if i == 0 {
 			firstCert = cert
 		}

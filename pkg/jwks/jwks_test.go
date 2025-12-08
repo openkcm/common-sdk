@@ -30,23 +30,23 @@ func TestNew(t *testing.T) {
 		expErr   error
 	}{
 		{
-			name: "should fail if X5c certificate is nil",
+			name: "should fail if X509 certificate is nil",
 			keyInput: []jwks.Input{
 				{
-					Kty:     jwks.KeyTypeRSA,
-					Kid:     "kid1",
-					X5Certs: nil,
+					Kty:       jwks.KeyTypeRSA,
+					Kid:       "kid1",
+					X509Certs: nil,
 				},
 			},
 			expErr: jwks.ErrCertificateNotFound,
 		},
 		{
-			name: "should fail if x5c certificate is empty",
+			name: "should fail if x509 certificate is empty",
 			keyInput: []jwks.Input{
 				{
-					Kty:     jwks.KeyTypeRSA,
-					Kid:     "kid1",
-					X5Certs: []x509.Certificate{},
+					Kty:       jwks.KeyTypeRSA,
+					Kid:       "kid1",
+					X509Certs: []x509.Certificate{},
 				},
 			},
 			expErr: jwks.ErrCertificateNotFound,
@@ -57,7 +57,7 @@ func TestNew(t *testing.T) {
 				{
 					Kty: jwks.KeyTypeRSA,
 					Kid: "kid1",
-					X5Certs: []x509.Certificate{
+					X509Certs: []x509.Certificate{
 						*cert1,
 					},
 				},
@@ -65,7 +65,7 @@ func TestNew(t *testing.T) {
 					Kty: jwks.KeyTypeRSA,
 
 					Kid: "kid1",
-					X5Certs: []x509.Certificate{
+					X509Certs: []x509.Certificate{
 						*cert2,
 					},
 				},
@@ -78,7 +78,7 @@ func TestNew(t *testing.T) {
 				{
 					Kty: "UNKNOWN",
 					Kid: "kid1",
-					X5Certs: []x509.Certificate{
+					X509Certs: []x509.Certificate{
 						*cert1,
 					},
 				},
@@ -118,7 +118,7 @@ func TestNew(t *testing.T) {
 						Use:    "sig",
 						KeyOps: []string{"verify"},
 						Kid:    "kid1",
-						X5Certs: []x509.Certificate{
+						X509Certs: []x509.Certificate{
 							*cert1,
 						},
 					},
@@ -134,7 +134,7 @@ func TestNew(t *testing.T) {
 						Use:    "sig",
 						KeyOps: []string{"verify"},
 						Kid:    "kid1",
-						X5Certs: []x509.Certificate{
+						X509Certs: []x509.Certificate{
 							*cert1,
 						},
 					},
@@ -144,7 +144,7 @@ func TestNew(t *testing.T) {
 						Use:    "sig",
 						KeyOps: []string{"verify"},
 						Kid:    "kid2",
-						X5Certs: []x509.Certificate{
+						X509Certs: []x509.Certificate{
 							*cert2,
 						},
 					},
@@ -155,7 +155,7 @@ func TestNew(t *testing.T) {
 		asserter := func(t *testing.T, privKey *rsa.PrivateKey, keyInput jwks.Input, key jwks.Key) {
 			t.Helper()
 
-			cert := keyInput.X5Certs[0]
+			cert := keyInput.X509Certs[0]
 			pbKey := privKey.PublicKey
 			expN := pbKey.N.String()
 			expE := strconv.Itoa(pbKey.E)
