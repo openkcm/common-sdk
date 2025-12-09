@@ -482,81 +482,37 @@ func createEvent(properties eventProperties) (plog.Logs, error) {
 	lr.Attributes().PutStr(UserInitiatorIDKey, fmt.Sprint(properties[UserInitiatorIDKey]))
 	lr.Attributes().PutStr(TenantIDKey, fmt.Sprint(properties[TenantIDKey]))
 
-	if properties.hasValues(EventCorrelationIDKey) {
-		lr.Attributes().PutStr(EventCorrelationIDKey, fmt.Sprint(properties[EventCorrelationIDKey]))
-	}
-
-	if properties.hasValues(ObjectTypeKey) {
-		lr.Attributes().PutStr(ObjectTypeKey, fmt.Sprint(properties[ObjectTypeKey]))
-	}
-
-	if properties.hasValues(PropertyNameKey) {
-		lr.Attributes().PutStr(PropertyNameKey, fmt.Sprint(properties[PropertyNameKey]))
-	}
-
-	if properties.hasValues(ChannelIDKey) {
-		lr.Attributes().PutStr(ChannelIDKey, fmt.Sprint(properties[ChannelIDKey]))
-	}
-
-	if properties.hasValues(ChannelTypeKey) {
-		lr.Attributes().PutStr(ChannelTypeKey, fmt.Sprint(properties[ChannelTypeKey]))
-	}
-
-	if properties.hasValues(SystemIDKey) {
-		lr.Attributes().PutStr(SystemIDKey, fmt.Sprint(properties[SystemIDKey]))
-	}
-
-	if properties.hasValues(CmkIDKey) {
-		lr.Attributes().PutStr(CmkIDKey, fmt.Sprint(properties[CmkIDKey]))
-	}
-
-	if properties.hasValues(CmkIDOldKey) {
-		lr.Attributes().PutStr(CmkIDOldKey, fmt.Sprint(properties[CmkIDOldKey]))
-	}
-
-	if properties.hasValues(CmkIDNewKey) {
-		lr.Attributes().PutStr(CmkIDNewKey, fmt.Sprint(properties[CmkIDNewKey]))
-	}
-
-	if properties.hasValues(ActionTypeKey) {
-		lr.Attributes().PutStr(ActionTypeKey, fmt.Sprint(properties[ActionTypeKey]))
-	}
-
-	if properties.hasValues(CredentialTypeKey) {
-		lr.Attributes().PutStr(CredentialTypeKey, fmt.Sprint(properties[CredentialTypeKey]))
-	}
-
-	if properties.hasValues(LoginMethodKey) {
-		lr.Attributes().PutStr(LoginMethodKey, fmt.Sprint(properties[LoginMethodKey]))
-	}
-
-	if properties.hasValues(MfaTypeKey) {
-		lr.Attributes().PutStr(MfaTypeKey, fmt.Sprint(properties[MfaTypeKey]))
-	}
-
-	if properties.hasValues(UserTypeKey) {
-		lr.Attributes().PutStr(UserTypeKey, fmt.Sprint(properties[UserTypeKey]))
-	}
-
-	if properties.hasValues(FailureReasonKey) {
-		lr.Attributes().PutStr(FailureReasonKey, fmt.Sprint(properties[FailureReasonKey]))
-	}
-
-	if properties.hasValues(DppKey) {
-		lr.Attributes().PutStr(DppKey, fmt.Sprint(properties[DppKey]))
-	}
-
-	if properties.hasValues(OldValueKey) {
-		lr.Attributes().PutStr(OldValueKey, fmt.Sprint(properties[OldValueKey]))
-	}
-
-	if properties.hasValues(NewValueKey) {
-		lr.Attributes().PutStr(NewValueKey, fmt.Sprint(properties[NewValueKey]))
-	}
-
-	if properties.hasValues(ValueKey) {
-		lr.Attributes().PutStr(ValueKey, fmt.Sprint(properties[ValueKey]))
-	}
+	addAttributesForKeys(properties, &lr,
+		EventCorrelationIDKey,
+		ObjectTypeKey,
+		PropertyNameKey,
+		ChannelIDKey,
+		ChannelTypeKey,
+		SystemIDKey,
+		CmkIDKey,
+		CmkIDOldKey,
+		CmkIDNewKey,
+		ActionTypeKey,
+		CredentialTypeKey,
+		LoginMethodKey,
+		MfaTypeKey,
+		UserTypeKey,
+		FailureReasonKey,
+		DppKey,
+		OldValueKey,
+		NewValueKey,
+		ValueKey,
+		ResourceKey,
+		ActionKey,
+	)
 
 	return logs, nil
+}
+
+func addAttributesForKeys(properties eventProperties, lr *plog.LogRecord, keys ...string) {
+	for _, key := range keys {
+		if properties.hasValues(key) {
+			lr.Attributes().PutStr(key, fmt.Sprint(properties[key]))
+		}
+	}
 }
