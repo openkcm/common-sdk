@@ -422,6 +422,9 @@ func NewUnauthorizedRequestEvent(metadata EventMetadata, resource, action string
 	if !ok {
 		return plog.Logs{}, errEventCreation
 	}
+	if !hasValues(resource, action) {
+		return plog.Logs{}, errEventCreation
+	}
 
 	m := newEventProperties(uid, UnauthorizedRequestEvent, metadata)
 	m[ResourceKey] = resource
