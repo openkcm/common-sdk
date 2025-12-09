@@ -2098,6 +2098,8 @@ func TestNewCmkTenantModificationEvent(t *testing.T) {
 func TestRequestEvents(t *testing.T) {
 	type args struct {
 		metadata EventMetadata
+		resource string
+		action   string
 	}
 
 	tests := []struct {
@@ -2113,6 +2115,8 @@ func TestRequestEvents(t *testing.T) {
 					TenantIDKey:           "tenantID",
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
+				resource: "resource",
+				action:   "action",
 			},
 			wantErr: false,
 		},
@@ -2153,7 +2157,7 @@ func TestRequestEvents(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if strings.Contains(tt.name, "NewUnauthorizedRequest") {
-				_, err := NewUnauthorizedRequestEvent(tt.args.metadata)
+				_, err := NewUnauthorizedRequestEvent(tt.args.metadata, tt.args.resource, tt.args.action)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("NewUnauthorizedRequestEvent() error = %v, wantErr %v", err, tt.wantErr)
 				}
