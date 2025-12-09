@@ -417,13 +417,15 @@ func NewCmkUnavailableEvent(metadata EventMetadata, cmkID string) (plog.Logs, er
 	return createEvent(m)
 }
 
-func NewUnauthorizedRequestEvent(metadata EventMetadata) (plog.Logs, error) {
+func NewUnauthorizedRequestEvent(metadata EventMetadata, resource, action string) (plog.Logs, error) {
 	uid, ok := metadata[UserInitiatorIDKey]
 	if !ok {
 		return plog.Logs{}, errEventCreation
 	}
 
 	m := newEventProperties(uid, UnauthorizedRequestEvent, metadata)
+	m[ResourceKey] = resource
+	m[ActionKey] = action
 
 	return createEvent(m)
 }
