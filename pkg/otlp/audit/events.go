@@ -376,6 +376,7 @@ func NewCmkCreateEvent(metadata EventMetadata, cmkID, systemID string) (plog.Log
 	if !hasValues(systemID) {
 		return plog.Logs{}, errEventCreation
 	}
+
 	m := newEventProperties(cmkID, CmkCreateEvent, metadata)
 	m[SystemIDKey] = systemID
 	return createEvent(m)
@@ -385,6 +386,7 @@ func NewCmkDeleteEvent(metadata EventMetadata, cmkID, systemID string) (plog.Log
 	if !hasValues(systemID) {
 		return plog.Logs{}, errEventCreation
 	}
+
 	m := newEventProperties(cmkID, CmkDeleteEvent, metadata)
 	m[SystemIDKey] = systemID
 	return createEvent(m)
@@ -401,6 +403,7 @@ func NewCmkRestoreEvent(metadata EventMetadata, cmkID, systemID string) (plog.Lo
 	}
 	m := newEventProperties(cmkID, CmkRestoreEvent, metadata)
 	m[SystemIDKey] = systemID
+
 	return createEvent(m)
 }
 
@@ -410,6 +413,7 @@ func NewCmkEnableEvent(metadata EventMetadata, cmkID, systemID string) (plog.Log
 	}
 	m := newEventProperties(cmkID, CmkEnableEvent, metadata)
 	m[SystemIDKey] = systemID
+
 	return createEvent(m)
 }
 
@@ -417,8 +421,10 @@ func NewCmkDisableEvent(metadata EventMetadata, cmkID, systemID string) (plog.Lo
 	if !hasValues(systemID) {
 		return plog.Logs{}, errEventCreation
 	}
+
 	m := newEventProperties(cmkID, CmkDisableEvent, metadata)
 	m[SystemIDKey] = systemID
+	
 	return createEvent(m)
 }
 
