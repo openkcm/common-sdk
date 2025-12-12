@@ -73,6 +73,8 @@ const (
 	CmkIDKey              = "cmkID"
 	CmkIDOldKey           = "cmkIDOld"
 	CmkIDNewKey           = "cmkIDNew"
+	ResourceKey           = "resource"
+	ActionKey             = "action"
 )
 
 const (
