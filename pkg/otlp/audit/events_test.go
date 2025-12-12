@@ -1859,7 +1859,7 @@ func TestCmkNoSystemID(t *testing.T) {
 		metadata EventMetadata
 		cmkID    string
 	}
-	
+
 	tests := []struct {
 		name    string
 		args    args
