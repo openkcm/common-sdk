@@ -415,7 +415,7 @@ func NewCmkEnableEvent(metadata EventMetadata, cmkID, systemID string) (plog.Log
 	if !hasValues(systemID) {
 		return plog.Logs{}, errEventCreation
 	}
-	
+
 	m := newEventProperties(cmkID, CmkEnableEvent, metadata)
 	m[SystemIDKey] = systemID
 
