@@ -372,13 +372,21 @@ func NewCmkTenantDeleteEvent(metadata EventMetadata, cmkID string) (plog.Logs, e
 	return createEvent(m)
 }
 
-func NewCmkCreateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+func NewCmkCreateEvent(metadata EventMetadata, cmkID, systemID string) (plog.Logs, error) {
+	if !hasValues(systemID) {
+		return plog.Logs{}, errEventCreation
+	}
 	m := newEventProperties(cmkID, CmkCreateEvent, metadata)
+	m[SystemIDKey] = systemID
 	return createEvent(m)
 }
 
-func NewCmkDeleteEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+func NewCmkDeleteEvent(metadata EventMetadata, cmkID, systemID string) (plog.Logs, error) {
+	if !hasValues(systemID) {
+		return plog.Logs{}, errEventCreation
+	}
 	m := newEventProperties(cmkID, CmkDeleteEvent, metadata)
+	m[SystemIDKey] = systemID
 	return createEvent(m)
 }
 
@@ -387,18 +395,30 @@ func NewCmkDetachEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) 
 	return createEvent(m)
 }
 
-func NewCmkRestoreEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+func NewCmkRestoreEvent(metadata EventMetadata, cmkID, systemID string) (plog.Logs, error) {
+	if !hasValues(systemID) {
+		return plog.Logs{}, errEventCreation
+	}
 	m := newEventProperties(cmkID, CmkRestoreEvent, metadata)
+	m[SystemIDKey] = systemID
 	return createEvent(m)
 }
 
-func NewCmkEnableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+func NewCmkEnableEvent(metadata EventMetadata, cmkID, systemID string) (plog.Logs, error) {
+	if !hasValues(systemID) {
+		return plog.Logs{}, errEventCreation
+	}
 	m := newEventProperties(cmkID, CmkEnableEvent, metadata)
+	m[SystemIDKey] = systemID
 	return createEvent(m)
 }
 
-func NewCmkDisableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+func NewCmkDisableEvent(metadata EventMetadata, cmkID, systemID string) (plog.Logs, error) {
+	if !hasValues(systemID) {
+		return plog.Logs{}, errEventCreation
+	}
 	m := newEventProperties(cmkID, CmkDisableEvent, metadata)
+	m[SystemIDKey] = systemID
 	return createEvent(m)
 }
 
