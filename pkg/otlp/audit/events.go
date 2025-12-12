@@ -369,6 +369,7 @@ func NewCmkTenantModificationEvent(metadata EventMetadata, cmkID, systemID strin
 
 func NewCmkTenantDeleteEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
 	m := newEventProperties(cmkID, CmkTenantDeleteEvent, metadata)
+
 	return createEvent(m)
 }
 
@@ -379,6 +380,7 @@ func NewCmkCreateEvent(metadata EventMetadata, cmkID, systemID string) (plog.Log
 
 	m := newEventProperties(cmkID, CmkCreateEvent, metadata)
 	m[SystemIDKey] = systemID
+
 	return createEvent(m)
 }
 
@@ -389,6 +391,7 @@ func NewCmkDeleteEvent(metadata EventMetadata, cmkID, systemID string) (plog.Log
 
 	m := newEventProperties(cmkID, CmkDeleteEvent, metadata)
 	m[SystemIDKey] = systemID
+
 	return createEvent(m)
 }
 
@@ -424,22 +427,25 @@ func NewCmkDisableEvent(metadata EventMetadata, cmkID, systemID string) (plog.Lo
 
 	m := newEventProperties(cmkID, CmkDisableEvent, metadata)
 	m[SystemIDKey] = systemID
-	
+
 	return createEvent(m)
 }
 
 func NewCmkRotateEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
 	m := newEventProperties(cmkID, CmkRotateEvent, metadata)
+
 	return createEvent(m)
 }
 
 func NewCmkAvailableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
 	m := newEventProperties(cmkID, CmkAvailableEvent, metadata)
+
 	return createEvent(m)
 }
 
 func NewCmkUnavailableEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
 	m := newEventProperties(cmkID, CmkUnavailableEvent, metadata)
+
 	return createEvent(m)
 }
 
