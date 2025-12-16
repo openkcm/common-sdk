@@ -120,7 +120,7 @@ additionalProperties: |
 | `cmkTenantDelete`        |                                 `NewCmkTenantDeleteEvent(metadata EventMetadata, cmkID string)`                                 |
 | `cmkCreate`              |                                    `NewCmkCreateEvent(metadata EventMetadata, cmkID string)`                                    |
 | `cmkDelete`              |                                    `NewCmkDeleteEvent(metadata EventMetadata, cmkID string)`                                    |
-| `cmkDetach`              |                                    `NewCmkDetachEvent(metadata EventMetadata, cmkID string)`                                    |
+| `cmkDetach`              |                           `NewCmkDetachEvent(metadata EventMetadata, cmkID string, systemID string)`                            |
 | `cmkRestore`             |                                   `NewCmkRestoreEvent(metadata EventMetadata, cmkID string)`                                    |
 | `cmkEnable`              |                                    `NewCmkEnableEvent(metadata EventMetadata, cmkID string)`                                    |
 | `cmkDisable`             |                                   `NewCmkDisableEvent(metadata EventMetadata, cmkID string)`                                    |

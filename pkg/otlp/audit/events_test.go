@@ -1858,6 +1858,7 @@ func TestCmkNoSystemID(t *testing.T) {
 	type args struct {
 		metadata EventMetadata
 		cmkID    string
+		systemID string
 	}
 
 	tests := []struct {
@@ -1892,7 +1893,7 @@ func TestCmkNoSystemID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewCmkDetachEvent(tt.args.metadata, tt.args.cmkID)
+			_, err := NewCmkDetachEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkDetachEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return

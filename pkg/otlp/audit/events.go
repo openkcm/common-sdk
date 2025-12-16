@@ -395,7 +395,10 @@ func NewCmkDeleteEvent(metadata EventMetadata, cmkID, systemID string) (plog.Log
 	return createEvent(m)
 }
 
-func NewCmkDetachEvent(metadata EventMetadata, cmkID string) (plog.Logs, error) {
+func NewCmkDetachEvent(metadata EventMetadata, cmkID string, systemID string) (plog.Logs, error) {
+	if !hasValues(systemID) {
+		return plog.Logs{}, errEventCreation
+	}
 	m := newEventProperties(cmkID, CmkDetachEvent, metadata)
 	return createEvent(m)
 }
