@@ -1771,7 +1771,6 @@ func TestCmkEventsWithSystemID(t *testing.T) {
 	type args struct {
 		metadata EventMetadata
 		cmkID    string
-		systemID string
 	}
 
 	tests := []struct {
@@ -1787,115 +1786,56 @@ func TestCmkEventsWithSystemID(t *testing.T) {
 					TenantIDKey:           "tenantID",
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
-				cmkID:    "",
-				systemID: "validSystemID",
+				cmkID: "",
 			},
 			wantErr: true,
 		},
 		{
-			name: "T2500_CmkEvents_EmptySystemID_Fail",
+			name: "T2500_CmkEvents_ValidData_Success",
 			args: args{
 				metadata: EventMetadata{
 					UserInitiatorIDKey:    "userInitiatorID",
 					TenantIDKey:           "tenantID",
 					EventCorrelationIDKey: "eventCorrelationID",
 				},
-				cmkID:    "validCmkID",
-				systemID: "",
-			},
-			wantErr: true,
-		},
-		{
-			name: "T2501_CmkEvents_ValidData_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				cmkID:    "validObjectID",
-				systemID: "validSystemID",
+				cmkID: "validObjectID",
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewCmkCreateEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
+			_, err := NewCmkCreateEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			_, err = NewCmkDeleteEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
+			_, err = NewCmkDeleteEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkDeleteEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			_, err = NewCmkDisableEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
+			_, err = NewCmkDisableEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkDisableEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			_, err = NewCmkEnableEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
+			_, err = NewCmkEnableEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkEnableEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			_, err = NewCmkRestoreEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
+			_, err = NewCmkRestoreEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkRestoreEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-		})
-	}
-}
 
-func TestCmkNoSystemID(t *testing.T) {
-	type args struct {
-		metadata EventMetadata
-		cmkID    string
-		systemID string
-	}
-
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "T3000_TestCmkDetach_EmptyObjectID_Fail",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				cmkID:    "",
-				systemID: "",
-			},
-			wantErr: true,
-		},
-		{
-			name: "T3001_TestCmkDetach_Success",
-			args: args{
-				metadata: EventMetadata{
-					UserInitiatorIDKey:    "userInitiatorID",
-					TenantIDKey:           "tenantID",
-					EventCorrelationIDKey: "eventCorrelationID",
-				},
-				cmkID:    "validCmkId",
-				systemID: "validSystemID",
-			},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewCmkDetachEvent(tt.args.metadata, tt.args.cmkID, tt.args.systemID)
+			_, err = NewCmkDetachEvent(tt.args.metadata, tt.args.cmkID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewCmkDetachEvent() error = %v, wantErr %v", err, tt.wantErr)
 				return
