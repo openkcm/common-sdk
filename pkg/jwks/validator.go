@@ -5,17 +5,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"slices"
 )
 
 type X5cValidator struct {
 	CACertPool *x509.CertPool
-	Subject    *Subject
-}
-
-type Subject struct {
-	CN  string
-	Org string
+	Subject    string
 }
 
 var (
@@ -24,8 +18,6 @@ var (
 	ErrInvalidCertEncoding = errors.New("invalid cert encoding")
 	ErrParseCertificate    = errors.New("parse certificate")
 	ErrUnknownSubj         = errors.New("unknown subject")
-	ErrUnknownSubjCN       = errors.New("subject cn unknown")
-	ErrUnknownSubjOrg      = errors.New("subject org unknown")
 )
 
 // NewX5cValidator creates a new X5cValidator instance using the provided CA certificate and subject.
@@ -35,18 +27,18 @@ var (
 //
 // Parameters:
 //   - ca:   The CA certificate to trust for validation.
-//   - subj: The subject information to be used for validation.
+//   - subject: The subject information to be used for validation.
 //
 // Returns:
 //   - *X5cValidator: The initialized validator.
 //   - error:         An error if initialization fails.
-func NewX5cValidator(ca *x509.Certificate, subj *Subject) (*X5cValidator, error) {
+func NewX5cValidator(ca *x509.Certificate, subject string) (*X5cValidator, error) {
 	if ca == nil {
 		return nil, ErrCACertNotLoaded
 	}
 
-	if subj == nil {
-		return nil, fmt.Errorf("%w: subj is nil", ErrUnknownSubj)
+	if subject == "" {
+		return nil, fmt.Errorf("%w: subj is empty", ErrUnknownSubj)
 	}
 
 	result := &X5cValidator{}
@@ -55,18 +47,19 @@ func NewX5cValidator(ca *x509.Certificate, subj *Subject) (*X5cValidator, error)
 	pool.AddCert(ca)
 	result.CACertPool = pool
 
-	result.Subject = subj
+	result.Subject = subject
 
 	return result, nil
 }
 
 // Validate checks the provided x5c certificate chain for validity.
 //
-// The first certificate in the x5c slice is treated as the leaf certificate, and any subsequent
-// certificates are treated as intermediates. The function decodes each certificate from base64,
-// parses it, and adds intermediates to a certificate pool. The leaf certificate is then verified
-// against the CA certificate pool and intermediates. After successful verification, the function
-// checks the Common Name (CN) and Organization (Org) fields of the leaf certificate.
+// Validate checks the provided x5c certificate chain for validity.
+// It expects x5c to be a slice of base64-encoded DER certificates, with the leaf certificate first.
+// The function decodes and parses each certificate, adds intermediates to a pool,
+// and verifies the chain against the CA pool configured in the X5cValidator.
+// It returns an error if the chain is invalid, any certificate cannot be decoded or parsed,
+// or if the leaf certificate's subject does not match the expected subject.
 //
 // Parameters:
 //   - x5c: A slice of base64-encoded DER certificates, where the first is the leaf.
@@ -111,40 +104,16 @@ func (v *X5cValidator) Validate(x5c []string) error {
 		return err
 	}
 
-	err = v.checkCN(leaf)
-	if err != nil {
-		return err
-	}
-
-	return v.checkOrg(leaf)
+	return v.checkFullSubject(leaf)
 }
 
-func (v *X5cValidator) checkOrg(leaf *x509.Certificate) error {
-	orgs := leaf.Subject.Organization
-	if len(orgs) == 0 {
-		return ErrUnknownSubjOrg
-	}
-
-	if orgs[0] != v.Subject.Org {
-		return ErrUnknownSubjOrg
+// checkFullSubject verifies that the subject of the provided leaf certificate
+// matches the expected subject stored in the X5cValidator.
+// Returns an error if the subjects do not match.
+func (v *X5cValidator) checkFullSubject(leaf *x509.Certificate) error {
+	if leaf.Subject.ToRDNSequence().String() != v.Subject {
+		return fmt.Errorf("%w %s", ErrUnknownSubj, "leaf subject dont match")
 	}
 
 	return nil
-}
-
-func (v *X5cValidator) checkCN(cert *x509.Certificate) error {
-	dnsNames := cert.DNSNames
-	if len(dnsNames) > 0 {
-		if slices.Contains(dnsNames, v.Subject.CN) {
-			return nil
-		}
-
-		return fmt.Errorf("%w: %v", ErrUnknownSubjCN, dnsNames)
-	}
-
-	if cert.Subject.CommonName == v.Subject.CN {
-		return nil
-	}
-
-	return fmt.Errorf("%w: expected CN %s, got %s", ErrUnknownSubjCN, v.Subject.CN, cert.Subject.CommonName)
 }
