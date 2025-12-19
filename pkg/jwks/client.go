@@ -12,8 +12,8 @@ import (
 )
 
 type Client struct {
-	cli *http.Client
-	url *url.URL
+	cli      *http.Client
+	endpoint string
 }
 
 var (
@@ -26,8 +26,8 @@ var (
 // It validates the endpoint URL and configures an HTTP client with connection pooling and timeouts.
 // Returns an error if the endpoint is invalid.
 func NewClient(endpoint string) (*Client, error) {
-	u, ok := isValidURL(endpoint)
-	if !ok {
+	u, err := parseURL(endpoint)
+	if err != nil {
 		return nil, ErrInvalidURL
 	}
 
@@ -41,7 +41,7 @@ func NewClient(endpoint string) (*Client, error) {
 		Timeout: 10 * time.Second,
 	}
 
-	return &Client{cli: cli, url: u}, nil
+	return &Client{cli: cli, endpoint: u.String()}, nil
 }
 
 // Get retrieves the JSON Web Key Set (JWKS) from the configured endpoint.
@@ -49,7 +49,7 @@ func NewClient(endpoint string) (*Client, error) {
 // reads and unmarshals the response body into a JWKS struct, and returns it.
 // Returns an error if the request fails, the status is not OK, or the response cannot be parsed.
 func (c *Client) Get(ctx context.Context) (*JWKS, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -79,11 +79,11 @@ func (c *Client) Get(ctx context.Context) (*JWKS, error) {
 	return &jwks, nil
 }
 
-func isValidURL(endpoint string) (*url.URL, bool) {
+func parseURL(endpoint string) (*url.URL, error) {
 	u, err := url.ParseRequestURI(endpoint)
 	if err == nil && u.Scheme != "" && u.Host != "" {
-		return u, true
+		return u, nil
 	}
 
-	return nil, false
+	return nil, ErrInvalidURL
 }
