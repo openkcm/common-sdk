@@ -14,9 +14,9 @@ import (
 
 func TestClient(t *testing.T) {
 	t.Run("init", func(t *testing.T) {
-		t.Run("should return error if url is invalid", func(t *testing.T) {
+		t.Run("should return error if endpoint is invalid", func(t *testing.T) {
 			// given
-			endpoint := "invalid url"
+			endpoint := "not valid endpoint url"
 
 			// when
 			res, err := jwks.NewClient(endpoint)
@@ -27,7 +27,7 @@ func TestClient(t *testing.T) {
 			assert.Nil(t, res)
 		})
 
-		t.Run("should not return error if url is invalid", func(t *testing.T) {
+		t.Run("should not return error if endpoint is invalid", func(t *testing.T) {
 			// given
 			endpoint := "https://someurl.calling.com/endpoint"
 
@@ -82,7 +82,7 @@ func TestClient(t *testing.T) {
 		})
 
 		t.Run("should return error", func(t *testing.T) {
-			t.Run("if jwks server returns a http status other than http.StatusOK", func(t *testing.T) {
+			t.Run("if jwks server returns a http status other than 200", func(t *testing.T) {
 				// given
 				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusInternalServerError)
