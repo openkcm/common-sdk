@@ -24,10 +24,15 @@ var (
 	ErrHTTPStatusNotOK = errors.New("http status not ok")
 )
 
+// HTTPClientOpts defines a function type that modifies an http.Client.
+// It can be used to customize the HTTP client's settings when creating a new Client.
+type HTTPClientOpts func(*http.Client)
+
 // NewClient creates and returns a new Client for the given JWKS endpoint.
-// It validates the endpoint URL and configures an HTTP client with connection pooling and timeouts.
-// Returns an error if the endpoint is invalid.
-func NewClient(endpoint string) (*Client, error) {
+// The endpoint parameter specifies the URL to fetch JWKS from.
+// Optional HTTPClientOpts can be provided to customize the underlying http.Client.
+// Returns an error if the endpoint URL is invalid.
+func NewClient(endpoint string, opts ...HTTPClientOpts) (*Client, error) {
 	u, err := parseURL(endpoint)
 	if err != nil {
 		return nil, ErrInvalidURL
@@ -41,6 +46,10 @@ func NewClient(endpoint string) (*Client, error) {
 			IdleConnTimeout:     30 * time.Second,
 		},
 		Timeout: 10 * time.Second,
+	}
+
+	for _, opt := range opts {
+		opt(cli)
 	}
 
 	return &Client{cli: cli, endpoint: u.String()}, nil

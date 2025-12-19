@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -27,7 +28,7 @@ func TestClient(t *testing.T) {
 			assert.Nil(t, res)
 		})
 
-		t.Run("should not return error if endpoint is invalid", func(t *testing.T) {
+		t.Run("should not return error if endpoint is valid", func(t *testing.T) {
 			// given
 			endpoint := "https://someurl.calling.com/endpoint"
 
@@ -37,6 +38,34 @@ func TestClient(t *testing.T) {
 			// then
 			assert.NoError(t, err)
 			assert.NotNil(t, res)
+		})
+
+		t.Run("should not return error endpoint is valid and opts are added", func(t *testing.T) {
+			// given
+			endpoint := "https://someurl.calling.com/endpoint"
+
+			expCalls := 0
+			// when
+			res, err := jwks.NewClient(endpoint,
+				func(c *http.Client) {
+					expCalls++
+					c.Timeout = time.Second * 0
+				},
+				func(c *http.Client) {
+					expCalls++
+
+					// making sure the client got updated from previous opts
+					assert.Equal(t, 0*time.Second, c.Timeout)
+					c.Transport = &http.Transport{
+						MaxConnsPerHost: 1,
+					}
+				},
+			)
+
+			// then
+			assert.NoError(t, err)
+			assert.NotNil(t, res)
+			assert.Equal(t, 2, expCalls)
 		})
 	})
 
