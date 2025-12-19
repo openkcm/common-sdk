@@ -11,9 +11,11 @@ import (
 	"time"
 )
 
+// Client represents a JWKS (JSON Web Key Set) client that fetches keys from a remote endpoint.
+// It uses an HTTP client to perform requests to the specified endpoint.
 type Client struct {
-	cli      *http.Client
-	endpoint string
+	cli      *http.Client // HTTP client used for making requests
+	endpoint string       // URL of the JWKS endpoint
 }
 
 var (
