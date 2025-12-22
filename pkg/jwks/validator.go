@@ -7,32 +7,32 @@ import (
 	"fmt"
 )
 
-type X5cValidator struct {
+// Validator validates x5c certificate chains from JWKs against a configured CA pool
+// and checks that the leaf certificate subject matches an expected subject string.
+type Validator struct {
+	// CACertPool is the set of trusted root certificates used to verify chains.
 	CACertPool *x509.CertPool
-	Subject    string
+	// Subject is the exact subject string expected on the leaf certificate.
+	Subject string
 }
 
 var (
-	ErrCACertNotLoaded     = errors.New("ca cert is not loaded")
-	ErrX5cEmpty            = errors.New("x5c is empty")
+	// ErrCACertNotLoaded is returned when a Validator is constructed without a CA certificate.
+	ErrCACertNotLoaded = errors.New("ca cert is not loaded")
+	// ErrX5cEmpty is returned when a JWK has no x5c certificates.
+	ErrX5cEmpty = errors.New("x5c is empty")
+	// ErrInvalidCertEncoding is returned when an x5c entry is not valid base64.
 	ErrInvalidCertEncoding = errors.New("invalid cert encoding")
-	ErrParseCertificate    = errors.New("parse certificate")
-	ErrUnknownSubj         = errors.New("unknown subject")
+	// ErrParseCertificate is returned when a decoded x5c entry cannot be parsed as a certificate.
+	ErrParseCertificate = errors.New("parse certificate")
+	// ErrUnknownSubj is returned when a certificate subject does not match the expected subject.
+	ErrUnknownSubj = errors.New("unknown subject")
 )
 
-// NewX5cValidator creates a new X5cValidator instance using the provided CA certificate and subject.
-// It returns an error if the CA certificate or subject is nil.
-// The returned X5cValidator is initialized with a certificate pool containing the CA certificate
-// and the specified subject.
-//
-// Parameters:
-//   - ca:   The CA certificate to trust for validation.
-//   - subject: The subject information to be used for validation.
-//
-// Returns:
-//   - *X5cValidator: The initialized validator.
-//   - error:         An error if initialization fails.
-func NewX5cValidator(ca *x509.Certificate, subject string) (*X5cValidator, error) {
+// NewX5cValidator returns a Validator initialized with the given CA certificate and subject.
+// The CA certificate is added to a new x509.CertPool used for validation.
+// Returns an error if the CA certificate is nil or the subject is empty.
+func NewX5cValidator(ca *x509.Certificate, subject string) (*Validator, error) {
 	if ca == nil {
 		return nil, ErrCACertNotLoaded
 	}
@@ -41,7 +41,7 @@ func NewX5cValidator(ca *x509.Certificate, subject string) (*X5cValidator, error
 		return nil, fmt.Errorf("%w: subj is empty", ErrUnknownSubj)
 	}
 
-	result := &X5cValidator{}
+	result := &Validator{}
 
 	pool := x509.NewCertPool()
 	pool.AddCert(ca)
@@ -53,20 +53,14 @@ func NewX5cValidator(ca *x509.Certificate, subject string) (*X5cValidator, error
 }
 
 // Validate checks the provided x5c certificate chain for validity.
-//
-// Validate checks the provided x5c certificate chain for validity.
-// It expects x5c to be a slice of base64-encoded DER certificates, with the leaf certificate first.
-// The function decodes and parses each certificate, adds intermediates to a pool,
-// and verifies the chain against the CA pool configured in the X5cValidator.
-// It returns an error if the chain is invalid, any certificate cannot be decoded or parsed,
-// or if the leaf certificate's subject does not match the expected subject.
-//
-// Parameters:
-//   - x5c: A slice of base64-encoded DER certificates, where the first is the leaf.
-//
-// Returns:
-//   - error: An error if validation fails, or nil if the certificate chain is valid.
-func (v *X5cValidator) Validate(x5c []string) error {
+// It expects the provided Key to include an x5c slice where the first element
+// is the leaf certificate followed by any intermediates. Each entry must be a
+// base64-encoded DER certificate. The chain is verified against the Validator's
+// CA pool and the leaf subject must match the Validator's Subject.
+// Returns an error if the chain cannot be decoded, parsed, verified or if the
+// leaf subject does not match.
+func (v *Validator) Validate(key Key) error {
+	x5c := key.X5c
 	if len(x5c) == 0 {
 		return ErrX5cEmpty
 	}
@@ -108,9 +102,9 @@ func (v *X5cValidator) Validate(x5c []string) error {
 }
 
 // checkFullSubject verifies that the subject of the provided leaf certificate
-// matches the expected subject stored in the X5cValidator.
-// Returns an error if the subjects do not match.
-func (v *X5cValidator) checkFullSubject(leaf *x509.Certificate) error {
+// matches the expected subject stored in the Validator. It returns an error
+// when the subjects do not match.
+func (v *Validator) checkFullSubject(leaf *x509.Certificate) error {
 	if leaf.Subject.ToRDNSequence().String() != v.Subject {
 		return fmt.Errorf("%w %s", ErrUnknownSubj, "leaf subject dont match")
 	}

@@ -95,7 +95,7 @@ func TestValidator(t *testing.T) {
 			}
 
 			// when
-			actErr = subj.Validate(x5c)
+			actErr = subj.Validate(jwks.Key{X5c: x5c})
 
 			// then
 			assert.NoError(t, actErr)
@@ -117,7 +117,7 @@ func TestValidator(t *testing.T) {
 			}
 
 			// when
-			actErr = subj.Validate(x5c)
+			actErr = subj.Validate(jwks.Key{X5c: x5c})
 
 			// then
 			assert.NoError(t, actErr)
@@ -160,7 +160,7 @@ func TestValidator(t *testing.T) {
 			for _, tt := range tts {
 				t.Run(tt.name, func(t *testing.T) {
 					// when
-					err = subj.Validate(tt.x5c)
+					err = subj.Validate(jwks.Key{X5c: tt.x5c})
 
 					// then
 					assert.Error(t, err)
@@ -317,7 +317,7 @@ func TestValidator(t *testing.T) {
 				}
 
 				// when
-				actErr = subj.Validate(x5c)
+				actErr = subj.Validate(jwks.Key{X5c: x5c})
 
 				// then
 				assert.Error(t, actErr)
@@ -351,7 +351,7 @@ func TestValidator(t *testing.T) {
 		}
 
 		// when
-		actErr = subj.Validate(x5c)
+		actErr = subj.Validate(jwks.Key{X5c: x5c})
 
 		// then
 		assert.Error(t, actErr)
