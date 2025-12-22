@@ -29,10 +29,10 @@ var (
 	ErrUnknownSubj = errors.New("unknown subject")
 )
 
-// NewX5cValidator returns a Validator initialized with the given CA certificate and subject.
+// NewValidator returns a Validator initialized with the given CA certificate and subject.
 // The CA certificate is added to a new x509.CertPool used for validation.
 // Returns an error if the CA certificate is nil or the subject is empty.
-func NewX5cValidator(ca *x509.Certificate, subject string) (*Validator, error) {
+func NewValidator(ca *x509.Certificate, subject string) (*Validator, error) {
 	if ca == nil {
 		return nil, ErrCACertNotLoaded
 	}

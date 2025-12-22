@@ -61,7 +61,7 @@ func TestValidator(t *testing.T) {
 		for _, tt := range tts {
 			t.Run(tt.name, func(t *testing.T) {
 				// when
-				result, err := jwks.NewX5cValidator(tt.ca, tt.subj)
+				result, err := jwks.NewValidator(tt.ca, tt.subj)
 
 				// then
 				assert.ErrorIs(t, err, tt.expErr)
@@ -86,7 +86,7 @@ func TestValidator(t *testing.T) {
 			rootCa, actErr := x509.ParseCertificate(rootDer)
 			assert.NoError(t, actErr)
 
-			subj, err := jwks.NewX5cValidator(rootCa, validSubjString)
+			subj, err := jwks.NewValidator(rootCa, validSubjString)
 			assert.NoError(t, err)
 
 			x5c := []string{
@@ -109,7 +109,7 @@ func TestValidator(t *testing.T) {
 			rootCa, actErr := x509.ParseCertificate(rootDer)
 			assert.NoError(t, actErr)
 
-			subj, err := jwks.NewX5cValidator(rootCa, validSubjString)
+			subj, err := jwks.NewValidator(rootCa, validSubjString)
 			assert.NoError(t, err)
 
 			x5c := []string{
@@ -154,7 +154,7 @@ func TestValidator(t *testing.T) {
 			}
 
 			// given
-			subj, err := jwks.NewX5cValidator(&x509.Certificate{}, validSubjString)
+			subj, err := jwks.NewValidator(&x509.Certificate{}, validSubjString)
 			assert.NoError(t, err)
 
 			for _, tt := range tts {
@@ -308,7 +308,7 @@ func TestValidator(t *testing.T) {
 				rootCa, actErr := x509.ParseCertificate(rootDer)
 				assert.NoError(t, actErr)
 
-				subj, err := jwks.NewX5cValidator(rootCa, validSubjString)
+				subj, err := jwks.NewValidator(rootCa, validSubjString)
 				assert.NoError(t, err)
 
 				x5c := []string{
@@ -342,7 +342,7 @@ func TestValidator(t *testing.T) {
 		rootCa, actErr := x509.ParseCertificate(rootDer)
 		assert.NoError(t, actErr)
 
-		subj, err := jwks.NewX5cValidator(rootCa, validSubjString)
+		subj, err := jwks.NewValidator(rootCa, validSubjString)
 		assert.NoError(t, err)
 
 		// no intermediate certificate
