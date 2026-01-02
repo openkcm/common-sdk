@@ -3,6 +3,8 @@ package jwtsigning
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"sync"
@@ -131,5 +133,40 @@ func (*JWKSProvider) writeKeys(cc *JWKSClientStore, pubKeys map[string]*rsa.Publ
 		defer cc.lock.Unlock()
 
 		cc.cache = pubKeys
+	}
+}
+
+func parsePublicKey(ctx context.Context, key Key) (*rsa.PublicKey, error) {
+	if len(key.X5c) == 0 {
+		return nil, ErrX5cEmpty
+	}
+
+	firstCert := key.X5c[0]
+
+	bDer, err := base64.StdEncoding.DecodeString(firstCert)
+	if err != nil {
+		slogctx.Error(ctx, "error while base64 decoding", "kid", key.Kid, "error", err)
+		return nil, err
+	}
+
+	cert, err := x509.ParseCertificate(bDer)
+	if err != nil {
+		slogctx.Error(ctx, "error parse certificate", "kid", key.Kid, "error", err)
+		return nil, err
+	}
+
+	switch key.Kty {
+	case KeyTypeRSA:
+		pubKey, ok := cert.PublicKey.(*rsa.PublicKey)
+		if !ok {
+			slogctx.Error(ctx, "error getting public key", "kid", key.Kid)
+			return nil, err
+		}
+
+		return pubKey, nil
+
+	default:
+		slogctx.Error(ctx, "error unsupported key type", "kid", key.Kid)
+		return nil, fmt.Errorf("%w [%s]", ErrKeyTypeUnsupported, key.Kty)
 	}
 }

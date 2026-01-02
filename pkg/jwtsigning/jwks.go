@@ -1,7 +1,6 @@
 package jwtsigning
 
 import (
-	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
@@ -12,8 +11,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-
-	slogctx "github.com/veqryn/slog-context"
 )
 
 // JWKS represents a JSON Web Key Set, containing multiple JWK keys.
@@ -221,39 +218,4 @@ func hasEmptyValues(values []string) bool {
 // isEmpty returns true if the given string is empty or contains only whitespace.
 func isEmpty(s string) bool {
 	return strings.TrimSpace(s) == ""
-}
-
-func parsePublicKey(ctx context.Context, key Key) (*rsa.PublicKey, error) {
-	if len(key.X5c) == 0 {
-		return nil, ErrX5cEmpty
-	}
-
-	firstCert := key.X5c[0]
-
-	bDer, err := base64.StdEncoding.DecodeString(firstCert)
-	if err != nil {
-		slogctx.Error(ctx, "error while base64 decoding", "kid", key.Kid, "error", err)
-		return nil, err
-	}
-
-	cert, err := x509.ParseCertificate(bDer)
-	if err != nil {
-		slogctx.Error(ctx, "error parse certificate", "kid", key.Kid, "error", err)
-		return nil, err
-	}
-
-	switch key.Kty {
-	case KeyTypeRSA:
-		pubKey, ok := cert.PublicKey.(*rsa.PublicKey)
-		if !ok {
-			slogctx.Error(ctx, "error getting public key", "kid", key.Kid)
-			return nil, err
-		}
-
-		return pubKey, nil
-
-	default:
-		slogctx.Error(ctx, "error unsupported key type", "kid", key.Kid)
-		return nil, fmt.Errorf("%w [%s]", ErrKeyTypeUnsupported, key.Kty)
-	}
 }
