@@ -309,7 +309,7 @@ func TestJWKSProvider(t *testing.T) {
 				cli, err := jwtsigning.NewClient(srv.URL)
 				assert.NoError(t, err)
 
-				validator, err := jwtsigning.NewValidator(rootCa, "invalid subject rDNS")
+				validator, err := jwtsigning.NewValidator(rootCa, validSubjString)
 				assert.NoError(t, err)
 
 				subj := jwtsigning.NewJWKSProvider()
@@ -342,6 +342,45 @@ func TestJWKSProvider(t *testing.T) {
 				assert.NoError(t, err)
 
 				validator, err := jwtsigning.NewValidator(rootCa, "invalid subject rDNS")
+				assert.NoError(t, err)
+
+				subj := jwtsigning.NewJWKSProvider()
+				err = subj.AddCli("issuer-1", jwtsigning.JWKSClientStore{Client: cli, Validator: validator})
+				assert.NoError(t, err)
+
+				// when
+				result, err := subj.VerificationKey(t.Context(), "issuer-1", "kid-1")
+
+				// then
+				assert.Error(t, err)
+				assert.ErrorIs(t, err, jwtsigning.ErrKidNoPublicKeyFound)
+				assert.Nil(t, result)
+			})
+
+			t.Run("if key type is not RSA", func(t *testing.T) {
+				// given
+				jwk, rootCa, _ := generateJWKSResources(t)
+
+				// changing key type to unknown
+				for i, key := range jwk.Keys {
+					key.Kty = "unknown"
+					jwk.Keys[i] = key
+				}
+
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					b, err := json.Marshal(jwk)
+					assert.NoError(t, err)
+
+					_, err = w.Write(b)
+					assert.NoError(t, err)
+				}))
+
+				defer srv.Close()
+
+				cli, err := jwtsigning.NewClient(srv.URL)
+				assert.NoError(t, err)
+
+				validator, err := jwtsigning.NewValidator(rootCa, validSubjString)
 				assert.NoError(t, err)
 
 				subj := jwtsigning.NewJWKSProvider()
