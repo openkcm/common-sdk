@@ -1,19 +1,15 @@
-package jwks_test
+package jwtsigning_test
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
-	"math/big"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	"github.com/openkcm/common-sdk/pkg/jwks"
+	"github.com/openkcm/common-sdk/pkg/jwtsigning"
 )
 
 type generateCertsFunc func() (rootCertDer []byte, intCertDer []byte, leafCertDer []byte)
@@ -42,13 +38,13 @@ func TestValidator(t *testing.T) {
 				name:   "should return error if ca is nil",
 				ca:     nil,
 				subj:   validSubjString,
-				expErr: jwks.ErrCACertNotLoaded,
+				expErr: jwtsigning.ErrCACertNotLoaded,
 			},
 			{
 				name:   "should return error if subj is empty",
 				ca:     &x509.Certificate{},
 				subj:   "",
-				expErr: jwks.ErrUnknownSubj,
+				expErr: jwtsigning.ErrUnknownSubj,
 			},
 			{
 				name:   "should not return error if subj and ca is not nil",
@@ -61,7 +57,7 @@ func TestValidator(t *testing.T) {
 		for _, tt := range tts {
 			t.Run(tt.name, func(t *testing.T) {
 				// when
-				result, err := jwks.NewValidator(tt.ca, tt.subj)
+				result, err := jwtsigning.NewValidator(tt.ca, tt.subj)
 
 				// then
 				assert.ErrorIs(t, err, tt.expErr)
@@ -86,7 +82,7 @@ func TestValidator(t *testing.T) {
 			rootCa, actErr := x509.ParseCertificate(rootDer)
 			assert.NoError(t, actErr)
 
-			subj, err := jwks.NewValidator(rootCa, validSubjString)
+			subj, err := jwtsigning.NewValidator(rootCa, validSubjString)
 			assert.NoError(t, err)
 
 			x5c := []string{
@@ -95,7 +91,7 @@ func TestValidator(t *testing.T) {
 			}
 
 			// when
-			actErr = subj.Validate(jwks.Key{X5c: x5c})
+			actErr = subj.Validate(jwtsigning.Key{X5c: x5c})
 
 			// then
 			assert.NoError(t, actErr)
@@ -109,7 +105,7 @@ func TestValidator(t *testing.T) {
 			rootCa, actErr := x509.ParseCertificate(rootDer)
 			assert.NoError(t, actErr)
 
-			subj, err := jwks.NewValidator(rootCa, validSubjString)
+			subj, err := jwtsigning.NewValidator(rootCa, validSubjString)
 			assert.NoError(t, err)
 
 			x5c := []string{
@@ -117,7 +113,7 @@ func TestValidator(t *testing.T) {
 			}
 
 			// when
-			actErr = subj.Validate(jwks.Key{X5c: x5c})
+			actErr = subj.Validate(jwtsigning.Key{X5c: x5c})
 
 			// then
 			assert.NoError(t, actErr)
@@ -134,33 +130,33 @@ func TestValidator(t *testing.T) {
 				{
 					name:   "is nil",
 					x5c:    nil,
-					expErr: jwks.ErrX5cEmpty,
+					expErr: jwtsigning.ErrX5cEmpty,
 				},
 				{
 					name:   "is empty",
 					x5c:    []string{},
-					expErr: jwks.ErrX5cEmpty,
+					expErr: jwtsigning.ErrX5cEmpty,
 				},
 				{
 					name:   "has a non base64 character",
 					x5c:    []string{":"},
-					expErr: jwks.ErrInvalidCertEncoding,
+					expErr: jwtsigning.ErrInvalidCertEncoding,
 				},
 				{
 					name:   "has a invalid certificate",
 					x5c:    []string{base64.StdEncoding.EncodeToString([]byte("invalid certificate"))},
-					expErr: jwks.ErrParseCertificate,
+					expErr: jwtsigning.ErrParseCertificate,
 				},
 			}
 
 			// given
-			subj, err := jwks.NewValidator(&x509.Certificate{}, validSubjString)
+			subj, err := jwtsigning.NewValidator(&x509.Certificate{}, validSubjString)
 			assert.NoError(t, err)
 
 			for _, tt := range tts {
 				t.Run(tt.name, func(t *testing.T) {
 					// when
-					err = subj.Validate(jwks.Key{X5c: tt.x5c})
+					err = subj.Validate(jwtsigning.Key{X5c: tt.x5c})
 
 					// then
 					assert.Error(t, err)
@@ -296,7 +292,7 @@ func TestValidator(t *testing.T) {
 
 					return rootDer, intDer, leafDer
 				},
-				expErrMsg: jwks.ErrUnknownSubj.Error(),
+				expErrMsg: jwtsigning.ErrUnknownSubj.Error(),
 			},
 		}
 
@@ -308,7 +304,7 @@ func TestValidator(t *testing.T) {
 				rootCa, actErr := x509.ParseCertificate(rootDer)
 				assert.NoError(t, actErr)
 
-				subj, err := jwks.NewValidator(rootCa, validSubjString)
+				subj, err := jwtsigning.NewValidator(rootCa, validSubjString)
 				assert.NoError(t, err)
 
 				x5c := []string{
@@ -317,7 +313,7 @@ func TestValidator(t *testing.T) {
 				}
 
 				// when
-				actErr = subj.Validate(jwks.Key{X5c: x5c})
+				actErr = subj.Validate(jwtsigning.Key{X5c: x5c})
 
 				// then
 				assert.Error(t, actErr)
@@ -342,7 +338,7 @@ func TestValidator(t *testing.T) {
 		rootCa, actErr := x509.ParseCertificate(rootDer)
 		assert.NoError(t, actErr)
 
-		subj, err := jwks.NewValidator(rootCa, validSubjString)
+		subj, err := jwtsigning.NewValidator(rootCa, validSubjString)
 		assert.NoError(t, err)
 
 		// no intermediate certificate
@@ -351,93 +347,10 @@ func TestValidator(t *testing.T) {
 		}
 
 		// when
-		actErr = subj.Validate(jwks.Key{X5c: x5c})
+		actErr = subj.Validate(jwtsigning.Key{X5c: x5c})
 
 		// then
 		assert.Error(t, actErr)
 		assert.ErrorContains(t, actErr, x509.UnknownAuthorityError{}.Error())
 	})
-}
-
-func rootCertificate(t *testing.T, notBefore time.Time, notAfter time.Time) (*rsa.PrivateKey, []byte) {
-	t.Helper()
-
-	rootKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	rootTmpl := &x509.Certificate{
-		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{CommonName: "Root CA", Organization: []string{"Root Organization"}},
-		NotBefore:             notBefore,
-		NotAfter:              notAfter,
-		IsCA:                  true,
-		BasicConstraintsValid: true,
-		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
-	}
-
-	rootDer, err := x509.CreateCertificate(
-		rand.Reader,
-		rootTmpl,
-		rootTmpl,
-		rootKey.Public(),
-		rootKey)
-	require.NoError(t, err)
-
-	return rootKey, rootDer
-}
-
-func intermediateCertificate(t *testing.T, rootDer []byte, notBefore time.Time, notAfter time.Time, rootKey *rsa.PrivateKey) (*rsa.PrivateKey, []byte) {
-	t.Helper()
-
-	rootCert, err := x509.ParseCertificate(rootDer)
-	require.NoError(t, err)
-
-	intKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	intTmpl := &x509.Certificate{
-		SerialNumber:          big.NewInt(2),
-		Subject:               pkix.Name{CommonName: "Intermediate CA", Organization: []string{"Intermediate Organization"}},
-		NotBefore:             notBefore,
-		NotAfter:              notAfter,
-		IsCA:                  true,
-		BasicConstraintsValid: true,
-		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
-	}
-	intDer, err := x509.CreateCertificate(rand.Reader,
-		intTmpl,
-		rootCert,
-		intKey.Public(),
-		rootKey)
-	require.NoError(t, err)
-
-	return intKey, intDer
-}
-
-func leafCertWithParams(t *testing.T, intDer []byte, notBefore time.Time, notAfter time.Time, intKey *rsa.PrivateKey, subject pkix.Name) []byte {
-	t.Helper()
-
-	intCert, err := x509.ParseCertificate(intDer)
-	require.NoError(t, err)
-
-	leafKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	leafTmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(3),
-		Subject:      subject,
-		NotBefore:    notBefore,
-		NotAfter:     notAfter,
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-	}
-
-	leafDer, err := x509.CreateCertificate(rand.Reader,
-		leafTmpl,
-		intCert,
-		leafKey.Public(),
-		intKey)
-	require.NoError(t, err)
-
-	return leafDer
 }

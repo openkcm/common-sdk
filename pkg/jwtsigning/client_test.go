@@ -1,4 +1,4 @@
-package jwks_test
+package jwtsigning_test
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/openkcm/common-sdk/pkg/jwks"
+	"github.com/openkcm/common-sdk/pkg/jwtsigning"
 )
 
 func TestClient(t *testing.T) {
@@ -20,11 +20,11 @@ func TestClient(t *testing.T) {
 			endpoint := "not valid endpoint url"
 
 			// when
-			res, err := jwks.NewClient(endpoint)
+			res, err := jwtsigning.NewClient(endpoint)
 
 			// then
 			assert.Error(t, err)
-			assert.ErrorIs(t, err, jwks.ErrInvalidURL)
+			assert.ErrorIs(t, err, jwtsigning.ErrInvalidURL)
 			assert.Nil(t, res)
 		})
 
@@ -33,7 +33,7 @@ func TestClient(t *testing.T) {
 			endpoint := "https://someurl.calling.com/endpoint"
 
 			// when
-			res, err := jwks.NewClient(endpoint)
+			res, err := jwtsigning.NewClient(endpoint)
 
 			// then
 			assert.NoError(t, err)
@@ -46,7 +46,7 @@ func TestClient(t *testing.T) {
 
 			expCalls := 0
 			// when
-			res, err := jwks.NewClient(endpoint,
+			res, err := jwtsigning.NewClient(endpoint,
 				func(c *http.Client) {
 					expCalls++
 					c.Timeout = time.Second * 0
@@ -71,8 +71,8 @@ func TestClient(t *testing.T) {
 
 	t.Run("Get", func(t *testing.T) {
 		// given
-		expJWKS := jwks.JWKS{
-			Keys: []jwks.Key{
+		expJWKS := jwtsigning.JWKS{
+			Keys: []jwtsigning.Key{
 				{
 					Kty:    "kty",
 					Alg:    "alg",
@@ -98,7 +98,7 @@ func TestClient(t *testing.T) {
 
 			defer srv.Close()
 
-			subj, err := jwks.NewClient(srv.URL)
+			subj, err := jwtsigning.NewClient(srv.URL)
 			assert.NoError(t, err)
 
 			// when
@@ -118,7 +118,7 @@ func TestClient(t *testing.T) {
 				}))
 				defer srv.Close()
 
-				subj, err := jwks.NewClient(srv.URL)
+				subj, err := jwtsigning.NewClient(srv.URL)
 				assert.NoError(t, err)
 
 				// when
@@ -126,7 +126,7 @@ func TestClient(t *testing.T) {
 
 				// then
 				assert.Error(t, err)
-				assert.ErrorIs(t, err, jwks.ErrHTTPStatusNotOK)
+				assert.ErrorIs(t, err, jwtsigning.ErrHTTPStatusNotOK)
 				assert.Nil(t, res)
 			})
 
@@ -142,14 +142,14 @@ func TestClient(t *testing.T) {
 
 				defer srv.Close()
 
-				subj, err := jwks.NewClient(srv.URL)
+				subj, err := jwtsigning.NewClient(srv.URL)
 				assert.NoError(t, err)
 
 				// when
 				res, err := subj.Get(t.Context())
 
 				// then
-				expErr := &json.UnmarshalTypeError{Value: "string", Type: reflect.TypeFor[jwks.JWKS]()}
+				expErr := &json.UnmarshalTypeError{Value: "string", Type: reflect.TypeFor[jwtsigning.JWKS]()}
 
 				assert.Error(t, err)
 				assert.ErrorContains(t, err, expErr.Error())
@@ -163,7 +163,7 @@ func TestClient(t *testing.T) {
 
 				defer srv.Close()
 
-				subj, err := jwks.NewClient(srv.URL)
+				subj, err := jwtsigning.NewClient(srv.URL)
 				assert.NoError(t, err)
 
 				// when

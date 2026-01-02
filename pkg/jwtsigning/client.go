@@ -1,4 +1,4 @@
-package jwks
+package jwtsigning
 
 import (
 	"context"

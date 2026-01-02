@@ -1,4 +1,4 @@
-package jwks
+package jwtsigning
 
 import (
 	"crypto/x509"
@@ -106,7 +106,7 @@ func (v *Validator) Validate(key Key) error {
 // when the subjects do not match.
 func (v *Validator) checkFullSubject(leaf *x509.Certificate) error {
 	if leaf.Subject.ToRDNSequence().String() != v.Subject {
-		return fmt.Errorf("%w %s", ErrUnknownSubj, "leaf subject dont match")
+		return fmt.Errorf("%w leaf subject dont match", ErrUnknownSubj)
 	}
 
 	return nil
