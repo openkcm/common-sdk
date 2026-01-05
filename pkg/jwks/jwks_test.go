@@ -1,4 +1,4 @@
-package jwtsigning_test
+package jwks_test
 
 import (
 	"crypto/rand"
@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/openkcm/common-sdk/pkg/jwtsigning"
+	"github.com/openkcm/common-sdk/pkg/jwks"
 )
 
 func TestNew(t *testing.T) {
@@ -26,43 +26,43 @@ func TestNew(t *testing.T) {
 	// given
 	tts := []struct {
 		name     string
-		keyInput []jwtsigning.Input
+		keyInput []jwks.Input
 		expErr   error
 	}{
 		{
 			name: "should fail if X509 certificate is nil",
-			keyInput: []jwtsigning.Input{
+			keyInput: []jwks.Input{
 				{
-					Kty:       jwtsigning.KeyTypeRSA,
+					Kty:       jwks.KeyTypeRSA,
 					Kid:       "kid1",
 					X509Certs: nil,
 				},
 			},
-			expErr: jwtsigning.ErrCertificateNotFound,
+			expErr: jwks.ErrCertificateNotFound,
 		},
 		{
 			name: "should fail if x509 certificate is empty",
-			keyInput: []jwtsigning.Input{
+			keyInput: []jwks.Input{
 				{
-					Kty:       jwtsigning.KeyTypeRSA,
+					Kty:       jwks.KeyTypeRSA,
 					Kid:       "kid1",
 					X509Certs: []x509.Certificate{},
 				},
 			},
-			expErr: jwtsigning.ErrCertificateNotFound,
+			expErr: jwks.ErrCertificateNotFound,
 		},
 		{
 			name: "should fail if kid is duplicate",
-			keyInput: []jwtsigning.Input{
+			keyInput: []jwks.Input{
 				{
-					Kty: jwtsigning.KeyTypeRSA,
+					Kty: jwks.KeyTypeRSA,
 					Kid: "kid1",
 					X509Certs: []x509.Certificate{
 						*cert1,
 					},
 				},
 				{
-					Kty: jwtsigning.KeyTypeRSA,
+					Kty: jwks.KeyTypeRSA,
 
 					Kid: "kid1",
 					X509Certs: []x509.Certificate{
@@ -70,11 +70,11 @@ func TestNew(t *testing.T) {
 					},
 				},
 			},
-			expErr: jwtsigning.ErrDuplicateKID,
+			expErr: jwks.ErrDuplicateKID,
 		},
 		{
 			name: "should fail if key type is not RSA",
-			keyInput: []jwtsigning.Input{
+			keyInput: []jwks.Input{
 				{
 					Kty: "UNKNOWN",
 					Kid: "kid1",
@@ -83,13 +83,13 @@ func TestNew(t *testing.T) {
 					},
 				},
 			},
-			expErr: jwtsigning.ErrKeyTypeUnsupported,
+			expErr: jwks.ErrKeyTypeUnsupported,
 		},
 	}
 	for _, tt := range tts {
 		t.Run(tt.name, func(t *testing.T) {
 			// when
-			result, err := jwtsigning.New(tt.keyInput...)
+			result, err := jwks.New(tt.keyInput...)
 
 			// then
 			assert.Nil(t, result)
@@ -106,14 +106,14 @@ func TestNew(t *testing.T) {
 		tts := []struct {
 			name            string
 			privateKeyOrder []*rsa.PrivateKey
-			keyInputs       []jwtsigning.Input
+			keyInputs       []jwks.Input
 		}{
 			{
 				name:            "with one keyInput",
 				privateKeyOrder: []*rsa.PrivateKey{prvKey1},
-				keyInputs: []jwtsigning.Input{
+				keyInputs: []jwks.Input{
 					{
-						Kty:    jwtsigning.KeyTypeRSA,
+						Kty:    jwks.KeyTypeRSA,
 						Alg:    "PS256",
 						Use:    "sig",
 						KeyOps: []string{"verify"},
@@ -127,9 +127,9 @@ func TestNew(t *testing.T) {
 			{
 				name:            "with multiple keyInput",
 				privateKeyOrder: []*rsa.PrivateKey{prvKey1, prvKey2},
-				keyInputs: []jwtsigning.Input{
+				keyInputs: []jwks.Input{
 					{
-						Kty:    jwtsigning.KeyTypeRSA,
+						Kty:    jwks.KeyTypeRSA,
 						Alg:    "PS256",
 						Use:    "sig",
 						KeyOps: []string{"verify"},
@@ -139,7 +139,7 @@ func TestNew(t *testing.T) {
 						},
 					},
 					{
-						Kty:    jwtsigning.KeyTypeRSA,
+						Kty:    jwks.KeyTypeRSA,
 						Alg:    "PS256",
 						Use:    "sig",
 						KeyOps: []string{"verify"},
@@ -152,7 +152,7 @@ func TestNew(t *testing.T) {
 			},
 		}
 
-		asserter := func(t *testing.T, privKey *rsa.PrivateKey, keyInput jwtsigning.Input, key jwtsigning.Key) {
+		asserter := func(t *testing.T, privKey *rsa.PrivateKey, keyInput jwks.Input, key jwks.Key) {
 			t.Helper()
 
 			cert := keyInput.X509Certs[0]
@@ -177,7 +177,7 @@ func TestNew(t *testing.T) {
 		for _, tt := range tts {
 			t.Run(tt.name, func(t *testing.T) {
 				// when
-				result, err := jwtsigning.New(tt.keyInputs...)
+				result, err := jwks.New(tt.keyInputs...)
 
 				// then
 				assert.NoError(t, err)
@@ -193,8 +193,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestEncodeAndDecode(t *testing.T) {
-	subj := &jwtsigning.JWKS{
-		Keys: []jwtsigning.Key{
+	subj := &jwks.JWKS{
+		Keys: []jwks.Key{
 			{
 				Kty:    "RSA",
 				Alg:    "PS256",
@@ -226,7 +226,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		dSubj, err := jwtsigning.New()
+		dSubj, err := jwks.New()
 		assert.NoError(t, err)
 
 		err = dSubj.Decode(fr)
@@ -252,7 +252,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		dSubj, err := jwtsigning.New()
+		dSubj, err := jwks.New()
 		assert.NoError(t, err)
 
 		err = dSubj.Decode(fr)
@@ -260,10 +260,10 @@ func TestEncodeAndDecode(t *testing.T) {
 		assert.Equal(t, subj, dSubj)
 
 		// given
-		newJWKS := &jwtsigning.JWKS{
-			Keys: []jwtsigning.Key{
+		newJWKS := &jwks.JWKS{
+			Keys: []jwks.Key{
 				{
-					Kty:    jwtsigning.KeyTypeRSA,
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS2561",
 					Use:    "sig1",
 					KeyOps: []string{"verify1"},
@@ -301,7 +301,7 @@ func TestDecode(t *testing.T) {
 
 			defer fr.Close()
 
-			subj, err := jwtsigning.New()
+			subj, err := jwks.New()
 			assert.NoError(t, err)
 
 			// when
@@ -325,7 +325,7 @@ func TestDecode(t *testing.T) {
 
 			defer fr.Close()
 
-			subj, err := jwtsigning.New()
+			subj, err := jwks.New()
 			assert.NoError(t, err)
 
 			// write a empty json
@@ -337,7 +337,7 @@ func TestDecode(t *testing.T) {
 
 			// then
 			assert.Error(t, err)
-			assert.ErrorIs(t, err, jwtsigning.ErrCertificateNotFound)
+			assert.ErrorIs(t, err, jwks.ErrCertificateNotFound)
 			assert.NotNil(t, subj)
 		})
 
@@ -354,10 +354,10 @@ func TestDecode(t *testing.T) {
 
 			defer fr.Close()
 
-			missingAlgKey := jwtsigning.JWKS{
-				Keys: []jwtsigning.Key{
+			missingAlgKey := jwks.JWKS{
+				Keys: []jwks.Key{
 					{
-						Kty:    jwtsigning.KeyTypeRSA,
+						Kty:    jwks.KeyTypeRSA,
 						Alg:    "alg",
 						Use:    "use",
 						KeyOps: []string{"use"},
@@ -367,7 +367,7 @@ func TestDecode(t *testing.T) {
 						E:      "e",
 					},
 					{
-						Kty:    jwtsigning.KeyTypeRSA,
+						Kty:    jwks.KeyTypeRSA,
 						Alg:    "",
 						Use:    "use",
 						KeyOps: []string{"use"},
@@ -388,7 +388,7 @@ func TestDecode(t *testing.T) {
 
 			// then
 			assert.Error(t, err)
-			assert.ErrorIs(t, err, jwtsigning.ErrInvalidKey)
+			assert.ErrorIs(t, err, jwks.ErrInvalidKey)
 			assert.NotNil(t, missingAlgKey)
 		})
 	})
@@ -399,33 +399,33 @@ func TestKeyValidate(t *testing.T) {
 		// given
 		tts := []struct {
 			name string
-			subj jwtsigning.Key
+			subj jwks.Key
 		}{
 			{
 				name: "key type is empty",
-				subj: jwtsigning.Key{
+				subj: jwks.Key{
 					Kty: "",
 				},
 			},
 			{
 				name: "alg is empty",
-				subj: jwtsigning.Key{
-					Kty: jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty: jwks.KeyTypeRSA,
 					Alg: "",
 				},
 			},
 			{
 				name: "use is empty",
-				subj: jwtsigning.Key{
-					Kty: jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty: jwks.KeyTypeRSA,
 					Alg: "PS256",
 					Use: "",
 				},
 			},
 			{
 				name: "keyops is nil",
-				subj: jwtsigning.Key{
-					Kty:    jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS256",
 					Use:    "sec",
 					KeyOps: nil,
@@ -434,8 +434,8 @@ func TestKeyValidate(t *testing.T) {
 
 			{
 				name: "keyops is empty",
-				subj: jwtsigning.Key{
-					Kty:    jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS256",
 					Use:    "sec",
 					KeyOps: []string{},
@@ -443,8 +443,8 @@ func TestKeyValidate(t *testing.T) {
 			},
 			{
 				name: "keyops is having empty values",
-				subj: jwtsigning.Key{
-					Kty:    jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS256",
 					Use:    "sec",
 					KeyOps: []string{"rec", " ", "sig"},
@@ -452,8 +452,8 @@ func TestKeyValidate(t *testing.T) {
 			},
 			{
 				name: "kid is empty",
-				subj: jwtsigning.Key{
-					Kty:    jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS256",
 					Use:    "sec",
 					KeyOps: []string{"rec", "sig"},
@@ -462,8 +462,8 @@ func TestKeyValidate(t *testing.T) {
 			},
 			{
 				name: "x5c is nil",
-				subj: jwtsigning.Key{
-					Kty:    jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS256",
 					Use:    "sec",
 					KeyOps: []string{"rec", "sig"},
@@ -473,8 +473,8 @@ func TestKeyValidate(t *testing.T) {
 			},
 			{
 				name: "x5c is empty",
-				subj: jwtsigning.Key{
-					Kty:    jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS256",
 					Use:    "sec",
 					KeyOps: []string{"rec", "sig"},
@@ -484,8 +484,8 @@ func TestKeyValidate(t *testing.T) {
 			},
 			{
 				name: "x5c is having empty values",
-				subj: jwtsigning.Key{
-					Kty:    jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS256",
 					Use:    "sec",
 					KeyOps: []string{"rec", "sig"},
@@ -495,8 +495,8 @@ func TestKeyValidate(t *testing.T) {
 			},
 			{
 				name: "n is empty ",
-				subj: jwtsigning.Key{
-					Kty:    jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS256",
 					Use:    "sec",
 					KeyOps: []string{"rec", "sig"},
@@ -507,8 +507,8 @@ func TestKeyValidate(t *testing.T) {
 			},
 			{
 				name: "e is empty ",
-				subj: jwtsigning.Key{
-					Kty:    jwtsigning.KeyTypeRSA,
+				subj: jwks.Key{
+					Kty:    jwks.KeyTypeRSA,
 					Alg:    "PS256",
 					Use:    "sec",
 					KeyOps: []string{"rec", "sig"},
@@ -527,14 +527,14 @@ func TestKeyValidate(t *testing.T) {
 
 				// then
 				assert.Error(t, err)
-				assert.ErrorIs(t, err, jwtsigning.ErrInvalidKey)
+				assert.ErrorIs(t, err, jwks.ErrInvalidKey)
 			})
 		}
 	})
 	t.Run("should not return error if key is valid", func(t *testing.T) {
 		// given
-		subj := jwtsigning.Key{
-			Kty:    jwtsigning.KeyTypeRSA,
+		subj := jwks.Key{
+			Kty:    jwks.KeyTypeRSA,
 			Alg:    "PS256",
 			Use:    "use",
 			KeyOps: []string{"rec", "sig"},
