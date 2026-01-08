@@ -59,9 +59,9 @@ var (
 	ErrInvalidKey = errors.New("invalid key")
 )
 
-// New constructs a JWKS from one or more KeyInput values.
+// NewJWKS constructs a JWKS from one or more KeyInput values.
 // It ensures each key has a unique KID and at least one certificate.
-func New(inputs ...Input) (*JWKS, error) {
+func NewJWKS(inputs ...Input) (*JWKS, error) {
 	processedKids := make(map[string]struct{}, len(inputs))
 
 	result := &JWKS{

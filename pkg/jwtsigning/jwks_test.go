@@ -89,7 +89,7 @@ func TestNew(t *testing.T) {
 	for _, tt := range tts {
 		t.Run(tt.name, func(t *testing.T) {
 			// when
-			result, err := jwtsigning.New(tt.keyInput...)
+			result, err := jwtsigning.NewJWKS(tt.keyInput...)
 
 			// then
 			assert.Nil(t, result)
@@ -177,7 +177,7 @@ func TestNew(t *testing.T) {
 		for _, tt := range tts {
 			t.Run(tt.name, func(t *testing.T) {
 				// when
-				result, err := jwtsigning.New(tt.keyInputs...)
+				result, err := jwtsigning.NewJWKS(tt.keyInputs...)
 
 				// then
 				assert.NoError(t, err)
@@ -226,7 +226,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		dSubj, err := jwtsigning.New()
+		dSubj, err := jwtsigning.NewJWKS()
 		assert.NoError(t, err)
 
 		err = dSubj.Decode(fr)
@@ -252,7 +252,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		assert.NoError(t, err)
 
 		// then
-		dSubj, err := jwtsigning.New()
+		dSubj, err := jwtsigning.NewJWKS()
 		assert.NoError(t, err)
 
 		err = dSubj.Decode(fr)
@@ -301,7 +301,7 @@ func TestDecode(t *testing.T) {
 
 			defer fr.Close()
 
-			subj, err := jwtsigning.New()
+			subj, err := jwtsigning.NewJWKS()
 			assert.NoError(t, err)
 
 			// when
@@ -325,7 +325,7 @@ func TestDecode(t *testing.T) {
 
 			defer fr.Close()
 
-			subj, err := jwtsigning.New()
+			subj, err := jwtsigning.NewJWKS()
 			assert.NoError(t, err)
 
 			// write a empty json
