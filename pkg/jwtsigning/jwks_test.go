@@ -337,7 +337,7 @@ func TestDecode(t *testing.T) {
 
 			// then
 			assert.Error(t, err)
-			assert.ErrorIs(t, err, jwtsigning.ErrCertificateNotFound)
+			assert.ErrorIs(t, err, jwtsigning.ErrNoKeysFound)
 			assert.NotNil(t, subj)
 		})
 
