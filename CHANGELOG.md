@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.10.0](https://github.com/openkcm/common-sdk/compare/v1.9.0...v1.10.0) (2026-01-13)
+
+
+### Features
+
+* add jwks client  ([6535720](https://github.com/openkcm/common-sdk/commit/65357206e1ab0cbe54aa3e53c7e56377928f0a7a))
+* add jwks_provider ([#219](https://github.com/openkcm/common-sdk/issues/219)) ([8058e9f](https://github.com/openkcm/common-sdk/commit/8058e9f2aeac24fd92c872291a6d606f36a46b4f))
+* add validator for x5c  ([00df734](https://github.com/openkcm/common-sdk/commit/00df734d55b245b74945865cc02ef2a12fef54c4))
+
 ## [1.9.0](https://github.com/openkcm/common-sdk/compare/v1.8.0...v1.9.0) (2025-12-19)
 
 
