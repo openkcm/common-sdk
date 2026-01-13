@@ -51,6 +51,8 @@ var (
 	ErrRSAPublicKeyNotFound = errors.New("not a RSA public key")
 	// ErrCertificateNotFound is returned when no certificate is provided.
 	ErrCertificateNotFound = errors.New("certificate not found")
+	// ErrNoKeysFound is returned when no keys are found in the JWKS (JSON Web Key Set).
+	ErrNoKeysFound = errors.New("no keys found in jwks")
 	// ErrDuplicateKID is returned when duplicate key IDs are detected.
 	ErrDuplicateKID = errors.New("duplicate kid")
 	// ErrKeyTypeUnsupported is returned when an unsupported key type is encountered.
@@ -59,9 +61,9 @@ var (
 	ErrInvalidKey = errors.New("invalid key")
 )
 
-// New constructs a JWKS from one or more KeyInput values.
+// NewJWKS constructs a JWKS from one or more KeyInput values.
 // It ensures each key has a unique KID and at least one certificate.
-func New(inputs ...Input) (*JWKS, error) {
+func NewJWKS(inputs ...Input) (*JWKS, error) {
 	processedKids := make(map[string]struct{}, len(inputs))
 
 	result := &JWKS{
@@ -112,7 +114,7 @@ func (j *JWKS) Decode(r io.Reader) error {
 	}
 
 	if len(tJWKS.Keys) == 0 {
-		return ErrCertificateNotFound
+		return ErrNoKeysFound
 	}
 
 	for _, key := range tJWKS.Keys {

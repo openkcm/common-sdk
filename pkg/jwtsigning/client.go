@@ -19,7 +19,6 @@ type Client struct {
 }
 
 var (
-	ErrKeyNotFound     = errors.New("key not found")
 	ErrInvalidURL      = errors.New("invalid url")
 	ErrHTTPStatusNotOK = errors.New("http status not ok")
 )
