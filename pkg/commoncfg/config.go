@@ -66,7 +66,7 @@ var ErrFeatureNotFound = errors.New("feature not found")
 type BaseConfig struct {
 	Application  Application  `yaml:"application" json:"application"`
 	FeatureGates FeatureGates `yaml:"featureGates" json:"featureGates"`
-	Status       Status       `yaml:"status" json:"status"`
+	Status       Status       `yaml:"status" json:"status" mapstructure:"status"`
 	Logger       Logger       `yaml:"logger" json:"logger"`
 	Telemetry    Telemetry    `yaml:"telemetry" json:"telemetry"`
 	Audit        Audit        `yaml:"audit" json:"audit"`
@@ -99,13 +99,13 @@ type Application struct {
 }
 
 type Status struct {
-	Enabled bool `yaml:"enabled" json:"enabled"`
+	Enabled bool `yaml:"enabled" json:"enabled" mapstructure:"enabled"`
 	// Status.Address is the address to listen on for status reporting
-	Address string `yaml:"address" json:"address" default:":8888"`
+	Address string `yaml:"address" json:"address" default:":8888" mapstructure:"address"`
 	// Timeout defines a timeout duration for all checks
-	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"10s"`
+	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"10s" mapstructure:"timeout"`
 	// Status.Profiling enables profiling on the status server
-	Profiling bool `yaml:"profiling" json:"profiling"`
+	Profiling bool `yaml:"profiling" json:"profiling" mapstructure:"profiling"`
 }
 
 // Logger holds the configuration for logging.
