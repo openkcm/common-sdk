@@ -10,10 +10,10 @@ import (
 // Validator validates x5c certificate chains from JWKs against a configured CA pool
 // and checks that the leaf certificate subject matches an expected subject string.
 type Validator struct {
-	// CACertPool is the set of trusted root certificates used to verify chains.
-	CACertPool *x509.CertPool
-	// Subject is the exact subject string expected on the leaf certificate.
-	Subject string
+	// caCertPool is the set of trusted root certificates used to verify chains.
+	caCertPool *x509.CertPool
+	// subject is the exact subject string expected on the leaf certificate.
+	subject string
 }
 
 var (
@@ -45,9 +45,9 @@ func NewValidator(ca *x509.Certificate, subject string) (*Validator, error) {
 
 	pool := x509.NewCertPool()
 	pool.AddCert(ca)
-	result.CACertPool = pool
+	result.caCertPool = pool
 
-	result.Subject = subject
+	result.subject = subject
 
 	return result, nil
 }
@@ -89,7 +89,7 @@ func (v *Validator) Validate(key Key) error {
 	}
 
 	opts := x509.VerifyOptions{
-		Roots:         v.CACertPool,
+		Roots:         v.caCertPool,
 		Intermediates: intermediates,
 	}
 
@@ -105,7 +105,7 @@ func (v *Validator) Validate(key Key) error {
 // matches the expected subject stored in the Validator. It returns an error
 // when the subjects do not match.
 func (v *Validator) checkFullSubject(leaf *x509.Certificate) error {
-	if leaf.Subject.ToRDNSequence().String() != v.Subject {
+	if leaf.Subject.ToRDNSequence().String() != v.subject {
 		return fmt.Errorf("%w leaf subject dont match", ErrUnknownSubj)
 	}
 

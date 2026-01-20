@@ -29,40 +29,42 @@ var (
 // It maintains a map of issuer to JWKSClientStore which holds a client,
 // validator and an in-memory cache of public keys.
 type JWKSProvider struct {
-	clis map[string]*JWKSClientStore
+	stores map[string]*jwksClientStore
 }
 
 // JWKSClientStore groups a JWKS client, its validator and an in-memory cache
 // of parsed RSA public keys for a single issuer. The lock protects access to the cache.
-type JWKSClientStore struct {
-	Client    *Client
-	Validator *Validator
+type jwksClientStore struct {
+	client    *Client
+	validator *Validator
 	cache     map[string]*rsa.PublicKey
-	lock      *sync.RWMutex
+	lock      sync.RWMutex
 }
 
 // NewJWKSProvider creates a JWKSProvider with an initialized client store map.
 func NewJWKSProvider() *JWKSProvider {
 	return &JWKSProvider{
-		clis: make(map[string]*JWKSClientStore),
+		stores: make(map[string]*jwksClientStore),
 	}
 }
 
-// AddCli registers a JWKS client and validator for the given issuer and
+// AddIssuerClientValidator registers a JWKS client and validator for the given issuer and
 // initializes the in-memory cache and lock for that issuer.
-func (j *JWKSProvider) AddCli(issuer string, cc JWKSClientStore) error {
-	if cc.Client == nil {
+func (j *JWKSProvider) AddIssuerClientValidator(issuer string, client *Client, validator *Validator) error {
+	if client == nil {
 		return fmt.Errorf("%w %s", ErrNoClientFound, issuer)
 	}
 
-	if cc.Validator == nil {
+	if validator == nil {
 		return fmt.Errorf("%w %s", ErrNoValidatorFound, issuer)
 	}
 
-	cc.cache = make(map[string]*rsa.PublicKey)
-	cc.lock = &sync.RWMutex{}
-
-	j.clis[issuer] = &cc
+	j.stores[issuer] = &jwksClientStore{
+		client:    client,
+		validator: validator,
+		cache:     make(map[string]*rsa.PublicKey),
+		lock:      sync.RWMutex{},
+	}
 
 	return nil
 }
@@ -73,20 +75,20 @@ func (j *JWKSProvider) AddCli(issuer string, cc JWKSClientStore) error {
 func (j *JWKSProvider) VerificationKey(ctx context.Context, iss string, kid string) (*rsa.PublicKey, error) {
 	ctx = slogctx.With(ctx, "issuer", iss, "kidToSearch", kid)
 
-	cc, ok := j.clis[iss]
+	store, ok := j.stores[iss]
 	if !ok {
 		slogctx.Error(ctx, "error no client configure")
 		return nil, fmt.Errorf("%w %s", ErrNoClientFound, iss)
 	}
 
-	key, err := j.readKey(ctx, cc, kid)
+	key, err := j.readKey(ctx, store, kid)
 	if err == nil {
 		return key, nil
 	}
 
 	slogctx.Info(ctx, "key not found in cache, refreshing")
 
-	result, err := cc.Client.Get(ctx)
+	result, err := store.client.Get(ctx)
 	if err != nil {
 		slogctx.Error(ctx, "error while fetching jwks url", "error", err)
 		return nil, err
@@ -95,7 +97,7 @@ func (j *JWKSProvider) VerificationKey(ctx context.Context, iss string, kid stri
 	pubKeys := make(map[string]*rsa.PublicKey, len(result.Keys))
 
 	for _, key := range result.Keys {
-		err := cc.Validator.Validate(key)
+		err := store.validator.Validate(key)
 		if err != nil {
 			slogctx.Error(ctx, "error while validating", "kid", key.Kid, "error", err)
 			continue
@@ -109,16 +111,16 @@ func (j *JWKSProvider) VerificationKey(ctx context.Context, iss string, kid stri
 		pubKeys[key.Kid] = pubKey
 	}
 
-	j.writeKeys(cc, pubKeys)
+	j.writeKeys(store, pubKeys)
 
-	return j.readKey(ctx, cc, kid)
+	return j.readKey(ctx, store, kid)
 }
 
-func (j *JWKSProvider) readKey(ctx context.Context, cc *JWKSClientStore, kid string) (*rsa.PublicKey, error) {
-	cc.lock.RLock()
-	defer cc.lock.RUnlock()
+func (j *JWKSProvider) readKey(ctx context.Context, store *jwksClientStore, kid string) (*rsa.PublicKey, error) {
+	store.lock.RLock()
+	defer store.lock.RUnlock()
 
-	key, ok := cc.cache[kid]
+	key, ok := store.cache[kid]
 	if !ok {
 		slogctx.Error(ctx, "error getting public key", "kid", kid)
 		return nil, fmt.Errorf("%w %s", ErrKidNoPublicKeyFound, kid)
@@ -127,12 +129,12 @@ func (j *JWKSProvider) readKey(ctx context.Context, cc *JWKSClientStore, kid str
 	return key, nil
 }
 
-func (*JWKSProvider) writeKeys(cc *JWKSClientStore, pubKeys map[string]*rsa.PublicKey) {
+func (*JWKSProvider) writeKeys(store *jwksClientStore, pubKeys map[string]*rsa.PublicKey) {
 	if len(pubKeys) > 0 {
-		cc.lock.Lock()
-		defer cc.lock.Unlock()
+		store.lock.Lock()
+		defer store.lock.Unlock()
 
-		cc.cache = pubKeys
+		store.cache = pubKeys
 	}
 }
 
