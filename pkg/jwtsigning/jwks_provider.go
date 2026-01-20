@@ -29,7 +29,7 @@ var (
 // It maintains a map of issuer to JWKSClientStore which holds a client,
 // validator and an in-memory cache of public keys.
 type JWKSProvider struct {
-	clis map[string]*jwksClientStore
+	stores map[string]*jwksClientStore
 }
 
 // JWKSClientStore groups a JWKS client, its validator and an in-memory cache
@@ -44,7 +44,7 @@ type jwksClientStore struct {
 // NewJWKSProvider creates a JWKSProvider with an initialized client store map.
 func NewJWKSProvider() *JWKSProvider {
 	return &JWKSProvider{
-		clis: make(map[string]*jwksClientStore),
+		stores: make(map[string]*jwksClientStore),
 	}
 }
 
@@ -59,7 +59,7 @@ func (j *JWKSProvider) AddIssuerClientValidator(issuer string, client *Client, v
 		return fmt.Errorf("%w %s", ErrNoValidatorFound, issuer)
 	}
 
-	j.clis[issuer] = &jwksClientStore{
+	j.stores[issuer] = &jwksClientStore{
 		client:    client,
 		validator: validator,
 		cache:     make(map[string]*rsa.PublicKey),
@@ -75,7 +75,7 @@ func (j *JWKSProvider) AddIssuerClientValidator(issuer string, client *Client, v
 func (j *JWKSProvider) VerificationKey(ctx context.Context, iss string, kid string) (*rsa.PublicKey, error) {
 	ctx = slogctx.With(ctx, "issuer", iss, "kidToSearch", kid)
 
-	store, ok := j.clis[iss]
+	store, ok := j.stores[iss]
 	if !ok {
 		slogctx.Error(ctx, "error no client configure")
 		return nil, fmt.Errorf("%w %s", ErrNoClientFound, iss)
