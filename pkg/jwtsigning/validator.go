@@ -72,12 +72,12 @@ func (v *Validator) Validate(key Key) error {
 	for index, b64 := range x5c {
 		der, err := base64.StdEncoding.DecodeString(b64)
 		if err != nil {
-			return fmt.Errorf("%w: %s", ErrInvalidCertEncoding, err.Error())
+			return fmt.Errorf("%w: at certificate index %d: %s", ErrInvalidCertEncoding, index, err.Error())
 		}
 
 		cert, err := x509.ParseCertificate(der)
 		if err != nil {
-			return fmt.Errorf("%w: %s", ErrParseCertificate, err.Error())
+			return fmt.Errorf("%w: at certificate index %d: %s", ErrParseCertificate, index, err.Error())
 		}
 
 		if index == 0 {
@@ -106,7 +106,7 @@ func (v *Validator) Validate(key Key) error {
 // when the subjects do not match.
 func (v *Validator) checkFullSubject(leaf *x509.Certificate) error {
 	if leaf.Subject.ToRDNSequence().String() != v.subject {
-		return fmt.Errorf("%w leaf subject dont match", ErrUnknownSubj)
+		return fmt.Errorf("%w: leaf subject doesn't match", ErrUnknownSubj)
 	}
 
 	return nil

@@ -23,6 +23,9 @@ var (
 
 	// ErrKidNoPublicKeyFound indicates no public key found in cache for the given kid.
 	ErrKidNoPublicKeyFound = errors.New("no public key found for kid")
+
+	// ErrIssuerEmpty is returned when the issuer value is empty.
+	ErrIssuerEmpty = errors.New("issuer is empty")
 )
 
 // JWKSProvider fetches JWKS for issuers and provides RSA public keys.
@@ -32,7 +35,7 @@ type JWKSProvider struct {
 	stores map[string]*jwksClientStore
 }
 
-// JWKSClientStore groups a JWKS client, its validator and an in-memory cache
+// jwksClientStore groups a JWKS client, its validator and an in-memory cache
 // of parsed RSA public keys for a single issuer. The lock protects access to the cache.
 type jwksClientStore struct {
 	client    *Client
@@ -41,101 +44,122 @@ type jwksClientStore struct {
 	lock      sync.RWMutex
 }
 
-// NewJWKSProvider creates a JWKSProvider with an initialized client store map.
+// NewJWKSProvider creates and returns a new JWKSProvider instance
+// with initialized in-memory storage for issuer client stores.
 func NewJWKSProvider() *JWKSProvider {
 	return &JWKSProvider{
 		stores: make(map[string]*jwksClientStore),
 	}
 }
 
-// AddIssuerClientValidator registers a JWKS client and validator for the given issuer and
-// initializes the in-memory cache and lock for that issuer.
+// AddIssuerClientValidator registers a client and validator for a given issuer.
+// It initializes the in-memory cache for the issuer. Returns an error if the
+// issuer, client or validator is nil.
 func (j *JWKSProvider) AddIssuerClientValidator(issuer string, client *Client, validator *Validator) error {
+	if issuer == "" {
+		return ErrIssuerEmpty
+	}
+
 	if client == nil {
-		return fmt.Errorf("%w %s", ErrNoClientFound, issuer)
+		return fmt.Errorf("%w: %s", ErrNoClientFound, issuer)
 	}
 
 	if validator == nil {
-		return fmt.Errorf("%w %s", ErrNoValidatorFound, issuer)
+		return fmt.Errorf("%w: %s", ErrNoValidatorFound, issuer)
 	}
 
 	j.stores[issuer] = &jwksClientStore{
 		client:    client,
 		validator: validator,
 		cache:     make(map[string]*rsa.PublicKey),
-		lock:      sync.RWMutex{},
 	}
 
 	return nil
 }
 
-// VerificationKey implements PublicKeyProvider. It returns the RSA public key for
-// the supplied issuer and key id (kid). If the key is not present in the cache
-// it will fetch and validate the issuer's JWKS and refresh the cache.
+// VerificationKey returns the RSA public key for the given issuer (iss) and key ID (kid).
+// It first attempts to retrieve the key from the in-memory cache. If the key is not found,
+// it refreshes the JWKS cache for the issuer and tries again. Returns an error if the
+// issuer is not configured or if the key cannot be found or validated.
 func (j *JWKSProvider) VerificationKey(ctx context.Context, iss string, kid string) (*rsa.PublicKey, error) {
-	ctx = slogctx.With(ctx, "issuer", iss, "kidToSearch", kid)
+	ctx = slogctx.With(ctx, "issuer", iss, "kid", kid)
 
 	store, ok := j.stores[iss]
 	if !ok {
-		slogctx.Error(ctx, "error no client configure")
-		return nil, fmt.Errorf("%w %s", ErrNoClientFound, iss)
+		slogctx.Error(ctx, "no client configured")
+		return nil, fmt.Errorf("%w: %s", ErrNoClientFound, iss)
 	}
 
-	key, err := j.readKey(ctx, store, kid)
+	key, err := j.readKeyWithLock(ctx, store, kid)
 	if err == nil {
 		return key, nil
 	}
 
-	slogctx.Info(ctx, "key not found in cache, refreshing")
+	return j.rebuildAndReadKey(ctx, store, kid)
+}
 
-	result, err := store.client.Get(ctx)
-	if err != nil {
-		slogctx.Error(ctx, "error while fetching jwks url", "error", err)
-		return nil, err
-	}
-
-	pubKeys := make(map[string]*rsa.PublicKey, len(result.Keys))
-
-	for _, key := range result.Keys {
-		err := store.validator.Validate(key)
-		if err != nil {
-			slogctx.Error(ctx, "error while validating", "kid", key.Kid, "error", err)
-			continue
-		}
-
-		pubKey, err := parsePublicKey(ctx, key)
-		if err != nil {
-			continue
-		}
-
-		pubKeys[key.Kid] = pubKey
-	}
-
-	j.writeKeys(store, pubKeys)
+func (j *JWKSProvider) readKeyWithLock(ctx context.Context, store *jwksClientStore, kid string) (*rsa.PublicKey, error) {
+	store.lock.RLock()
+	defer store.lock.RUnlock()
 
 	return j.readKey(ctx, store, kid)
 }
 
 func (j *JWKSProvider) readKey(ctx context.Context, store *jwksClientStore, kid string) (*rsa.PublicKey, error) {
-	store.lock.RLock()
-	defer store.lock.RUnlock()
-
 	key, ok := store.cache[kid]
 	if !ok {
-		slogctx.Error(ctx, "error getting public key", "kid", kid)
-		return nil, fmt.Errorf("%w %s", ErrKidNoPublicKeyFound, kid)
+		slogctx.Info(ctx, "no public key found in cache")
+		return nil, fmt.Errorf("%w: %s", ErrKidNoPublicKeyFound, kid)
 	}
 
 	return key, nil
 }
 
-func (*JWKSProvider) writeKeys(store *jwksClientStore, pubKeys map[string]*rsa.PublicKey) {
-	if len(pubKeys) > 0 {
-		store.lock.Lock()
-		defer store.lock.Unlock()
+func (j *JWKSProvider) rebuildAndReadKey(ctx context.Context, store *jwksClientStore, kid string) (*rsa.PublicKey, error) {
+	slogctx.Info(ctx, "key not found in cache, refreshing")
 
+	store.lock.Lock()
+	defer store.lock.Unlock()
+
+	// Double-check if another goroutine has already refreshed the cache
+	key, err := j.readKey(ctx, store, kid)
+	if err == nil {
+		return key, nil
+	}
+
+	result, err := store.client.Get(ctx)
+	if err != nil {
+		slogctx.Error(ctx, "failed while fetching jwks url", "error", err)
+		return nil, err
+	}
+
+	pubKeys := make(map[string]*rsa.PublicKey, len(result.Keys))
+
+	for _, jwk := range result.Keys {
+		err := store.validator.Validate(jwk)
+		if err != nil {
+			slogctx.Error(ctx, "failed certificate validation", "for kid", jwk.Kid, "error", err)
+			continue
+		}
+
+		pubKey, err := parsePublicKey(ctx, jwk)
+		if err != nil {
+			slogctx.Error(ctx, "failed while parsing public keys", "for kid", jwk.Kid, "error", err)
+			continue
+		}
+
+		pubKeys[jwk.Kid] = pubKey
+	}
+
+	if len(result.Keys) > 0 && len(pubKeys) == 0 {
+		slogctx.Warn(ctx, "jwks returned keys but none validated/parsed; retaining previous cache", "total_keys", len(result.Keys))
+	}
+
+	if len(pubKeys) > 0 {
 		store.cache = pubKeys
 	}
+
+	return j.readKey(ctx, store, kid)
 }
 
 func parsePublicKey(ctx context.Context, key Key) (*rsa.PublicKey, error) {
@@ -147,13 +171,13 @@ func parsePublicKey(ctx context.Context, key Key) (*rsa.PublicKey, error) {
 
 	bDer, err := base64.StdEncoding.DecodeString(firstCert)
 	if err != nil {
-		slogctx.Error(ctx, "error while base64 decoding", "kid", key.Kid, "error", err)
+		slogctx.Error(ctx, "while base64 decoding", "kid", key.Kid, "error", err)
 		return nil, err
 	}
 
 	cert, err := x509.ParseCertificate(bDer)
 	if err != nil {
-		slogctx.Error(ctx, "error parse certificate", "kid", key.Kid, "error", err)
+		slogctx.Error(ctx, "parse certificate", "kid", key.Kid, "error", err)
 		return nil, err
 	}
 
@@ -161,14 +185,14 @@ func parsePublicKey(ctx context.Context, key Key) (*rsa.PublicKey, error) {
 	case KeyTypeRSA:
 		pubKey, ok := cert.PublicKey.(*rsa.PublicKey)
 		if !ok {
-			slogctx.Error(ctx, "error getting public key", "kid", key.Kid)
-			return nil, err
+			slogctx.Error(ctx, "getting public key", "kid", key.Kid)
+			return nil, ErrRSAPublicKeyNotFound
 		}
 
 		return pubKey, nil
 
 	default:
-		slogctx.Error(ctx, "error unsupported key type", "kid", key.Kid)
-		return nil, fmt.Errorf("%w [%s]", ErrKeyTypeUnsupported, key.Kty)
+		slogctx.Error(ctx, "unsupported key type", "kid", key.Kid)
+		return nil, fmt.Errorf("%w: [%s]", ErrKeyTypeUnsupported, key.Kty)
 	}
 }
