@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.10.0](https://github.com/openkcm/common-sdk/compare/v1.9.0...v1.10.0) (2026-01-13)
+
+
+### Features
+
+* add jwks client  ([6535720](https://github.com/openkcm/common-sdk/commit/65357206e1ab0cbe54aa3e53c7e56377928f0a7a))
+* add jwks_provider ([#219](https://github.com/openkcm/common-sdk/issues/219)) ([8058e9f](https://github.com/openkcm/common-sdk/commit/8058e9f2aeac24fd92c872291a6d606f36a46b4f))
+* add validator for x5c  ([00df734](https://github.com/openkcm/common-sdk/commit/00df734d55b245b74945865cc02ef2a12fef54c4))
+
+## [1.9.0](https://github.com/openkcm/common-sdk/compare/v1.8.0...v1.9.0) (2025-12-19)
+
+
+### Features
+
+* add jwk builder and http endpoint  ([9bb33cd](https://github.com/openkcm/common-sdk/commit/9bb33cda48efaf4d1fc9ea96e601623e7eecb3d8))
+* **audit:** enhance CMK events with systemID field ([#209](https://github.com/openkcm/common-sdk/issues/209)) ([a78e030](https://github.com/openkcm/common-sdk/commit/a78e030997970d52574076ca8e9ee1d901a94ce0))
+* **audit:** extend unauthorized event ([#198](https://github.com/openkcm/common-sdk/issues/198)) ([ec356a1](https://github.com/openkcm/common-sdk/commit/ec356a1fe9717c9898ba17351381555c369874da))
+
+
+### Bug Fixes
+
+* adjust logs of the status server; add a new function helping to set up the base of server ([#184](https://github.com/openkcm/common-sdk/issues/184)) ([d8dde2e](https://github.com/openkcm/common-sdk/commit/d8dde2e14430bccc6c20be291a6f8134ec292993))
+* **audit:** add resource and action to properties and refactor ([#199](https://github.com/openkcm/common-sdk/issues/199)) ([83ec4e1](https://github.com/openkcm/common-sdk/commit/83ec4e1f64249546c9369794eed0b5e9b25b4d63))
+* **audit:** delete systemID from CMK fields ([#214](https://github.com/openkcm/common-sdk/issues/214)) ([11f5cea](https://github.com/openkcm/common-sdk/commit/11f5cea63dde6567993f5b58aad0116b91d03f68))
+
 ## [1.8.0](https://github.com/openkcm/common-sdk/compare/v1.7.0...v1.8.0) (2025-12-03)
 
 

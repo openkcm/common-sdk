@@ -1,6 +1,7 @@
 # Logging SDK Guide
 
-This document explains how to use the common-sdk logging. The SDK is built on top of Go’s `log/slog` and extends it with formatting, attribute customization, masking (PII & custom), OpenTelemetry support, and GDPR compliance.
+This document explains how to use the common-sdk logging. The SDK is built on top of Go's `log/slog` and extends it with
+formatting, attribute customization, masking (PII & custom), OpenTelemetry support, and GDPR compliance.
 
 ---
 
@@ -33,21 +34,24 @@ err := logger.InitAsDefaultWithWriter(myWriter, config.Logger, config.Applicatio
 
 ---
 
-##  Configuration Overview
+## Configuration Overview
 
 The logger is configured via the `commoncfg.Logger` struct. Here are the key configuration fields:
 
 ### Log Format
+
 ```yaml
 format: json        # or "text"
 ```
 
 ### Log Level
+
 ```yaml
 level: info         # debug, info, warn, error
 ```
 
 ### Time Format
+
 ```yaml
 formatter:
   time:
@@ -57,7 +61,9 @@ formatter:
 ```
 
 ### Attribute Mapping
+
 Customize log field names:
+
 ```yaml
 formatter:
   fields:
@@ -68,11 +74,12 @@ formatter:
 ```
 
 ### PII & Field Masking
+
 ```yaml
 formatter:
   fields:
     masking:
-      pii: ["email", "phone"]
+      pii: [ "email", "phone" ]
       other:
         secretKey: "[REDACTED]"
 ```
@@ -81,7 +88,8 @@ formatter:
 
 ## GDPR Middleware
 
-To comply with GDPR and protect sensitive data, our SDK includes masking capabilities for personally identifiable information (PII) and other fields defined in your configuration.
+To comply with GDPR and protect sensitive data, our SDK includes masking capabilities for personally identifiable
+information (PII) and other fields defined in your configuration.
 
 The GDPR middleware is automatically applied only when OpenTelemetry logging is enabled.
 
@@ -102,6 +110,7 @@ This middleware ensures all specified PII and custom fields are masked in both s
 The SDK integrates with OpenTelemetry (OTEL) to forward logs to a collector (GRPC/HTTP).
 
 To enable OTLP logging:
+
 ```yaml
 telemetry:
   logs:
@@ -118,19 +127,44 @@ telemetry:
 ```
 
 The logs are automatically enriched with:
-- `trace_id` and `span_id` from OpenTelemetry context
+
+- `traceId` and `spanId` from OpenTelemetry context
 - `service`, `name`, `environment`, and `labels` from application config
 
 ---
 
-##  Adding Custom Attributes
+## Adding Custom Attributes
+
+### Format Convention
+
+All log attributes MUST use `camelCase` format to ensure consistency across teams.
+
+#### Format Examples
+
+```go
+slog.String("attributeName", value)
+slogctx.With(ctx, "attributeName", value)
+slog.Group("attributeGroup",
+    slog.String("attributeName", value),
+)
+```
+
+#### Common Attributes
+
+The following standard attributes are **optional** but when used, they **MUST be logged as first-level citizens** (not
+nested) and follow the camelCase format consistently across all services:
+
+- **`requestId`** - Unique identifier for the request
+- **`tenantId`** - Tenant identifier
+
+### Using slogctx
 
 Use `slogctx` to include contextual attributes:
 
 ```go
 ctx := slogctx.With(ctx,
-    slog.String("request_id", reqID),
-    slog.String("user_id", userID),
+    slog.String("requestId", reqID),
+    slog.String("userId", userID),
 )
 slogctx.Info(ctx, "user authenticated")
 ```
@@ -139,9 +173,10 @@ You can also inject attributes globally using the `Application.Labels` map.
 
 ---
 
-## Example Output
+## Example Output 
 
 ### JSON format:
+
 ```json
 {
   "timestamp": "2025-04-10T09:55:52.384+02:00",
@@ -154,26 +189,27 @@ You can also inject attributes globally using the `Application.Labels` map.
   "labels": {
     "version": "1.2.3"
   },
-  "request_id": "abc-123",
-  "user_id": "john*******"
+  "requestId": "abc-123",
+  "userId": "john*******"
 }
 ```
 
 ### Text format:
+
 ```
-time=2025-04-10T09:55:52.384+02:00 level=INFO msg="user authenticated" request_id=abc-123 user_id=john*******
+time=2025-04-10T09:55:52.384+02:00 level=INFO msg="user authenticated" requestId=abc-123 userId=john*******
 ```
 
 ---
 
 ## Helper: `CreateAttributes`
 
-For dynamically adding labels:
+For dynamically adding labels in **camelCase** format:
 
 ```go
 attrs := logger.CreateAttributes(map[string]string{
-    "region": "eu",
-    "tenant": "abc",
+"region": "eu",
+"tenantId": "abc",
 })
 slog.Info("tenant initialized", attrs...)
 ```
@@ -184,6 +220,8 @@ slog.Info("tenant initialized", attrs...)
 
 - Always mask PII using config.
 - Use context-aware logging via `slogctx`.
+- Always use `camelCase` format for all log attributes** to ensure consistency across teams.
+- Use common attributes (`requestId`, `tenantId`) as first-level citizens (not nested) when applicable.
 - Keep logs structured and consistent using the formatter config.
 - Attach OpenTelemetry context for distributed tracing.
 
