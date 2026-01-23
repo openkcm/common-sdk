@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.0](https://github.com/openkcm/common-sdk/compare/v1.10.0...v1.11.0) (2026-01-23)
+
+
+### Features
+
+* jwks export client store and update API  ([9064874](https://github.com/openkcm/common-sdk/commit/90648740e7f11e158ddb637e9a22ab1e01321409))
+* jwks improve cache concurrency and error handling  ([783c640](https://github.com/openkcm/common-sdk/commit/783c64032bf2b3f1b976b454b37937f171e59352))
+
 ## [1.10.0](https://github.com/openkcm/common-sdk/compare/v1.9.0...v1.10.0) (2026-01-13)
 
 
