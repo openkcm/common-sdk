@@ -40,7 +40,7 @@ func TestJWKSProvider(t *testing.T) {
 		})
 	})
 
-	t.Run("AddCli", func(t *testing.T) {
+	t.Run("AddClient", func(t *testing.T) {
 		t.Run("should be successful", func(t *testing.T) {
 			// given
 			result := jwtsigning.NewJWKSProvider()
