@@ -47,7 +47,7 @@ func TestJWKSProvider(t *testing.T) {
 			assert.NotNil(t, result)
 
 			// when
-			err := result.AddIssuerClientValidator("issuer", &jwtsigning.Client{}, &jwtsigning.Validator{})
+			err := result.AddClient("issuer", &jwtsigning.Client{}, &jwtsigning.Validator{})
 
 			// then
 			assert.NoError(t, err)
@@ -88,7 +88,7 @@ func TestJWKSProvider(t *testing.T) {
 					assert.NotNil(t, result)
 
 					// when
-					err := result.AddIssuerClientValidator(tt.issuer, tt.client, tt.validator)
+					err := result.AddClient(tt.issuer, tt.client, tt.validator)
 
 					// then
 					assert.Error(t, err)
@@ -121,7 +121,7 @@ func TestJWKSProvider(t *testing.T) {
 				assert.NoError(t, err)
 
 				subj := jwtsigning.NewJWKSProvider()
-				err = subj.AddIssuerClientValidator("issuer-1", cli, validator)
+				err = subj.AddClient("issuer-1", cli, validator)
 				assert.NoError(t, err)
 
 				for kid, key := range expPubKeys {
@@ -161,7 +161,7 @@ func TestJWKSProvider(t *testing.T) {
 				assert.NoError(t, err)
 
 				subj := jwtsigning.NewJWKSProvider()
-				err = subj.AddIssuerClientValidator("issuer-1", cli, validator)
+				err = subj.AddClient("issuer-1", cli, validator)
 				assert.NoError(t, err)
 
 				// when
@@ -214,7 +214,7 @@ func TestJWKSProvider(t *testing.T) {
 				assert.NoError(t, err)
 
 				subj := jwtsigning.NewJWKSProvider()
-				err = subj.AddIssuerClientValidator("issuer-1", cli, validator)
+				err = subj.AddClient("issuer-1", cli, validator)
 				assert.NoError(t, err)
 
 				// when
@@ -256,7 +256,7 @@ func TestJWKSProvider(t *testing.T) {
 				assert.NoError(t, err)
 
 				subj := jwtsigning.NewJWKSProvider()
-				err = subj.AddIssuerClientValidator("issuer-1", cli, validator)
+				err = subj.AddClient("issuer-1", cli, validator)
 				assert.NoError(t, err)
 
 				for kid, expKey := range expPubKeys {
@@ -309,7 +309,7 @@ func TestJWKSProvider(t *testing.T) {
 				assert.NoError(t, err)
 
 				subj := jwtsigning.NewJWKSProvider()
-				err = subj.AddIssuerClientValidator("issuer-1", cli, validator)
+				err = subj.AddClient("issuer-1", cli, validator)
 				assert.NoError(t, err)
 
 				result, err := subj.VerificationKey(t.Context(), "issuer-1", "kid-1")
@@ -376,7 +376,7 @@ func TestJWKSProvider(t *testing.T) {
 				assert.NoError(t, err)
 
 				subj := jwtsigning.NewJWKSProvider()
-				err = subj.AddIssuerClientValidator("issuer-1", cli, validator)
+				err = subj.AddClient("issuer-1", cli, validator)
 				assert.NoError(t, err)
 
 				// when
@@ -408,7 +408,7 @@ func TestJWKSProvider(t *testing.T) {
 				assert.NoError(t, err)
 
 				subj := jwtsigning.NewJWKSProvider()
-				err = subj.AddIssuerClientValidator("issuer-1", cli, validator)
+				err = subj.AddClient("issuer-1", cli, validator)
 				assert.NoError(t, err)
 
 				// when
@@ -447,7 +447,7 @@ func TestJWKSProvider(t *testing.T) {
 				assert.NoError(t, err)
 
 				subj := jwtsigning.NewJWKSProvider()
-				err = subj.AddIssuerClientValidator("issuer-1", cli, validator)
+				err = subj.AddClient("issuer-1", cli, validator)
 				assert.NoError(t, err)
 
 				// when

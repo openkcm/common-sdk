@@ -52,10 +52,10 @@ func NewJWKSProvider() *JWKSProvider {
 	}
 }
 
-// AddIssuerClientValidator registers a client and validator for a given issuer.
+// AddClient registers a client and validator for a given issuer.
 // It initializes the in-memory cache for the issuer. Returns an error if the
 // issuer, client or validator is nil.
-func (j *JWKSProvider) AddIssuerClientValidator(issuer string, client *Client, validator *Validator) error {
+func (j *JWKSProvider) AddClient(issuer string, client *Client, validator *Validator) error {
 	if issuer == "" {
 		return ErrIssuerEmpty
 	}
@@ -91,11 +91,11 @@ func (j *JWKSProvider) VerificationKey(ctx context.Context, iss string, kid stri
 	}
 
 	key, err := j.readKeyWithLock(ctx, store, kid)
-	if err == nil {
-		return key, nil
+	if err != nil {
+		return j.rebuildAndReadKey(ctx, store, kid)
 	}
 
-	return j.rebuildAndReadKey(ctx, store, kid)
+	return key, nil
 }
 
 func (j *JWKSProvider) readKeyWithLock(ctx context.Context, store *jwksClientStore, kid string) (*rsa.PublicKey, error) {
