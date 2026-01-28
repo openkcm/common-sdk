@@ -17,7 +17,7 @@ require (
 	github.com/samber/slog-multi v1.7.0
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/veqryn/slog-context v0.8.0
+	github.com/veqryn/slog-context v0.9.0
 	github.com/veqryn/slog-context/otel v0.8.0
 	go.opentelemetry.io/collector/pdata v1.50.0
 	go.opentelemetry.io/contrib/bridges/otelslog v0.14.0
