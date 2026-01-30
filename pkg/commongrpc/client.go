@@ -90,7 +90,7 @@ func NewPooledClient(client PooledClient, cfg *commoncfg.GRPCClient, dialOptions
 		return err
 	}
 
-	opts := make([]grpc.DialOption, 0)
+	opts := make([]grpc.DialOption, 0, 3+len(dialOptions))
 	opts = append(opts,
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:    cfg.Attributes.KeepaliveTime,
@@ -155,7 +155,7 @@ func NewClient(cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOption) (*grpc
 		return nil, err
 	}
 
-	opts := make([]grpc.DialOption, 0)
+	opts := make([]grpc.DialOption, 0, 3+len(dialOptions))
 	opts = append(opts,
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:    cfg.Attributes.KeepaliveTime,

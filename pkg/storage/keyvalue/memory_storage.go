@@ -115,7 +115,7 @@ func (ms *MemoryStorage[K, V]) List() []K {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
-	keys := make([]K, 0)
+	keys := make([]K, 0, len(ms.data))
 	for k := range ms.data {
 		keys = append(keys, k)
 	}

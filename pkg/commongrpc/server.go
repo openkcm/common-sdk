@@ -31,7 +31,7 @@ import (
 // Returns:
 //   - *grpc.Server: The configured gRPC server instance
 func NewServer(ctx context.Context, cfg *commoncfg.GRPCServer, serverOptions ...grpc.ServerOption) *grpc.Server {
-	opts := make([]grpc.ServerOption, 0)
+	opts := make([]grpc.ServerOption, 0, 4+len(serverOptions))
 
 	opts = append(opts,
 		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
