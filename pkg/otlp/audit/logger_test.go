@@ -9,12 +9,17 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
+
+var errLoadValue = errors.New("basic credentials missing password: field password not found")
+var errLoadMTLSConfigFailed = errors.New("tls: failed to find any PEM data in certificate input")
+var errStatusNotOK = errors.New("response status not OK")
 
 const (
 	testFilesDir  = "../../../internal/otlp/audit/testdata"
@@ -90,8 +95,14 @@ func TestSend(t *testing.T) {
 			auditLogger, _ := NewLogger(&cfg.Audit)
 			err = auditLogger.SendEvent(t.Context(), logs)
 
-			if (tt.expectError != nil && !errors.Is(err, tt.expectError)) || (err == nil && tt.expectError != nil) {
-				t.Errorf("Expected error '%v', got '%v'", tt.expectError, err)
+			if tt.expectError != nil {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tt.expectError)
+				}
+
+				if !strings.Contains(err.Error(), tt.expectError.Error()) {
+					t.Fatalf("expected error containing %q, got %q", tt.expectError, err.Error())
+				}
 			}
 
 			if err != nil && tt.expectError == nil {
@@ -166,9 +177,11 @@ func Test_NewLogger(t *testing.T) {
 
 func Test_EnrichLogs(t *testing.T) {
 	auditCfg := commoncfg.Audit{
-		Endpoint:             "http://localhost:1234/logs",
-		MTLS:                 nil,
-		BasicAuth:            nil,
+		Endpoint: "http://localhost:1234/logs",
+		HTTPClient: commoncfg.HTTPClient{
+			Timeout: 10 * time.Second,
+		},
+
 		AdditionalProperties: "Prop1: Val1\nProp2: Val2",
 	}
 	logs := plog.NewLogs()
