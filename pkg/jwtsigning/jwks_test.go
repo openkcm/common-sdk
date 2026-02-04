@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -109,7 +108,7 @@ func TestNew(t *testing.T) {
 			keyInputs       []jwtsigning.Input
 		}{
 			{
-				name:            "with one keyInput",
+				name:            "should work with a single key input",
 				privateKeyOrder: []*rsa.PrivateKey{prvKey1},
 				keyInputs: []jwtsigning.Input{
 					{
@@ -125,7 +124,7 @@ func TestNew(t *testing.T) {
 				},
 			},
 			{
-				name:            "with multiple keyInput",
+				name:            "should work with multiple key input",
 				privateKeyOrder: []*rsa.PrivateKey{prvKey1, prvKey2},
 				keyInputs: []jwtsigning.Input{
 					{
@@ -150,6 +149,22 @@ func TestNew(t *testing.T) {
 					},
 				},
 			},
+			{
+				name:            "should generate kid from thumbprint if kid is empty",
+				privateKeyOrder: []*rsa.PrivateKey{prvKey1},
+				keyInputs: []jwtsigning.Input{
+					{
+						Kty:    jwtsigning.KeyTypeRSA,
+						Alg:    "PS256",
+						Use:    "sig",
+						KeyOps: []string{"verify"},
+						Kid:    "",
+						X509Certs: []x509.Certificate{
+							*cert1,
+						},
+					},
+				},
+			},
 		}
 
 		asserter := func(t *testing.T, privKey *rsa.PrivateKey, keyInput jwtsigning.Input, key jwtsigning.Key) {
@@ -157,8 +172,23 @@ func TestNew(t *testing.T) {
 
 			cert := keyInput.X509Certs[0]
 			pbKey := privKey.PublicKey
-			expN := pbKey.N.String()
-			expE := strconv.Itoa(pbKey.E)
+			b64URLEncoder := base64.RawURLEncoding
+			expN := b64URLEncoder.EncodeToString(pbKey.N.Bytes())
+			expE := b64URLEncoder.EncodeToString(big.NewInt(int64(pbKey.E)).Bytes())
+
+			expKid := keyInput.Kid
+			if expKid == "" {
+				tmpKey := jwtsigning.Key{
+					Kty: keyInput.Kty,
+					N:   expN,
+					E:   expE,
+				}
+				kid, err := tmpKey.Thumbprint()
+				require.NoError(t, err)
+
+				expKid = kid
+			}
+
 			// der to base64 encoded
 			// for this test we are using the cert itself
 			expX5c := base64.StdEncoding.EncodeToString(cert.Raw)
@@ -167,7 +197,7 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, keyInput.Alg, key.Alg)
 			assert.Equal(t, keyInput.Use, key.Use)
 			assert.Equal(t, keyInput.KeyOps, key.KeyOps)
-			assert.Equal(t, keyInput.Kid, key.Kid)
+			assert.Equal(t, expKid, key.Kid)
 			assert.Len(t, key.X5c, 1)
 			assert.Equal(t, expX5c, key.X5c[0])
 			assert.Equal(t, expN, key.N)
@@ -550,6 +580,73 @@ func TestKeyValidate(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 	})
+}
+
+func TestThumbprint(t *testing.T) {
+	tts := []struct {
+		name      string
+		subj      jwtsigning.Key
+		expResult string
+		expErr    error
+	}{
+		// please refer to the example in RFC 7638 section 3.1
+		// https://www.rfc-editor.org/rfc/rfc7638#section-3.1
+		{
+			name: "should successfully create a thumbprint",
+			subj: jwtsigning.Key{
+				Kty: jwtsigning.KeyTypeRSA,
+				N: "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zw" +
+					"u1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY" +
+					"4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAta" +
+					"Sqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFT" +
+					"WhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur" +
+					"-kEgU8awapJzKnqDKgw",
+				E: "AQAB",
+			},
+			expResult: "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs",
+			expErr:    nil,
+		},
+		{
+			name: "should return error if key type is not RSA",
+			subj: jwtsigning.Key{
+				Kty: "",
+				N:   "n",
+				E:   "e",
+			},
+			expResult: "",
+			expErr:    jwtsigning.ErrKeyTypeUnsupported,
+		},
+		{
+			name: "should return error if N is empty",
+			subj: jwtsigning.Key{
+				Kty: jwtsigning.KeyTypeRSA,
+				N:   "",
+				E:   "e",
+			},
+			expResult: "",
+			expErr:    jwtsigning.ErrInvalidKey,
+		},
+		{
+			name: "should return error if E is empty",
+			subj: jwtsigning.Key{
+				Kty: jwtsigning.KeyTypeRSA,
+				N:   "n",
+				E:   "",
+			},
+			expResult: "",
+			expErr:    jwtsigning.ErrInvalidKey,
+		},
+	}
+	for _, tt := range tts {
+		t.Run(tt.name, func(t *testing.T) {
+			// when
+			result, err := tt.subj.Thumbprint()
+
+			// then
+			assert.Equal(t, tt.expResult, result)
+			assert.ErrorIs(t, err, tt.expErr)
+		})
+	}
 }
 
 func generateKeysAndCert(t *testing.T) (*rsa.PrivateKey, *x509.Certificate) {
