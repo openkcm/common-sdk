@@ -8,7 +8,7 @@ import (
 
 // CreateAttributesFrom builds a slice of OTEL attributes from the application config and optional extra attributes.
 func CreateAttributesFrom(appCfg commoncfg.Application, attrs ...attribute.KeyValue) []attribute.KeyValue {
-	attributes := make([]attribute.KeyValue, 0)
+	attributes := make([]attribute.KeyValue, 0, 2+len(appCfg.Labels)+len(attrs))
 
 	attributes = append(attributes,
 		attribute.String(commoncfg.AttrEnvironment, appCfg.Environment),
