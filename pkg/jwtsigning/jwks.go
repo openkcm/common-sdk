@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -41,6 +41,14 @@ type Input struct {
 	KeyOps    []string
 	Kid       string
 	X509Certs []x509.Certificate
+}
+
+// thumbprint is used for computing the thumbprint of a JWK.
+// DO NOT change field order: required for RFC 7638 thumbprint calculation.
+type thumbprint struct {
+	E   string `json:"e"`
+	Kty string `json:"kty"`
+	N   string `json:"n"`
 }
 
 // KeyTypeRSA is the constant for RSA key type.
@@ -165,6 +173,38 @@ func (k Key) Validate() error {
 	return nil
 }
 
+// Thumbprint computes the thumbprint of the Key according to RFC 7638.
+// It currently supports only RSA keys.
+// Returns the thumbprint as a base64url-encoded string or an error if the key type is unsupported or invalid.
+// please refer to the example in RFC 7638 section 3.1
+// https://www.rfc-editor.org/rfc/rfc7638#section-3.1
+func (k Key) Thumbprint() (string, error) {
+	switch k.Kty {
+	case KeyTypeRSA:
+		if isEmpty(k.N) {
+			return "", fmt.Errorf("%w n is empty", ErrInvalidKey)
+		}
+
+		if isEmpty(k.E) {
+			return "", fmt.Errorf("%w e is empty", ErrInvalidKey)
+		}
+
+		b, err := json.Marshal(thumbprint{
+			E:   k.E,
+			Kty: string(k.Kty),
+			N:   k.N,
+		})
+		if err != nil {
+			return "", err
+		}
+
+		return (&SHA256Hasher{}).HashMessage(b), nil
+
+	default:
+		return "", fmt.Errorf("%w %s", ErrKeyTypeUnsupported, k.Kty)
+	}
+}
+
 // build constructs a Key from the KeyInput.
 // It encodes the provided X.509 certificates to base64 and sets them in the Key's X5c field.
 // For RSA keys, it extracts the modulus (N) and exponent (E) from the first certificate's public key.
@@ -199,10 +239,20 @@ func (i Input) build() (Key, error) {
 			return Key{}, fmt.Errorf("%w kid %s", ErrRSAPublicKeyNotFound, i.Kid)
 		}
 
-		key.N = publicKey.N.String()
-		key.E = strconv.Itoa(publicKey.E)
+		b64RawURLEncoder := base64.RawURLEncoding
+		key.N = b64RawURLEncoder.EncodeToString(publicKey.N.Bytes())
+		key.E = b64RawURLEncoder.EncodeToString(big.NewInt(int64(publicKey.E)).Bytes())
 	default:
 		return Key{}, fmt.Errorf("%w [%s]", ErrKeyTypeUnsupported, i.Kty)
+	}
+
+	if isEmpty(key.Kid) {
+		kid, err := key.Thumbprint()
+		if err != nil {
+			return Key{}, err
+		}
+
+		key.Kid = kid
 	}
 
 	return key, nil
