@@ -214,7 +214,21 @@ func LoadMTLSCACertPool(cfg *MTLS) (*x509.CertPool, error) {
 		return nil, ErrMTLSIsNil
 	}
 
-	return LoadCACertPool(cfg.ServerCA)
+	cas := make([]SourceRef, 0)
+	if cfg.ServerCA != nil {
+		cas = append(cas, *cfg.ServerCA)
+	}
+
+	if len(cfg.RootCAs) > 0 {
+		cas = append(cas, cfg.RootCAs...)
+	}
+
+	certPool, err := LoadCAsCertPool(cas)
+	if err != nil {
+		return nil, err
+	}
+
+	return certPool, err
 }
 
 func LoadCACertPool(certRef *SourceRef) (*x509.CertPool, error) {
@@ -231,6 +245,26 @@ func LoadCACertPool(certRef *SourceRef) (*x509.CertPool, error) {
 	}
 
 	caCertPool.AppendCertsFromPEM(caCert)
+
+	return caCertPool, nil
+}
+
+func LoadCAsCertPool(certRefs []SourceRef) (*x509.CertPool, error) {
+	if len(certRefs) == 0 {
+		// Returns nil instead of NewCertPool if no CA is provided, which means using the system CA pool
+		return nil, nil //nolint:nilnil
+	}
+
+	caCertPool := x509.NewCertPool()
+
+	for _, cert := range certRefs {
+		caCert, err := ExtractValueFromSourceRef(&cert)
+		if err != nil {
+			return nil, err
+		}
+
+		caCertPool.AppendCertsFromPEM(caCert)
+	}
 
 	return caCertPool, nil
 }
@@ -277,7 +311,14 @@ func LoadMTLSConfig(cfg *MTLS) (*tls.Config, error) {
 		MinVersion:   tls.VersionTLS12,
 	}
 
-	caCertPool, err := LoadCACertPool(cfg.ServerCA)
+	if cfg.Attributes != nil {
+		tlsConfig.InsecureSkipVerify = cfg.Attributes.InsecureSkipVerify
+		tlsConfig.ServerName = cfg.Attributes.ServerName
+		tlsConfig.SessionTicketsDisabled = cfg.Attributes.SessionTicketsDisabled
+		tlsConfig.SessionTicketsDisabled = cfg.Attributes.SessionTicketsDisabled
+	}
+
+	caCertPool, err := LoadMTLSCACertPool(cfg)
 	if err != nil {
 		return nil, err
 	}

@@ -3,7 +3,6 @@ package commonhttp_test
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"net/http"
@@ -19,12 +18,7 @@ func TestNewClient(t *testing.T) {
 	// Arrange
 	mutator := testutils.NewMutator(func() commoncfg.HTTPClient {
 		return commoncfg.HTTPClient{
-			Timeout:            10 * time.Second,
-			RootCAs:            nil,
-			InsecureSkipVerify: false,
-			MinVersion:         tls.VersionTLS12,
-			Cert:               nil,
-			CertKey:            nil,
+			Timeout: 10 * time.Second,
 		}
 	})
 
@@ -69,34 +63,39 @@ func TestNewClient(t *testing.T) {
 				c.Timeout = 5 * time.Second
 			}),
 		}, {
-			name: "custom TLS min version",
-			cfg: mutator(func(c *commoncfg.HTTPClient) {
-				c.MinVersion = tls.VersionTLS13
-			}),
-		}, {
-			name: "insecure skip verify",
-			cfg: mutator(func(c *commoncfg.HTTPClient) {
-				c.InsecureSkipVerify = true
-			}),
-		}, {
 			name: "custom root CAs",
 			cfg: mutator(func(c *commoncfg.HTTPClient) {
-				c.RootCAs = &commoncfg.SourceRef{
-					Source: commoncfg.EmbeddedSourceValue,
-					Value:  x509CertPEM}
+				c.MTLS = &commoncfg.MTLS{
+					Cert: commoncfg.SourceRef{
+						Source: commoncfg.EmbeddedSourceValue,
+						Value:  x509CertPEM,
+					},
+					CertKey: commoncfg.SourceRef{
+						Source: commoncfg.EmbeddedSourceValue,
+						Value: string(pem.EncodeToMemory(&pem.Block{
+							Type:  "RSA PRIVATE KEY",
+							Bytes: x509.MarshalPKCS1PrivateKey(rsaPrivateKey),
+						}))},
+					ServerCA: &commoncfg.SourceRef{
+						Source: commoncfg.EmbeddedSourceValue,
+						Value:  x509CertPEM},
+				}
 			}),
 		}, {
-			name: "custom mTLS certificate",
+			name: "custom mTLS certificate no Root CA",
 			cfg: mutator(func(c *commoncfg.HTTPClient) {
-				c.Cert = &commoncfg.SourceRef{
-					Source: commoncfg.EmbeddedSourceValue,
-					Value:  x509CertPEM}
-				c.CertKey = &commoncfg.SourceRef{
-					Source: commoncfg.EmbeddedSourceValue,
-					Value: string(pem.EncodeToMemory(&pem.Block{
-						Type:  "RSA PRIVATE KEY",
-						Bytes: x509.MarshalPKCS1PrivateKey(rsaPrivateKey),
-					}))}
+				c.MTLS = &commoncfg.MTLS{
+					Cert: commoncfg.SourceRef{
+						Source: commoncfg.EmbeddedSourceValue,
+						Value:  x509CertPEM,
+					},
+					CertKey: commoncfg.SourceRef{
+						Source: commoncfg.EmbeddedSourceValue,
+						Value: string(pem.EncodeToMemory(&pem.Block{
+							Type:  "RSA PRIVATE KEY",
+							Bytes: x509.MarshalPKCS1PrivateKey(rsaPrivateKey),
+						}))},
+				}
 			}),
 		},
 	}
@@ -136,13 +135,5 @@ func checkClient(t *testing.T, client *http.Client, cfg commoncfg.HTTPClient) {
 
 	if transport.TLSClientConfig == nil {
 		t.Fatal("expected TLSClientConfig to be non-nil")
-	}
-
-	if transport.TLSClientConfig.InsecureSkipVerify != cfg.InsecureSkipVerify {
-		t.Errorf("expected InsecureSkipVerify to be %v, got %v", cfg.InsecureSkipVerify, transport.TLSClientConfig.InsecureSkipVerify)
-	}
-
-	if transport.TLSClientConfig.MinVersion != cfg.MinVersion {
-		t.Errorf("expected MinVersion to be %v, got %v", cfg.MinVersion, transport.TLSClientConfig.MinVersion)
 	}
 }

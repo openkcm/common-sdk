@@ -126,23 +126,35 @@ func NewDynamicClientConn(cfg *commoncfg.GRPCClient, throttleInterval time.Durat
 //  3. Starts the notifier and stores it in the DynamicClientConn instance.
 //  4. Returns any errors encountered during creation or startup of the notifier.
 func (dcc *DynamicClientConn) initAndStartNotifierOnMTLSCredentials(throttleInterval time.Duration, mtls *commoncfg.MTLS) error {
-	var paths []string
+	pathMap := map[string]struct{}{}
 
 	certPath := strings.TrimSpace(mtls.Cert.File.Path)
 	if certPath != "" {
-		paths = append(paths, filepath.Dir(certPath))
+		pathMap[filepath.Dir(certPath)] = struct{}{}
 	}
 
 	keyPath := strings.TrimSpace(mtls.CertKey.File.Path)
 	if keyPath != "" {
-		paths = append(paths, filepath.Dir(keyPath))
+		pathMap[filepath.Dir(keyPath)] = struct{}{}
 	}
 
 	if mtls.ServerCA != nil {
 		caPath := strings.TrimSpace(mtls.ServerCA.File.Path)
 		if caPath != "" {
-			paths = append(paths, filepath.Dir(caPath))
+			pathMap[filepath.Dir(caPath)] = struct{}{}
 		}
+	}
+
+	for _, ca := range mtls.RootCAs {
+		caPath := strings.TrimSpace(ca.File.Path)
+		if caPath != "" {
+			pathMap[filepath.Dir(caPath)] = struct{}{}
+		}
+	}
+
+	paths := make([]string, 0, len(pathMap))
+	for path := range pathMap {
+		paths = append(paths, path)
 	}
 
 	nt, err := notifier.Create(
