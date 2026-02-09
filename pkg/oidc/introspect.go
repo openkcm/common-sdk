@@ -1,4 +1,4 @@
-package openid
+package oidc
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"net/http"
 )
 
-// IntrospectResponse represents the response from an introspection request.
-type IntrospectResponse struct {
+// Introspection represents the response from an introspection request.
+type Introspection struct {
 	Active bool     `json:"active"`
 	Groups []string `json:"groups,omitempty"`
 
@@ -19,14 +19,19 @@ type IntrospectResponse struct {
 }
 
 // IntrospectToken introspects the given token using the OpenID Provider's introspection endpoint.
-func (cfg Configuration) IntrospectToken(ctx context.Context, token string, additionalQueryParameter map[string]string) (IntrospectResponse, error) {
+func (p *Provider) IntrospectToken(ctx context.Context, token string) (Introspection, error) {
+	cfg, err := p.GetConfiguration(ctx)
+	if err != nil {
+		return Introspection{}, errors.Join(ErrCouldNotGetWellKnownConfig, err)
+	}
+
 	if cfg.IntrospectionEndpoint == "" {
-		return IntrospectResponse{}, ErrNoIntrospectionEndpoint
+		return Introspection{}, ErrNoIntrospectionEndpoint
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.IntrospectionEndpoint, nil)
 	if err != nil {
-		return IntrospectResponse{}, errors.Join(ErrCouldNotCreateHTTPRequest, err)
+		return Introspection{}, errors.Join(ErrCouldNotCreateHTTPRequest, err)
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -34,44 +39,39 @@ func (cfg Configuration) IntrospectToken(ctx context.Context, token string, addi
 	q := req.URL.Query()
 	q.Set("token", token)
 
-	for k, v := range additionalQueryParameter {
+	for k, v := range p.queryParametersIntrospect {
 		q.Set(k, v)
 	}
 
 	req.URL.RawQuery = q.Encode()
 
-	httpClient := cfg.HTTPClient
-	if httpClient == nil {
-		httpClient = http.DefaultClient
-	}
-
-	resp, err := httpClient.Do(req)
+	resp, err := p.secureHttpClient.Do(req)
 	if err != nil {
-		return IntrospectResponse{}, errors.Join(ErrCouldNotDoHTTPRequest, err)
+		return Introspection{}, errors.Join(ErrCouldNotDoHTTPRequest, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return IntrospectResponse{}, errors.Join(ErrCouldNotReadResponseBody, err)
+		return Introspection{}, errors.Join(ErrCouldNotReadResponseBody, err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return IntrospectResponse{}, ProviderRespondedNon200Error{
+		return Introspection{}, ProviderRespondedNon200Error{
 			Code: resp.StatusCode,
 			Body: string(body),
 		}
 	}
 
-	var introresp IntrospectResponse
+	var intr Introspection
 
-	err = json.Unmarshal(body, &introresp)
+	err = json.Unmarshal(body, &intr)
 	if err != nil {
-		return IntrospectResponse{}, CouldNotDecodeResponseError{
+		return Introspection{}, CouldNotUnmarshallResponseError{
 			Err:  err,
 			Body: string(body),
 		}
 	}
 
-	return introresp, nil
+	return intr, nil
 }
