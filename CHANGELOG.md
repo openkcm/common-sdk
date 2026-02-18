@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.12.0](https://github.com/openkcm/common-sdk/compare/v1.11.0...v1.12.0) (2026-02-10)
+
+
+### Features
+
+* jwks add RFC 7638-compliant thumbprint and kid generation  ([41fcc28](https://github.com/openkcm/common-sdk/commit/41fcc2874b568e6fb4ef27f540377c0767ce6f47))
+
+
+### Bug Fixes
+
+* bump otel semconv dependency ([#247](https://github.com/openkcm/common-sdk/issues/247)) ([2d24745](https://github.com/openkcm/common-sdk/commit/2d24745f354938e7877da2685f3dc9d306a582af))
+
+
+### Performance Improvements
+
+* preallocate based on linter findings ([#237](https://github.com/openkcm/common-sdk/issues/237)) ([b8f21ad](https://github.com/openkcm/common-sdk/commit/b8f21ad2998d7faa380ed66c4c7d27a4b485a4cf))
+
+## [1.11.0](https://github.com/openkcm/common-sdk/compare/v1.10.0...v1.11.0) (2026-01-23)
+
+
+### Features
+
+* jwks export client store and update API  ([9064874](https://github.com/openkcm/common-sdk/commit/90648740e7f11e158ddb637e9a22ab1e01321409))
+* jwks improve cache concurrency and error handling  ([783c640](https://github.com/openkcm/common-sdk/commit/783c64032bf2b3f1b976b454b37937f171e59352))
+
 ## [1.10.0](https://github.com/openkcm/common-sdk/compare/v1.9.0...v1.10.0) (2026-01-13)
 
 

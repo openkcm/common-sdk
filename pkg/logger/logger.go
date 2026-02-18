@@ -199,7 +199,7 @@ func InitHandlerWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app commoncf
 
 // CreateAttributes converts a map and additional slog attributes into a unified slice of attributes.
 func CreateAttributes(m map[string]string, attrs ...slog.Attr) []any {
-	attributes := make([]any, 0)
+	attributes := make([]any, 0, len(m)+len(attrs))
 	for k, v := range m {
 		attributes = append(attributes, slog.String(k, v))
 	}

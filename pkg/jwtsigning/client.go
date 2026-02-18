@@ -71,7 +71,7 @@ func (c *Client) Get(ctx context.Context) (*JWKS, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w status is %d", ErrHTTPStatusNotOK, res.StatusCode)
+		return nil, fmt.Errorf("%w: status is %d", ErrHTTPStatusNotOK, res.StatusCode)
 	}
 
 	b, err := io.ReadAll(res.Body)

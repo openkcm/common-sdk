@@ -202,7 +202,7 @@ func Serve(ctx context.Context, baseConfig *commoncfg.BaseConfig, ops ...health.
 		),
 	)
 
-	healthOptions := make([]health.Option, 0)
+	healthOptions := make([]health.Option, 0, len(ops)+3)
 	healthOptions = append(healthOptions,
 		health.WithDisabledAutostart(),
 		health.WithTimeout(baseConfig.Status.Timeout),

@@ -33,7 +33,7 @@ import (
 	dtsdk "github.com/Dynatrace/OneAgent-SDK-for-Go/sdk"
 	slogmulti "github.com/samber/slog-multi"
 	slogctx "github.com/veqryn/slog-context"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/commonhttp"
@@ -221,7 +221,7 @@ func (reg *registry) forceFlush(ctx context.Context) {
 
 // initResource creates and sets a merged OpenTelemetry loader.
 func (reg *registry) initResource(ctx context.Context) error {
-	attrs := make([]attribute.KeyValue, 0)
+	attrs := make([]attribute.KeyValue, 0, 2+len(CreateAttributesFrom(*reg.appCfg)))
 	attrs = append(attrs,
 		semconv.ServiceVersion(reg.appCfg.BuildInfo.Version),
 		semconv.ServiceName(reg.appCfg.Name),
@@ -341,7 +341,7 @@ func initTraceGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 		return nil, err
 	}
 
-	options := []otlptracegrpc.Option{}
+	options := make([]otlptracegrpc.Option, 0, 2)
 	options = append(options, sec)
 	options = append(options, otlptracegrpc.WithEndpoint(string(host)))
 
@@ -440,8 +440,7 @@ func (reg *registry) initMetric(ctx context.Context) error {
 		periodicReader = metric.NewPeriodicReader(exporter, metric.WithInterval(DefPeriodicReaderInterval))
 	}
 
-	var opts []metric.Option
-
+	opts := make([]metric.Option, 0, 3)
 	opts = append(opts,
 		metric.WithResource(reg.res),
 		metric.WithReader(periodicReader),
@@ -500,8 +499,7 @@ func initMetricGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 		return nil, err
 	}
 
-	var options []otlpmetricgrpc.Option
-
+	options := make([]otlpmetricgrpc.Option, 0, 2)
 	options = append(options, sec)
 	options = append(options, otlpmetricgrpc.WithEndpoint(string(host)))
 
@@ -658,7 +656,7 @@ func initLoggerGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 		return nil, err
 	}
 
-	options := []otlploggrpc.Option{}
+	options := make([]otlploggrpc.Option, 0, 2)
 	options = append(options, sec)
 	options = append(options, otlploggrpc.WithEndpoint(string(host)))
 
