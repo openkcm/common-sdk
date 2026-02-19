@@ -368,7 +368,8 @@ type GRPCClientAttributes struct {
 }
 
 type HTTPClient struct {
-	Timeout             time.Duration            `yaml:"timeout" json:"timeout" default:"30s"`
+	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"30s"`
+
 	APIToken            *SourceRef               `yaml:"apiToken" json:"apiToken"`
 	BasicAuth           *BasicAuth               `yaml:"basicAuth" json:"basicAuth"`
 	OAuth2Auth          *OAuth2                  `yaml:"oauth2Auth" json:"oauth2Auth"`
