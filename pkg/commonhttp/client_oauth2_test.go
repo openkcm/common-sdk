@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/pointers"
 )
 
 const tokenURL = "https://example.com/token"
@@ -193,7 +194,7 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			name: "client_secret_post",
 			rt: &clientOAuth2RoundTripper{
 				ClientID:         clientID,
-				ClientSecretPost: new("secret"),
+				ClientSecretPost: pointers.String("secret"),
 				Next:             http.DefaultTransport,
 			},
 			check: func(r *http.Request) {
@@ -205,7 +206,7 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			name: "client_secret_basic",
 			rt: &clientOAuth2RoundTripper{
 				ClientID:          clientID,
-				ClientSecretBasic: new("secret"),
+				ClientSecretBasic: pointers.String("secret"),
 				Next:              http.DefaultTransport,
 			},
 			check: func(r *http.Request) {
@@ -219,7 +220,7 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			name: "client_secret_jwt",
 			rt: &clientOAuth2RoundTripper{
 				ClientID:        clientID,
-				ClientSecretJWT: new("secret"),
+				ClientSecretJWT: pointers.String("secret"),
 				TokenURL:        tokenURL,
 				Next:            http.DefaultTransport,
 				jwtCache:        make(map[string]cachedJWT),
@@ -233,8 +234,8 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			name: "private_key_jwt",
 			rt: &clientOAuth2RoundTripper{
 				ClientID:            clientID,
-				ClientAssertion:     new("some-jwt"),
-				ClientAssertionType: new("urn:custom:type"),
+				ClientAssertion:     pointers.String("some-jwt"),
+				ClientAssertionType: pointers.String("urn:custom:type"),
 				TokenURL:            tokenURL,
 				Next:                http.DefaultTransport,
 				jwtCache:            make(map[string]cachedJWT),

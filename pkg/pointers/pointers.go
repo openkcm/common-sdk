@@ -21,6 +21,17 @@ func Bool(v bool) *bool { return &(v) }
 // String returns a pointer to the given string.
 func String(v string) *string { return &(v) }
 
+// Bytes returns a pointer to the given string.
+func Bytes(v []byte) *string {
+	if len(v) == 0 {
+		return nil
+	}
+
+	val := string(v)
+
+	return &(val)
+}
+
 // Int Integers
 func Int(v int) *int { return &(v) }
 

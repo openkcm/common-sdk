@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/pointers"
 )
 
 // NewClientFromOAuth2 creates a new HTTP client configured with OAuth2 credentials
@@ -155,11 +156,11 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 	if secretVal != nil {
 		switch creds.AuthMethod {
 		case commoncfg.OAuth2ClientSecretPost:
-			assignSecret(secretVal, &rt.ClientSecretPost)
+			rt.ClientSecretPost = pointers.Bytes(secretVal)
 		case commoncfg.OAuth2ClientSecretBasic:
-			assignSecret(secretVal, &rt.ClientSecretBasic)
+			rt.ClientSecretBasic = pointers.Bytes(secretVal)
 		case commoncfg.OAuth2ClientSecretJWT:
-			assignSecret(secretVal, &rt.ClientSecretJWT)
+			rt.ClientSecretJWT = pointers.Bytes(secretVal)
 		}
 	}
 
@@ -172,7 +173,7 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 		}
 
 		if assertionVal != nil {
-			assignSecret(assertionVal, &rt.ClientAssertion)
+			rt.ClientAssertion = pointers.Bytes(assertionVal)
 		}
 
 		assertionTypeVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType)
@@ -181,16 +182,10 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 		}
 
 		if assertionTypeVal != nil {
-			assignSecret(assertionTypeVal, &rt.ClientAssertionType)
+			rt.ClientAssertionType = pointers.Bytes(assertionTypeVal)
 		}
 	case commoncfg.OAuth2None:
 		// doing nothing
-	}
-}
-
-func assignSecret(val []byte, target **string) {
-	if len(val) > 0 {
-		*target = new(string(val))
 	}
 }
 
