@@ -237,6 +237,11 @@ func validate(creds *commoncfg.OAuth2, rt *clientOAuth2RoundTripper) error {
 		return errors.New("invalid OAuth2 config: clientAssertionType cannot be provided without clientAssertion")
 	}
 
+	// If auth method is 'none', it's a public client and no other auth is needed.
+	if creds.Credentials.AuthMethod == commoncfg.OAuth2None {
+		return nil
+	}
+
 	if !hasSecret && !hasAssertion && !hasMTLS {
 		return errors.New("invalid OAuth2 config: no client authentication method provided")
 	}
