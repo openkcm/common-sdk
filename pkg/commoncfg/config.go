@@ -381,11 +381,11 @@ type HTTPClient struct {
 	//Deprecated [to be replaced by using MTLS]
 	CertKey *SourceRef `yaml:"certKey" json:"certKey"`
 
-	APIToken            *SourceRef              `yaml:"apiToken" json:"apiToken"`
-	BasicAuth           *BasicAuth              `yaml:"basicAuth" json:"basicAuth"`
-	OAuth2Auth          *OAuth2                 `yaml:"oauth2Auth" json:"oauth2Auth"`
-	MTLS                *MTLS                   `yaml:"mtls" json:"mtls"`
-	TransportAttributes HTTPTransportAttributes `yaml:"transportAttributes" json:"transportAttributes"`
+	APIToken            *SourceRef               `yaml:"apiToken" json:"apiToken"`
+	BasicAuth           *BasicAuth               `yaml:"basicAuth" json:"basicAuth"`
+	OAuth2Auth          *OAuth2                  `yaml:"oauth2Auth" json:"oauth2Auth"`
+	MTLS                *MTLS                    `yaml:"mtls" json:"mtls"`
+	TransportAttributes *HTTPTransportAttributes `yaml:"transportAttributes" json:"transportAttributes"`
 }
 
 type HTTPTransportAttributes struct {

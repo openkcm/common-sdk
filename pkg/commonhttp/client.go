@@ -127,16 +127,18 @@ func NewHTTPClient(cfg *commoncfg.HTTPClient) (*http.Client, error) {
 
 	// Build a proper base transport
 	baseTransport := &http.Transport{
-		TLSClientConfig:       tlsConfig,
-		TLSHandshakeTimeout:   cfg.TransportAttributes.TLSHandshakeTimeout,
-		DisableKeepAlives:     cfg.TransportAttributes.DisableKeepAlives,
-		DisableCompression:    cfg.TransportAttributes.DisableCompression,
-		MaxIdleConns:          cfg.TransportAttributes.MaxIdleConns,
-		MaxIdleConnsPerHost:   cfg.TransportAttributes.MaxIdleConnsPerHost,
-		MaxConnsPerHost:       cfg.TransportAttributes.MaxConnsPerHost,
-		IdleConnTimeout:       cfg.TransportAttributes.IdleConnTimeout,
-		ResponseHeaderTimeout: cfg.TransportAttributes.ResponseHeaderTimeout,
-		ExpectContinueTimeout: cfg.TransportAttributes.ExpectContinueTimeout,
+		TLSClientConfig: tlsConfig,
+	}
+	if cfg.TransportAttributes != nil {
+		baseTransport.TLSHandshakeTimeout = cfg.TransportAttributes.TLSHandshakeTimeout
+		baseTransport.DisableKeepAlives = cfg.TransportAttributes.DisableKeepAlives
+		baseTransport.DisableCompression = cfg.TransportAttributes.DisableCompression
+		baseTransport.MaxIdleConns = cfg.TransportAttributes.MaxIdleConns
+		baseTransport.MaxIdleConnsPerHost = cfg.TransportAttributes.MaxIdleConnsPerHost
+		baseTransport.MaxConnsPerHost = cfg.TransportAttributes.MaxConnsPerHost
+		baseTransport.IdleConnTimeout = cfg.TransportAttributes.IdleConnTimeout
+		baseTransport.ResponseHeaderTimeout = cfg.TransportAttributes.ResponseHeaderTimeout
+		baseTransport.ExpectContinueTimeout = cfg.TransportAttributes.ExpectContinueTimeout
 	}
 
 	// Authentication-aware clients already set their own custom RoundTrippers.
