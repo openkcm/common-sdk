@@ -20,7 +20,7 @@ type otlpClient struct {
 }
 
 func NewLogger(config *commoncfg.Audit) (*AuditLogger, error) {
-	client, err := commonhttp.NewClient(&config.HTTPClient)
+	client, err := commonhttp.NewHTTPClient(&config.HTTPClient)
 	if err != nil {
 		return nil, err
 	}

@@ -184,29 +184,21 @@ func (reg *registry) abortInit(err error) error {
 func (reg *registry) forceFlush(ctx context.Context) {
 	wg := sync.WaitGroup{}
 	if reg.traceProvider != nil {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			slogctx.Info(ctx, "Stopping trace telemetry ...")
 			_ = reg.traceProvider.ForceFlush(ctx)
 			_ = reg.traceProvider.Shutdown(ctx)
 			slogctx.Info(ctx, "Stopped and flushed the trace telemetry")
-		}()
+		})
 	}
 
 	if reg.meterProvider != nil {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			slogctx.Info(ctx, "Stopping meter telemetry ...")
 			_ = reg.meterProvider.ForceFlush(ctx)
 			_ = reg.meterProvider.Shutdown(ctx)
 			slogctx.Info(ctx, "Stopped and flushed the meter telemetry")
-		}()
+		})
 	}
 
 	if reg.loggerProvider != nil {
