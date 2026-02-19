@@ -156,11 +156,11 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 	if secretVal != nil {
 		switch creds.AuthMethod {
 		case commoncfg.OAuth2ClientSecretPost:
-			assignSecret(secretVal, &rt.ClientSecretPost)
+			rt.ClientSecretPost = pointers.Bytes(secretVal)
 		case commoncfg.OAuth2ClientSecretBasic:
-			assignSecret(secretVal, &rt.ClientSecretBasic)
+			rt.ClientSecretBasic = pointers.Bytes(secretVal)
 		case commoncfg.OAuth2ClientSecretJWT:
-			assignSecret(secretVal, &rt.ClientSecretJWT)
+			rt.ClientSecretJWT = pointers.Bytes(secretVal)
 		}
 	}
 
@@ -173,7 +173,7 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 		}
 
 		if assertionVal != nil {
-			assignSecret(assertionVal, &rt.ClientAssertion)
+			rt.ClientAssertion = pointers.Bytes(assertionVal)
 		}
 
 		assertionTypeVal, err := commoncfg.ExtractValueFromSourceRef(creds.ClientAssertionType)
@@ -182,16 +182,10 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 		}
 
 		if assertionTypeVal != nil {
-			assignSecret(assertionTypeVal, &rt.ClientAssertionType)
+			rt.ClientAssertionType = pointers.Bytes(assertionTypeVal)
 		}
 	case commoncfg.OAuth2None:
 		// doing nothing
-	}
-}
-
-func assignSecret(val []byte, target **string) {
-	if len(val) > 0 {
-		*target = pointers.To(string(val))
 	}
 }
 
@@ -235,6 +229,11 @@ func validate(creds *commoncfg.OAuth2, rt *clientOAuth2RoundTripper) error {
 		}
 
 		return errors.New("invalid OAuth2 config: clientAssertionType cannot be provided without clientAssertion")
+	}
+
+	// If auth method is 'none', it's a public client and no other auth is needed.
+	if creds.Credentials.AuthMethod == commoncfg.OAuth2None {
+		return nil
 	}
 
 	if !hasSecret && !hasAssertion && !hasMTLS {

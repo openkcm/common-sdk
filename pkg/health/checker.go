@@ -331,11 +331,8 @@ func (ck *defaultChecker) startPeriodicChecks(ctx context.Context) {
 			//  - The check state itself is never synchronized on, since the only place where values can be changed are
 			//    within this goroutine.
 			ck.periodicCheckCount++
-			ck.wg.Add(1)
 
-			go func() {
-				defer ck.wg.Done()
-
+			ck.wg.Go(func() {
 				if check.initialDelay > 0 {
 					if waitForStopSignal(ctx, check.initialDelay) {
 						return
@@ -372,7 +369,7 @@ func (ck *defaultChecker) startPeriodicChecks(ctx context.Context) {
 						return
 					}
 				}
-			}()
+			})
 		}
 	}
 }

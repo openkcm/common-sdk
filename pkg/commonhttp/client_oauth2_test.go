@@ -9,12 +9,14 @@ import (
 	"encoding/pem"
 	"math/big"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
+	"github.com/openkcm/common-sdk/pkg/pointers"
 )
 
 const tokenURL = "https://example.com/token"
@@ -59,7 +61,7 @@ func TestNewClientFromOAuth2(t *testing.T) {
 					ClientID: *strRef("id"),
 				},
 			},
-			wantErr: true, // AuthMethod optional; default handled by round-tripper
+			wantErr: true,
 		},
 		{
 			name: "client_secret_jwt caching",
@@ -117,7 +119,7 @@ func TestNewClientFromOAuth2(t *testing.T) {
 			config: &commoncfg.OAuth2{
 				Credentials: commoncfg.OAuth2Credentials{
 					ClientID:   *strRef("id"),
-					AuthMethod: "pkce",
+					AuthMethod: "none",
 				},
 				MTLS: &commoncfg.MTLS{
 					Cert:    *strRef(certPEM),
@@ -174,6 +176,102 @@ func TestNewClientFromOAuth2(t *testing.T) {
 			if tt.check != nil {
 				tt.check(client)
 			}
+		})
+	}
+}
+
+func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
+	clientID := "test-client"
+
+	tests := []struct {
+		name       string
+		rt         *clientOAuth2RoundTripper
+		check      func(r *http.Request)
+		wantErr    bool
+		errMessage string
+	}{
+		{
+			name: "client_secret_post",
+			rt: &clientOAuth2RoundTripper{
+				ClientID:         clientID,
+				ClientSecretPost: pointers.String("secret"),
+				Next:             http.DefaultTransport,
+			},
+			check: func(r *http.Request) {
+				assert.Equal(t, clientID, r.URL.Query().Get("client_id"))
+				assert.Equal(t, "secret", r.URL.Query().Get("client_secret"))
+			},
+		},
+		{
+			name: "client_secret_basic",
+			rt: &clientOAuth2RoundTripper{
+				ClientID:          clientID,
+				ClientSecretBasic: pointers.String("secret"),
+				Next:              http.DefaultTransport,
+			},
+			check: func(r *http.Request) {
+				user, pass, ok := r.BasicAuth()
+				assert.True(t, ok)
+				assert.Equal(t, clientID, user)
+				assert.Equal(t, "secret", pass)
+			},
+		},
+		{
+			name: "client_secret_jwt",
+			rt: &clientOAuth2RoundTripper{
+				ClientID:        clientID,
+				ClientSecretJWT: pointers.String("secret"),
+				TokenURL:        tokenURL,
+				Next:            http.DefaultTransport,
+				jwtCache:        make(map[string]cachedJWT),
+			},
+			check: func(r *http.Request) {
+				assert.Equal(t, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", r.URL.Query().Get("client_assertion_type"))
+				assert.NotEmpty(t, r.URL.Query().Get("client_assertion"))
+			},
+		},
+		{
+			name: "private_key_jwt",
+			rt: &clientOAuth2RoundTripper{
+				ClientID:            clientID,
+				ClientAssertion:     pointers.String("some-jwt"),
+				ClientAssertionType: pointers.String("urn:custom:type"),
+				TokenURL:            tokenURL,
+				Next:                http.DefaultTransport,
+				jwtCache:            make(map[string]cachedJWT),
+			},
+			check: func(r *http.Request) {
+				assert.Equal(t, "urn:custom:type", r.URL.Query().Get("client_assertion_type"))
+				assert.NotEmpty(t, r.URL.Query().Get("client_assertion"))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tt.check != nil {
+					tt.check(r)
+				}
+
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+			assert.NoError(t, err)
+
+			rep, err := tt.rt.RoundTrip(req)
+			if tt.wantErr {
+				assert.Error(t, err)
+
+				if tt.errMessage != "" {
+					assert.Contains(t, err.Error(), tt.errMessage)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+			defer rep.Body.Close()
 		})
 	}
 }
