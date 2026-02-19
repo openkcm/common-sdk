@@ -391,7 +391,7 @@ type HTTPClient struct {
 type HTTPTransportAttributes struct {
 	// TLSHandshakeTimeout specifies the maximum amount of time to
 	// wait for a TLS handshake. Zero means no timeout.
-	TLSHandshakeTimeout time.Duration `yaml:"tlsHandshakeTimeout" json:"tlsHandshakeTimeout"`
+	TLSHandshakeTimeout time.Duration `yaml:"tlsHandshakeTimeout" json:"tlsHandshakeTimeout" default:"0s"`
 
 	// DisableKeepAlives, if true, disables HTTP keep-alives and
 	// will only use the connection to the server for a single
@@ -412,31 +412,31 @@ type HTTPTransportAttributes struct {
 
 	// MaxIdleConns controls the maximum number of idle (keep-alive)
 	// connections across all hosts. Zero means no limit.
-	MaxIdleConns int `yaml:"maxIdleConns" json:"maxIdleConns"`
+	MaxIdleConns int `yaml:"maxIdleConns" json:"maxIdleConns" default:"0"`
 
 	// MaxIdleConnsPerHost, if non-zero, controls the maximum idle
 	// (keep-alive) connections to keep per-host. If zero,
 	// DefaultMaxIdleConnsPerHost is used.
-	MaxIdleConnsPerHost int `yaml:"maxIdleConnsPerHost" json:"maxIdleConnsPerHost"`
+	MaxIdleConnsPerHost int `yaml:"maxIdleConnsPerHost" json:"maxIdleConnsPerHost" default:"0"`
 
 	// MaxConnsPerHost optionally limits the total number of
 	// connections per host, including connections in the dialing,
 	// active, and idle states. On limit violation, dials will block.
 	//
 	// Zero means no limit.
-	MaxConnsPerHost int `yaml:"maxConnsPerHost" json:"maxConnsPerHost"`
+	MaxConnsPerHost int `yaml:"maxConnsPerHost" json:"maxConnsPerHost" default:"0"`
 
 	// IdleConnTimeout is the maximum amount of time an idle
 	// (keep-alive) connection will remain idle before closing
 	// itself.
 	// Zero means no limit.
-	IdleConnTimeout time.Duration `yaml:"idleConnTimeout" json:"idleConnTimeout"`
+	IdleConnTimeout time.Duration `yaml:"idleConnTimeout" json:"idleConnTimeout" default:"0s"`
 
 	// ResponseHeaderTimeout, if non-zero, specifies the amount of
 	// time to wait for a server's response headers after fully
 	// writing the request (including its body, if any). This
 	// time does not include the time to read the response body.
-	ResponseHeaderTimeout time.Duration `yaml:"responseHeaderTimeout" json:"responseHeaderTimeout"`
+	ResponseHeaderTimeout time.Duration `yaml:"responseHeaderTimeout" json:"responseHeaderTimeout" default:"0s"`
 
 	// ExpectContinueTimeout, if non-zero, specifies the amount of
 	// time to wait for a server's first response headers after fully
@@ -445,7 +445,7 @@ type HTTPTransportAttributes struct {
 	// causes the body to be sent immediately, without
 	// waiting for the server to approve.
 	// This time does not include the time to send the request header.
-	ExpectContinueTimeout time.Duration `yaml:"expectContinueTimeout" json:"expectContinueTimeout"`
+	ExpectContinueTimeout time.Duration `yaml:"expectContinueTimeout" json:"expectContinueTimeout" default:"0s"`
 }
 
 // BuildInfo holds metadata about the build
