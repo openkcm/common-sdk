@@ -6,6 +6,7 @@ test:
 
 .PHONY: lint
 lint:
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.9.0
 	golangci-lint run ./... --fix
 
 .PHONY: reuse-lint

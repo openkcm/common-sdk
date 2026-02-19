@@ -5,8 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
 
 func TestNewClientFromAPIToken(t *testing.T) {
@@ -46,9 +47,11 @@ func TestNewClientFromAPIToken(t *testing.T) {
 			client, err := NewClientFromAPIToken(tt.value)
 			if tt.wantErr {
 				assert.Error(t, err)
+
 				if tt.errMessage != "" {
 					assert.Contains(t, err.Error(), tt.errMessage)
 				}
+
 				return
 			}
 
@@ -61,6 +64,7 @@ func TestNewClientFromAPIToken(t *testing.T) {
 
 func TestClientAPITokenRoundTripper(t *testing.T) {
 	token := "test-token"
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		expectedHeader := "Api-Token " + token
@@ -75,11 +79,12 @@ func TestClientAPITokenRoundTripper(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	req, err := http.NewRequest("GET", server.URL, nil)
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
 	assert.NoError(t, err)
 
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
+
 	defer resp.Body.Close()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)

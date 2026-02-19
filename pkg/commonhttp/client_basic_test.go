@@ -5,8 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
 
 func TestNewClientFromBasic(t *testing.T) {
@@ -53,9 +54,11 @@ func TestNewClientFromBasic(t *testing.T) {
 			client, err := NewClientFromBasic(tt.config)
 			if tt.wantErr {
 				assert.Error(t, err)
+
 				if tt.errMessage != "" {
 					assert.Contains(t, err.Error(), tt.errMessage)
 				}
+
 				return
 			}
 
@@ -68,6 +71,7 @@ func TestNewClientFromBasic(t *testing.T) {
 
 func TestClientBasicRoundTripper(t *testing.T) {
 	user, pass := "testuser", "testpass"
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u, p, ok := r.BasicAuth()
 		assert.True(t, ok)
@@ -83,11 +87,12 @@ func TestClientBasicRoundTripper(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	req, err := http.NewRequest("GET", server.URL, nil)
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
 	assert.NoError(t, err)
 
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
+
 	defer resp.Body.Close()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)

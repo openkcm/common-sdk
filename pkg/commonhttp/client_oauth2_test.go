@@ -193,7 +193,7 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			name: "client_secret_post",
 			rt: &clientOAuth2RoundTripper{
 				ClientID:         clientID,
-				ClientSecretPost: strPtr("secret"),
+				ClientSecretPost: new("secret"),
 				Next:             http.DefaultTransport,
 			},
 			check: func(r *http.Request) {
@@ -205,7 +205,7 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			name: "client_secret_basic",
 			rt: &clientOAuth2RoundTripper{
 				ClientID:          clientID,
-				ClientSecretBasic: strPtr("secret"),
+				ClientSecretBasic: new("secret"),
 				Next:              http.DefaultTransport,
 			},
 			check: func(r *http.Request) {
@@ -219,7 +219,7 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			name: "client_secret_jwt",
 			rt: &clientOAuth2RoundTripper{
 				ClientID:        clientID,
-				ClientSecretJWT: strPtr("secret"),
+				ClientSecretJWT: new("secret"),
 				TokenURL:        tokenURL,
 				Next:            http.DefaultTransport,
 				jwtCache:        make(map[string]cachedJWT),
@@ -233,8 +233,8 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			name: "private_key_jwt",
 			rt: &clientOAuth2RoundTripper{
 				ClientID:            clientID,
-				ClientAssertion:     strPtr("some-jwt"),
-				ClientAssertionType: strPtr("urn:custom:type"),
+				ClientAssertion:     new("some-jwt"),
+				ClientAssertionType: new("urn:custom:type"),
 				TokenURL:            tokenURL,
 				Next:                http.DefaultTransport,
 				jwtCache:            make(map[string]cachedJWT),
@@ -252,22 +252,25 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 				if tt.check != nil {
 					tt.check(r)
 				}
+
 				w.WriteHeader(http.StatusOK)
 			}))
 			defer server.Close()
 
-			req, err := http.NewRequest("GET", server.URL, nil)
+			req, err := http.NewRequest(http.MethodGet, server.URL, nil)
 			assert.NoError(t, err)
 
-			_, err = tt.rt.RoundTrip(req)
+			rep, err := tt.rt.RoundTrip(req)
 			if tt.wantErr {
 				assert.Error(t, err)
+
 				if tt.errMessage != "" {
 					assert.Contains(t, err.Error(), tt.errMessage)
 				}
 			} else {
 				assert.NoError(t, err)
 			}
+			defer rep.Body.Close()
 		})
 	}
 }
@@ -307,8 +310,4 @@ func generateSelfSignedCert() (string, string, error) {
 	keyPEMBytes := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyBytes})
 
 	return string(certPEMBytes), string(keyPEMBytes), nil
-}
-
-func strPtr(s string) *string {
-	return &s
 }

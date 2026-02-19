@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/pkg/pointers"
 )
 
 // NewClientFromOAuth2 creates a new HTTP client configured with OAuth2 credentials
@@ -191,7 +190,7 @@ func loadOAuth2Credentials(creds *commoncfg.OAuth2Credentials, rt *clientOAuth2R
 
 func assignSecret(val []byte, target **string) {
 	if len(val) > 0 {
-		*target = pointers.To(string(val))
+		*target = new(string(val))
 	}
 }
 
