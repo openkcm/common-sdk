@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0](https://github.com/openkcm/common-sdk/compare/v1.12.0...v1.13.0) (2026-02-23)
+
+
+### Features
+
+* **fingerprint:** export WithFingerprint function ([#252](https://github.com/openkcm/common-sdk/issues/252)) ([78926b9](https://github.com/openkcm/common-sdk/commit/78926b9d699b5326c281124fa496c8f11c52bbb3))
+
+
+### Bug Fixes
+
+* some refactoring not breaking the old behaviour ([#250](https://github.com/openkcm/common-sdk/issues/250)) ([cca11d4](https://github.com/openkcm/common-sdk/commit/cca11d4a9f51f19eb1d92918636b3af54644cc9d))
+
 ## [1.12.0](https://github.com/openkcm/common-sdk/compare/v1.11.0...v1.12.0) (2026-02-10)
 
 
