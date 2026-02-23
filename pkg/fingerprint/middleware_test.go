@@ -117,7 +117,7 @@ func TestExtractFingerprint_NoFingerprint(t *testing.T) {
 }
 
 func TestExtractFingerprint_ManualContext(t *testing.T) {
-	ctx := context.WithValue(context.Background(), fingerprintKey, "manual-fingerprint")
+	ctx := WithFingerprint(context.Background(), "manual-fingerprint")
 
 	fp, err := ExtractFingerprint(ctx)
 	if err != nil {

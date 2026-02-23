@@ -1,15 +1,9 @@
 package fingerprint
 
 import (
-	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 )
-
-type ctxKey string
-
-const fingerprintKey ctxKey = "fingerprint"
 
 func FingerprintCtxMiddleware(next http.Handler) http.Handler {
 	builder := NewBuilder()
@@ -23,16 +17,7 @@ func FingerprintCtxMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctxWithFP := context.WithValue(r.Context(), fingerprintKey, fp)
+		ctxWithFP := WithFingerprint(r.Context(), fp)
 		next.ServeHTTP(w, r.WithContext(ctxWithFP))
 	})
-}
-
-func ExtractFingerprint(ctx context.Context) (string, error) {
-	fp, ok := ctx.Value(fingerprintKey).(string)
-	if !ok {
-		return "", errors.New("no fingerprint in ctx")
-	}
-
-	return fp, nil
 }
