@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/XSAM/otelsql"
+
+	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
+
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
 
@@ -254,13 +258,26 @@ func WithDatabaseChecker(driverName, dataSourceName string) Option {
 	return WithCheck(Check{
 		Name: driverName,
 		Check: func(ctx context.Context) (err error) {
-			conn, err := sql.Open(driverName, dataSourceName)
+			dbSystemNameKey := semconv.DBSystemNameKey.String(driverName)
+
+			conn, err := otelsql.Open(driverName, dataSourceName, otelsql.WithAttributes(
+				dbSystemNameKey,
+			))
 			if err != nil {
 				return fmt.Errorf("%s health check failed on connect: %w", driverName, err)
 			}
 
+			reg, err := otelsql.RegisterDBStatsMetrics(conn, otelsql.WithAttributes(dbSystemNameKey))
+			if err != nil {
+				return fmt.Errorf("%s health check failed on registering db stat metrics: %w", driverName, err)
+			}
+
 			defer func(conn *sql.DB) {
-				err = errors.Join(err, conn.Close())
+				err = errors.Join(
+					err,
+					reg.Unregister(),
+					conn.Close(),
+				)
 			}(conn)
 
 			err = conn.PingContext(ctx)

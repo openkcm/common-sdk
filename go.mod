@@ -4,6 +4,7 @@ go 1.25.6
 
 require (
 	github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0
+	github.com/XSAM/otelsql v0.41.0
 	github.com/creasty/defaults v1.8.0
 	github.com/davidhoo/jsonpath v1.0.4
 	github.com/envoyproxy/go-control-plane/envoy v1.36.0
