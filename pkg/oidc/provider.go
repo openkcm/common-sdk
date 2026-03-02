@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"sync"
 )
 
 var (
@@ -28,7 +29,8 @@ type Provider struct {
 	// The audiences that are expected in the token's `aud` claim.
 	audiences []string
 
-	config *Configuration // the well known OpenID configuration
+	configMu sync.RWMutex   // guards config
+	config   *Configuration // the well known OpenID configuration
 
 	// Additional query parameters to be sent with the introspection request.
 	queryParametersIntrospect map[string]string

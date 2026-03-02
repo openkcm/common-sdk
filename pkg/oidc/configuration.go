@@ -37,6 +37,21 @@ type Configuration struct {
 
 // GetConfiguration fetches and stores the OpenID configuration for the provider.
 func (p *Provider) GetConfiguration(ctx context.Context) (*Configuration, error) {
+	// Fast path: check if config is already set with read lock
+	p.configMu.RLock()
+
+	if p.config != nil {
+		defer p.configMu.RUnlock()
+		return p.config, nil
+	}
+
+	p.configMu.RUnlock()
+
+	// Slow path: acquire write lock and check again (double-checked locking)
+	p.configMu.Lock()
+	defer p.configMu.Unlock()
+
+	// Check again in case another goroutine set it while we were waiting
 	if p.config != nil {
 		return p.config, nil
 	}
