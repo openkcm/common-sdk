@@ -56,15 +56,19 @@ func (p *Provider) UniqueID() string {
 
 	return p.issuer
 }
+
 func (p *Provider) Issuer() string {
 	return p.issuer
 }
+
 func (p *Provider) IssuerURI() string {
 	return p.issuerURI
 }
+
 func (p *Provider) CustomJWKSURI() string {
 	return p.customJWKSURI
 }
+
 func (p *Provider) Audiences() []string {
 	return p.audiences
 }
