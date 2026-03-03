@@ -1,4 +1,4 @@
-package openid
+package oidc
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 )
+
+const wellKnownOpenIDConfigPath = "/.well-known/openid-configuration"
 
 // Configuration is the meta data describing the configuration of an OpenID Provider.
 // It can be onbtained from the .well-known/openid-configuration endpoint.
@@ -31,41 +33,52 @@ type Configuration struct {
 
 	// From https://openid.net/specs/openid-connect-rpinitiated-1_0.html#OPMetadata
 	EndSessionEndpoint string `json:"end_session_endpoint,omitempty"`
-
-	// HTTPClient is the HTTP client to use for certain requests to this OpenID Provider.
-	// If nil, http.DefaultClient is used.
-	HTTPClient *http.Client `json:"-"`
 }
 
-// GetConfig fetches the OpenID Provider configuration from the given issuer URL.
-// Note that the issuer URL may be different from the "issuer" field in the returned
-// configuration.
-func GetConfig(ctx context.Context, issuerURL string) (Configuration, error) {
-	const wellKnownOpenIDConfigPath = "/.well-known/openid-configuration"
+// GetConfiguration fetches and stores the OpenID configuration for the provider.
+func (p *Provider) GetConfiguration(ctx context.Context) (*Configuration, error) {
+	// Fast path: check if config is already set with read lock
+	p.configMu.RLock()
 
-	u, err := url.JoinPath(issuerURL, wellKnownOpenIDConfigPath)
+	if p.config != nil {
+		defer p.configMu.RUnlock()
+		return p.config, nil
+	}
+
+	p.configMu.RUnlock()
+
+	// Slow path: acquire write lock and check again (double-checked locking)
+	p.configMu.Lock()
+	defer p.configMu.Unlock()
+
+	// Check again in case another goroutine set it while we were waiting
+	if p.config != nil {
+		return p.config, nil
+	}
+
+	u, err := url.JoinPath(p.issuerURI, wellKnownOpenIDConfigPath)
 	if err != nil {
-		return Configuration{}, errors.Join(ErrCouldNotBuildURL, err)
+		return nil, errors.Join(ErrCouldNotBuildURL, err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return Configuration{}, errors.Join(ErrCouldNotCreateHTTPRequest, err)
+		return nil, errors.Join(ErrCouldNotCreateHTTPRequest, err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := p.publicHttpClient.Do(req)
 	if err != nil {
-		return Configuration{}, errors.Join(ErrCouldNotDoHTTPRequest, err)
+		return nil, errors.Join(ErrCouldNotDoHTTPRequest, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return Configuration{}, errors.Join(ErrCouldNotReadResponseBody, err)
+		return nil, errors.Join(ErrCouldNotReadResponseBody, err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return Configuration{}, ProviderRespondedNon200Error{
+		return nil, ProviderRespondedNon200Error{
 			Code: resp.StatusCode,
 			Body: string(body),
 		}
@@ -75,11 +88,13 @@ func GetConfig(ctx context.Context, issuerURL string) (Configuration, error) {
 
 	err = json.Unmarshal(body, &conf)
 	if err != nil {
-		return Configuration{}, CouldNotDecodeResponseError{
+		return nil, CouldNotUnmarshallResponseError{
 			Err:  err,
 			Body: string(body),
 		}
 	}
 
-	return conf, nil
+	p.config = &conf
+
+	return p.config, nil
 }
