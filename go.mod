@@ -9,6 +9,7 @@ require (
 	github.com/davidhoo/jsonpath v1.0.4
 	github.com/envoyproxy/go-control-plane/envoy v1.36.0
 	github.com/fsnotify/fsnotify v1.9.0
+	github.com/go-jose/go-jose/v4 v4.1.3
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
