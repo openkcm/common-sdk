@@ -368,18 +368,7 @@ type GRPCClientAttributes struct {
 }
 
 type HTTPClient struct {
-	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"10s"`
-
-	//Deprecated [to be replaced by using MTLS]
-	RootCAs *SourceRef `yaml:"rootCAs" json:"rootCAs"`
-	//Deprecated [to be replaced by using MTLS]
-	InsecureSkipVerify bool `yaml:"insecureSkipVerify" json:"insecureSkipVerify"`
-	//Deprecated [to be replaced by using MTLS]
-	MinVersion uint16 `yaml:"minVersion" json:"minVersion"`
-	//Deprecated [to be replaced by using MTLS]
-	Cert *SourceRef `yaml:"cert" json:"cert"`
-	//Deprecated [to be replaced by using MTLS]
-	CertKey *SourceRef `yaml:"certKey" json:"certKey"`
+	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"30s"`
 
 	APIToken            *SourceRef               `yaml:"apiToken" json:"apiToken"`
 	BasicAuth           *BasicAuth               `yaml:"basicAuth" json:"basicAuth"`
