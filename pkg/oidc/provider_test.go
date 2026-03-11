@@ -25,6 +25,27 @@ func TestNewProvider(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, provider)
 	})
+
+	t.Run("returns error for HTTP scheme when not allowed", func(t *testing.T) {
+		_, err := NewProvider("http://issuer.example.com", []string{"aud1"})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrInvalidURI)
+		assert.ErrorIs(t, err, ErrInvalidURLScheme)
+	})
+
+	t.Run("returns error for invalid issuer URI", func(t *testing.T) {
+		_, err := NewProvider("://invalid-uri", []string{"aud1"})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrInvalidURI)
+	})
+
+	t.Run("returns error for HTTP scheme in custom JWKS URI when not allowed", func(t *testing.T) {
+		_, err := NewProvider("https://issuer.example.com", []string{"aud1"},
+			WithCustomJWKSURI("http://jwks.example.com/keys"))
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrInvalidURI)
+		assert.ErrorIs(t, err, ErrInvalidURLScheme)
+	})
 }
 
 func TestWithCustomIssuerURI(t *testing.T) {
@@ -72,6 +93,24 @@ func TestWithIntrospectQueryParameters(t *testing.T) {
 			WithIntrospectQueryParameters(params))
 		require.NoError(t, err)
 		assert.NotNil(t, provider)
+	})
+}
+
+func TestWithDisableTokenIntrospection(t *testing.T) {
+	t.Run("disables token introspection when true", func(t *testing.T) {
+		provider, err := NewProvider("https://issuer.example.com", []string{"aud1"},
+			WithDisableTokenIntrospection(true))
+		require.NoError(t, err)
+		assert.NotNil(t, provider)
+		assert.True(t, provider.disableTokenIntrospection)
+	})
+
+	t.Run("does not disable token introspection when false", func(t *testing.T) {
+		provider, err := NewProvider("https://issuer.example.com", []string{"aud1"},
+			WithDisableTokenIntrospection(false))
+		require.NoError(t, err)
+		assert.NotNil(t, provider)
+		assert.False(t, provider.disableTokenIntrospection)
 	})
 }
 

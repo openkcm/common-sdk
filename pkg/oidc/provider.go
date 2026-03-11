@@ -32,6 +32,8 @@ type Provider struct {
 	configMu sync.RWMutex   // guards config
 	config   *Configuration // the well known OpenID configuration
 
+	// Whether to disable token introspection.
+	disableTokenIntrospection bool
 	// Additional query parameters to be sent with the introspection request.
 	queryParametersIntrospect map[string]string
 
@@ -111,6 +113,13 @@ func WithPublicHTTPClient(c *http.Client) ProviderOption {
 func WithSecureHTTPClient(c *http.Client) ProviderOption {
 	return func(provider *Provider) {
 		provider.secureHttpClient = c
+	}
+}
+
+// WithDisableTokenIntrospection configures whether to disable token introspection.
+func WithDisableTokenIntrospection(disableTokenIntrospection bool) ProviderOption {
+	return func(provider *Provider) {
+		provider.disableTokenIntrospection = disableTokenIntrospection
 	}
 }
 
