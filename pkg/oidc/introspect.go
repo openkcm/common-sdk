@@ -20,6 +20,10 @@ type Introspection struct {
 
 // IntrospectToken introspects the given token using the OpenID Provider's introspection endpoint.
 func (p *Provider) IntrospectToken(ctx context.Context, token string) (Introspection, error) {
+	if p.disableTokenIntrospection {
+		return Introspection{}, ErrTokenIntrospectionDisabled
+	}
+
 	cfg, err := p.GetConfiguration(ctx)
 	if err != nil {
 		return Introspection{}, errors.Join(ErrCouldNotGetWellKnownConfig, err)

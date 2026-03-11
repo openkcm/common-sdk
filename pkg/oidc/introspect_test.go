@@ -233,4 +233,18 @@ func TestIntrospectToken(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrCouldNotDoHTTPRequest)
 	})
+
+	t.Run("returns error when token introspection is disabled", func(t *testing.T) {
+		provider, err := NewProvider("https://issuer.example.com", []string{"aud1"},
+			WithDisableTokenIntrospection(true))
+		require.NoError(t, err)
+
+		provider.config = &Configuration{
+			IntrospectionEndpoint: "https://issuer.example.com/introspect",
+		}
+
+		_, err = provider.IntrospectToken(context.Background(), "test-token")
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrTokenIntrospectionDisabled)
+	})
 }
