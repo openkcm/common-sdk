@@ -14,6 +14,7 @@ var (
 	ErrCouldNotDoHTTPRequest      = errors.New("could not do HTTP request")
 	ErrCouldNotReadResponseBody   = errors.New("could not read response body")
 	ErrNoIntrospectionEndpoint    = errors.New("no introspection endpoint in configuration")
+	ErrTokenIntrospectionDisabled = errors.New("token introspection is disabled")
 )
 
 type ProviderRespondedNon200Error struct {
