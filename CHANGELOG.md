@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.14.0](https://github.com/openkcm/common-sdk/compare/v1.13.0...v1.14.0) (2026-03-12)
+
+
+### Features
+
+* add OIDC package for ExtAuthZ and Session Manager ([#246](https://github.com/openkcm/common-sdk/issues/246)) ([517d12d](https://github.com/openkcm/common-sdk/commit/517d12d4d3c2d2fc4e92cb95fba4260439a1d18c))
+* add possibility to skip token introspection ([#260](https://github.com/openkcm/common-sdk/issues/260)) ([786dca0](https://github.com/openkcm/common-sdk/commit/786dca0a59c50f745500fb0e99303e44fc0a761f))
+* db telemetry ([#251](https://github.com/openkcm/common-sdk/issues/251)) ([aa7eda6](https://github.com/openkcm/common-sdk/commit/aa7eda665f635f78b2e9d3dea9ac11c27fb77020))
+
+
+### Bug Fixes
+
+* **deps:** bump the gomod-group group across 1 directory with 20 updates ([#258](https://github.com/openkcm/common-sdk/issues/258)) ([04584c7](https://github.com/openkcm/common-sdk/commit/04584c75968eb3db6bc5506ef65e055582f8e131))
+
 ## [1.13.0](https://github.com/openkcm/common-sdk/compare/v1.12.0...v1.13.0) (2026-02-23)
 
 
