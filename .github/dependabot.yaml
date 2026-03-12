@@ -10,6 +10,9 @@ updates:
       - "openkcm/go-maintainers"
     schedule:
       interval: weekly
+    commit-message:
+      prefix: "fix"
+      include: "scope"
     groups:
       gomod-group:
         applies-to: version-updates
@@ -24,4 +27,16 @@ updates:
     reviewers:
       - "openkcm/go-maintainers"
     schedule:
-      interval: "daily"
+      interval: weekly
+    commit-message:
+      prefix: "fix"
+      include: "scope"
+    groups:
+      actions-group:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    open-pull-requests-limit: 5
