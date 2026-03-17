@@ -9,7 +9,7 @@ import (
 
 	"github.com/XSAM/otelsql"
 
-	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
