@@ -6,13 +6,13 @@ require (
 	github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0
 	github.com/XSAM/otelsql v0.41.0
 	github.com/creasty/defaults v1.8.0
-	github.com/davidhoo/jsonpath v1.0.4
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-jose/go-jose/v4 v4.1.3
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
+	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
 	github.com/prometheus/client_golang v1.23.2
 	github.com/samber/oops v1.21.0
 	github.com/samber/slog-formatter v1.2.2
