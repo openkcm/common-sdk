@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.1](https://github.com/openkcm/common-sdk/compare/v1.14.0...v1.14.1) (2026-03-23)
+
+
+### Bug Fixes
+
+* **deps:** bump google.golang.org/grpc from 1.79.2 to 1.79.3 ([#263](https://github.com/openkcm/common-sdk/issues/263)) ([14d4788](https://github.com/openkcm/common-sdk/commit/14d478834742cb4a7e87e9c579dbf6ff23cb2c65))
+* Update dependabot config ([#262](https://github.com/openkcm/common-sdk/issues/262)) ([231c1f8](https://github.com/openkcm/common-sdk/commit/231c1f8d8bcbbb0f8d436fdc8a14114681aa41e7))
+
 ## [1.14.0](https://github.com/openkcm/common-sdk/compare/v1.13.0...v1.14.0) (2026-03-12)
 
 
