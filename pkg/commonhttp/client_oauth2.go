@@ -3,7 +3,10 @@ package commonhttp
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -324,48 +327,78 @@ type cachedJWT struct {
 //   - *http.Response: the response from the underlying transport.
 //   - error: if credential injection fails or JWT generation fails.
 func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	newReq := *req
-	urlCopy := *req.URL
+	newReq := req.Clone(req.Context())
 
-	q := urlCopy.Query()
+	var q url.Values
 
-	// Always inject client_id
-	q.Set("client_id", t.ClientID)
+	isFormBody := newReq.Method == http.MethodPost &&
+		strings.HasPrefix(newReq.Header.Get("Content-Type"), "application/x-www-form-urlencoded")
+
+	if isFormBody && newReq.Body != nil {
+		bodyBytes, err := io.ReadAll(newReq.Body)
+		if err != nil {
+			return nil, fmt.Errorf("reading request body: %w", err)
+		}
+
+		newReq.Body.Close()
+
+		q, err = url.ParseQuery(string(bodyBytes))
+		if err != nil {
+			return nil, fmt.Errorf("parsing form body: %w", err)
+		}
+	} else {
+		q = newReq.URL.Query()
+	}
+
+	// Always inject client_id unless using basic auth
+	if t.ClientSecretBasic == nil || *t.ClientSecretBasic == "" {
+		q.Set("client_id", t.ClientID)
+	}
 
 	switch {
 	case t.ClientSecretPost != nil && *t.ClientSecretPost != "":
-		// client_secret_post → inject into query (or body)
-		q.Set("client_secret", *t.ClientSecretPost)
+		// client_secret_post mandates injection into the form body ONLY.
+		// Exposing secrets in URL query parameters is a severe security violation (RFC 6749).
+		if isFormBody {
+			q.Set("client_secret", *t.ClientSecretPost)
+		}
 
 	case t.ClientSecretBasic != nil && *t.ClientSecretBasic != "":
-		// client_secret_basic → set Authorization header
+		// client_secret_basic → set Authorization header safely
 		newReq.SetBasicAuth(t.ClientID, *t.ClientSecretBasic)
 
 	case t.ClientAssertion != nil && t.ClientAssertionType != nil:
-		// private_key_jwt → inject JWT assertion
-		jwtToken, err := t.requestJWT("private_key_jwt", *t.ClientAssertion)
-		if err != nil {
-			return nil, err
+		// private_key_jwt → inject raw JWT assertion ONLY into form body
+		if isFormBody {
+			q.Set("client_assertion_type", *t.ClientAssertionType)
+			q.Set("client_assertion", *t.ClientAssertion)
 		}
-
-		q.Set("client_assertion_type", *t.ClientAssertionType)
-		q.Set("client_assertion", jwtToken)
 
 	case t.ClientSecretJWT != nil:
-		// client_secret_jwt → generate JWT signed with shared secret
-		jwtToken, err := t.requestJWT("client_secret_jwt", *t.ClientSecretJWT)
-		if err != nil {
-			return nil, err
-		}
+		// client_secret_jwt → generate JWT and inject ONLY into form body
+		if isFormBody {
+			jwtToken, err := t.requestJWT("client_secret_jwt", *t.ClientSecretJWT)
+			if err != nil {
+				return nil, err
+			}
 
-		q.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
-		q.Set("client_assertion", jwtToken)
+			q.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+			q.Set("client_assertion", jwtToken)
+		}
 	}
 
-	urlCopy.RawQuery = q.Encode()
-	newReq.URL = &urlCopy
+	if isFormBody {
+		newBodyStr := q.Encode()
+		newReq.Body = io.NopCloser(strings.NewReader(newBodyStr))
+		newReq.ContentLength = int64(len(newBodyStr))
+		newReq.GetBody = func() (io.ReadCloser, error) {
+			return io.NopCloser(strings.NewReader(newBodyStr)), nil
+		}
+	} else {
+		newReq.URL.RawQuery = q.Encode()
+	}
 
-	return t.Next.RoundTrip(&newReq)
+	return t.Next.RoundTrip(newReq)
 }
 
 // requestJWT generates or retrieves a cached JWT for the specified key and secret.

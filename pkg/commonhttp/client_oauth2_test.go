@@ -7,9 +7,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -198,8 +201,10 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 				Next:             http.DefaultTransport,
 			},
 			check: func(r *http.Request) {
-				assert.Equal(t, clientID, r.URL.Query().Get("client_id"))
-				assert.Equal(t, "secret", r.URL.Query().Get("client_secret"))
+				bodyBytes, _ := io.ReadAll(r.Body)
+				q, _ := url.ParseQuery(string(bodyBytes))
+				assert.Equal(t, clientID, q.Get("client_id"))
+				assert.Equal(t, "secret", q.Get("client_secret"))
 			},
 		},
 		{
@@ -226,8 +231,10 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 				jwtCache:        make(map[string]cachedJWT),
 			},
 			check: func(r *http.Request) {
-				assert.Equal(t, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", r.URL.Query().Get("client_assertion_type"))
-				assert.NotEmpty(t, r.URL.Query().Get("client_assertion"))
+				bodyBytes, _ := io.ReadAll(r.Body)
+				q, _ := url.ParseQuery(string(bodyBytes))
+				assert.Equal(t, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", q.Get("client_assertion_type"))
+				assert.NotEmpty(t, q.Get("client_assertion"))
 			},
 		},
 		{
@@ -241,8 +248,10 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 				jwtCache:            make(map[string]cachedJWT),
 			},
 			check: func(r *http.Request) {
-				assert.Equal(t, "urn:custom:type", r.URL.Query().Get("client_assertion_type"))
-				assert.NotEmpty(t, r.URL.Query().Get("client_assertion"))
+				bodyBytes, _ := io.ReadAll(r.Body)
+				q, _ := url.ParseQuery(string(bodyBytes))
+				assert.Equal(t, "urn:custom:type", q.Get("client_assertion_type"))
+				assert.NotEmpty(t, q.Get("client_assertion"))
 			},
 		},
 	}
@@ -258,7 +267,8 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			}))
 			defer server.Close()
 
-			req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+			req, err := http.NewRequest(http.MethodPost, server.URL, strings.NewReader("dummy=data"))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			assert.NoError(t, err)
 
 			rep, err := tt.rt.RoundTrip(req)
@@ -271,7 +281,10 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
-			defer rep.Body.Close()
+
+			if rep != nil {
+				defer rep.Body.Close()
+			}
 		})
 	}
 }
