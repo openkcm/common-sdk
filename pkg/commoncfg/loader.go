@@ -3,14 +3,15 @@ package commoncfg
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/creasty/defaults"
-	"github.com/davidhoo/jsonpath"
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/oliveagle/jsonpath"
 	"github.com/samber/oops"
 	"github.com/spf13/viper"
 )
@@ -355,7 +356,14 @@ func parseFile(data []byte, file CredentialFile) ([]byte, error) {
 }
 
 func jsonQuery(data, path string) ([]byte, error) {
-	result, err := jsonpath.Query(data, path)
+	var jsonData any
+
+	err := json.Unmarshal([]byte(data), &jsonData)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := jsonpath.JsonPathLookup(jsonData, path)
 	if err != nil {
 		return nil, err
 	}
