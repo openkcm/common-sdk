@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.14.2](https://github.com/openkcm/common-sdk/compare/v1.14.1...v1.14.2) (2026-03-30)
+
+
+### Bug Fixes
+
+* **deps:** bump the gomod-group group across 1 directory with 4 updates ([#269](https://github.com/openkcm/common-sdk/issues/269)) ([4ee075f](https://github.com/openkcm/common-sdk/commit/4ee075f267e026e333a48e67c726c5a455154663))
+* switch jsonpath modules ([#264](https://github.com/openkcm/common-sdk/issues/264)) ([6128f9f](https://github.com/openkcm/common-sdk/commit/6128f9f7a0ca21d9d394e124ca6e3a644091732e))
+* use the public http client to fetch public keys ([#271](https://github.com/openkcm/common-sdk/issues/271)) ([a2b201c](https://github.com/openkcm/common-sdk/commit/a2b201cb50a6fb99a4f4e7b65995aeb378779c68))
+
 ## [1.14.1](https://github.com/openkcm/common-sdk/compare/v1.14.0...v1.14.1) (2026-03-23)
 
 
