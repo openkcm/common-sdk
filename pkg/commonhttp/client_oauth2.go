@@ -335,12 +335,15 @@ func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response,
 		strings.HasPrefix(newReq.Header.Get("Content-Type"), "application/x-www-form-urlencoded")
 
 	if isFormBody && newReq.Body != nil {
+		defer func() {
+			if newReq.Body != nil {
+				_ = newReq.Body.Close()
+			}
+		}()
 		bodyBytes, err := io.ReadAll(newReq.Body)
 		if err != nil {
 			return nil, fmt.Errorf("reading request body: %w", err)
 		}
-
-		newReq.Body.Close()
 
 		q, err = url.ParseQuery(string(bodyBytes))
 		if err != nil {

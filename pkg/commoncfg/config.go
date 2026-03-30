@@ -348,7 +348,6 @@ type GRPCServerAttributes struct {
 type GRPCClient struct {
 	Enabled    bool                 `yaml:"enabled" json:"enabled"`
 	Address    string               `yaml:"address" json:"address"`
-	Version    string               `yaml:"version" json:"version" default:"v1"`
 	Attributes GRPCClientAttributes `yaml:"attributes" json:"attributes"`
 	Pool       GRPCPool             `yaml:"pool" json:"pool"`
 	SecretRef  *SecretRef           `yaml:"secretRef" json:"secretRef"`
