@@ -340,6 +340,7 @@ func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response,
 				_ = newReq.Body.Close()
 			}
 		}()
+
 		bodyBytes, err := io.ReadAll(newReq.Body)
 		if err != nil {
 			return nil, fmt.Errorf("reading request body: %w", err)
