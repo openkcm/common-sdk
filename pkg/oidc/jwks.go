@@ -29,7 +29,7 @@ func (p *Provider) GetSigningKey(ctx context.Context, keyID string) (*jose.JSONW
 		return nil, errors.Join(ErrCouldNotCreateHTTPRequest, err)
 	}
 
-	resp, err := p.secureHttpClient.Do(request)
+	resp, err := p.publicHttpClient.Do(request)
 	if err != nil {
 		return nil, err
 	}
