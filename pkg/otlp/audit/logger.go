@@ -3,7 +3,7 @@ package otlpaudit
 import (
 	"net/http"
 
-	"gopkg.in/yaml.v3"
+	"github.com/goccy/go-yaml"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/commonhttp"
