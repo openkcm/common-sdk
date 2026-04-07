@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.0](https://github.com/openkcm/common-sdk/compare/v1.14.2...v1.15.0) (2026-04-07)
+
+
+### Features
+
+* add mapstructure tag to all values related to HTTP Client ([#277](https://github.com/openkcm/common-sdk/issues/277)) ([6110f65](https://github.com/openkcm/common-sdk/commit/6110f65366d52fda9018dd2e7c4f705e58949ff0))
+
+
+### Bug Fixes
+
+* use an actively maintained yaml package ([#273](https://github.com/openkcm/common-sdk/issues/273)) ([f943b18](https://github.com/openkcm/common-sdk/commit/f943b185829a9f420927969a267de2fc5ac7232f))
+
 ## [1.14.2](https://github.com/openkcm/common-sdk/compare/v1.14.1...v1.14.2) (2026-03-30)
 
 
