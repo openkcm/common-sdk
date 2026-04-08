@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.1](https://github.com/openkcm/common-sdk/compare/v1.15.0...v1.15.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* send intropection params in the request body ([#274](https://github.com/openkcm/common-sdk/issues/274)) ([5568ad0](https://github.com/openkcm/common-sdk/commit/5568ad01fff0da87beb64ed024fb75591c184fd2))
+
 ## [1.15.0](https://github.com/openkcm/common-sdk/compare/v1.14.2...v1.15.0) (2026-04-07)
 
 
