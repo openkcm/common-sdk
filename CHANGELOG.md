@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.15.2](https://github.com/openkcm/common-sdk/compare/v1.15.1...v1.15.2) (2026-04-13)
+
+
+### Bug Fixes
+
+* **deps:** bump the gomod-group group across 1 directory with 20 updates ([#284](https://github.com/openkcm/common-sdk/issues/284)) ([8d67422](https://github.com/openkcm/common-sdk/commit/8d67422827c658a97947f54b6e3ca63d7b65acd3))
+
+## [1.15.1](https://github.com/openkcm/common-sdk/compare/v1.15.0...v1.15.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* send intropection params in the request body ([#274](https://github.com/openkcm/common-sdk/issues/274)) ([5568ad0](https://github.com/openkcm/common-sdk/commit/5568ad01fff0da87beb64ed024fb75591c184fd2))
+
+## [1.15.0](https://github.com/openkcm/common-sdk/compare/v1.14.2...v1.15.0) (2026-04-07)
+
+
+### Features
+
+* add mapstructure tag to all values related to HTTP Client ([#277](https://github.com/openkcm/common-sdk/issues/277)) ([6110f65](https://github.com/openkcm/common-sdk/commit/6110f65366d52fda9018dd2e7c4f705e58949ff0))
+
+
+### Bug Fixes
+
+* use an actively maintained yaml package ([#273](https://github.com/openkcm/common-sdk/issues/273)) ([f943b18](https://github.com/openkcm/common-sdk/commit/f943b185829a9f420927969a267de2fc5ac7232f))
+
+## [1.14.2](https://github.com/openkcm/common-sdk/compare/v1.14.1...v1.14.2) (2026-03-30)
+
+
+### Bug Fixes
+
+* **deps:** bump the gomod-group group across 1 directory with 4 updates ([#269](https://github.com/openkcm/common-sdk/issues/269)) ([4ee075f](https://github.com/openkcm/common-sdk/commit/4ee075f267e026e333a48e67c726c5a455154663))
+* switch jsonpath modules ([#264](https://github.com/openkcm/common-sdk/issues/264)) ([6128f9f](https://github.com/openkcm/common-sdk/commit/6128f9f7a0ca21d9d394e124ca6e3a644091732e))
+* use the public http client to fetch public keys ([#271](https://github.com/openkcm/common-sdk/issues/271)) ([a2b201c](https://github.com/openkcm/common-sdk/commit/a2b201cb50a6fb99a4f4e7b65995aeb378779c68))
+
 ## [1.14.1](https://github.com/openkcm/common-sdk/compare/v1.14.0...v1.14.1) (2026-03-23)
 
 

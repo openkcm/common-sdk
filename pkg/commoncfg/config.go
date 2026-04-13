@@ -198,13 +198,13 @@ type SecretRef struct {
 
 // MTLS holds mTLS configuration for audit library.
 type MTLS struct {
-	Cert    SourceRef `yaml:"cert" json:"cert"`
-	CertKey SourceRef `yaml:"certKey" json:"certKey"`
+	Cert    SourceRef `yaml:"cert" json:"cert" mapstructure:"cert"`
+	CertKey SourceRef `yaml:"certKey" json:"certKey" mapstructure:"certKey"`
 
-	ServerCA *SourceRef  `yaml:"serverCa" json:"serverCa"`
-	RootCAs  []SourceRef `yaml:"rootCAs,omitempty" json:"rootCAs,omitempty"`
+	ServerCA *SourceRef  `yaml:"serverCa" json:"serverCa" mapstructure:"serverCa"`
+	RootCAs  []SourceRef `yaml:"rootCAs,omitempty" json:"rootCAs,omitempty" mapstructure:"rootCAs"`
 
-	Attributes *TLSAttributes `yaml:"attributes" json:"attributes"`
+	Attributes *TLSAttributes `yaml:"attributes" json:"attributes" mapstructure:"attributes"`
 }
 
 type TLSAttributes struct {
@@ -214,23 +214,23 @@ type TLSAttributes struct {
 	// certificate. In this mode, TLS is susceptible to machine-in-the-middle
 	// attacks unless custom verification is used. This should be used only for
 	// testing or in combination with VerifyConnection or VerifyPeerCertificate.
-	InsecureSkipVerify bool `yaml:"insecureSkipVerify" json:"insecureSkipVerify"`
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify" json:"insecureSkipVerify" mapstructure:"insecureSkipVerify"`
 	// ServerName is used to verify the hostname on the returned
 	// certificates unless InsecureSkipVerify is given. It is also included
 	// in the client's handshake to support virtual hosting unless it is
 	// an IP address.
-	ServerName string `yaml:"serverName" json:"serverName"`
+	ServerName string `yaml:"serverName" json:"serverName" mapstructure:"serverName"`
 
 	// SessionTicketsDisabled may be set to true to disable session ticket and
 	// PSK (resumption) support. Note that on clients, session ticket support is
 	// also disabled if ClientSessionCache is nil.
-	SessionTicketsDisabled bool `yaml:"sessionTicketsDisabled" json:"sessionTicketsDisabled"`
+	SessionTicketsDisabled bool `yaml:"sessionTicketsDisabled" json:"sessionTicketsDisabled" mapstructure:"sessionTicketsDisabled"`
 
 	// DynamicRecordSizingDisabled disables adaptive sizing of TLS records.
 	// When true, the largest possible TLS record size is always used. When
 	// false, the size of TLS records may be adjusted in an attempt to
 	// improve latency.
-	DynamicRecordSizingDisabled bool `yaml:"dynamicRecordSizingDisabled" json:"dynamicRecordSizingDisabled"`
+	DynamicRecordSizingDisabled bool `yaml:"dynamicRecordSizingDisabled" json:"dynamicRecordSizingDisabled" mapstructure:"dynamicRecordSizingDisabled"`
 }
 
 // Audit holds the audit log library configuration.
@@ -245,43 +245,43 @@ type Audit struct {
 
 // BasicAuth holds basic auth configuration for audit library.
 type BasicAuth struct {
-	Username SourceRef `yaml:"username" json:"username"`
-	Password SourceRef `yaml:"password" json:"password"`
+	Username SourceRef `yaml:"username" json:"username" mapstructure:"username"`
+	Password SourceRef `yaml:"password" json:"password" mapstructure:"password"`
 }
 
 // OAuth2 holds client id and secret auth configuration
 type OAuth2 struct {
-	URL         *SourceRef        `yaml:"url" json:"url"`
-	Credentials OAuth2Credentials `yaml:"credentials" json:"credentials"`
-	MTLS        *MTLS             `yaml:"mtls" json:"mtls"`
+	URL         *SourceRef        `yaml:"url" json:"url" mapstructure:"url"`
+	Credentials OAuth2Credentials `yaml:"credentials" json:"credentials" mapstructure:"credentials"`
+	MTLS        *MTLS             `yaml:"mtls" json:"mtls" mapstructure:"mtls"`
 }
 
 type OAuth2Credentials struct {
-	ClientID SourceRef `yaml:"clientID" json:"clientID"`
+	ClientID SourceRef `yaml:"clientID" json:"clientID" mapstructure:"clientID"`
 
-	AuthMethod OAuth2ClientAuthMethod `yaml:"authMethod" json:"authMethod" default:"post"`
+	AuthMethod OAuth2ClientAuthMethod `yaml:"authMethod" json:"authMethod" default:"post" mapstructure:"authMethod"`
 
 	// Option A: client_secret authentication
-	ClientSecret *SourceRef `yaml:"clientSecret,omitempty" json:"clientSecret,omitempty"`
+	ClientSecret *SourceRef `yaml:"clientSecret,omitempty" json:"clientSecret,omitempty" mapstructure:"clientSecret"`
 
 	// Option B: private_key_jwt authentication (RFC 7523)
-	ClientAssertionType *SourceRef `yaml:"clientAssertionType,omitempty" json:"clientAssertionType,omitempty"`
-	ClientAssertion     *SourceRef `yaml:"clientAssertion,omitempty" json:"clientAssertion,omitempty"`
+	ClientAssertionType *SourceRef `yaml:"clientAssertionType,omitempty" json:"clientAssertionType,omitempty" mapstructure:"clientAssertionType"`
+	ClientAssertion     *SourceRef `yaml:"clientAssertion,omitempty" json:"clientAssertion,omitempty" mapstructure:"clientAssertion"`
 }
 
 // SourceRef defines a reference to a source for retrieving a value.
 type SourceRef struct {
-	Source SourceValueType `yaml:"source" json:"source" default:"embedded"`
-	Env    string          `yaml:"env" json:"env"`
-	File   CredentialFile  `yaml:"file" json:"file"`
-	Value  string          `yaml:"value" json:"value"`
+	Source SourceValueType `yaml:"source" json:"source" default:"embedded" mapstructure:"source"`
+	Env    string          `yaml:"env" json:"env" mapstructure:"env"`
+	File   CredentialFile  `yaml:"file" json:"file" mapstructure:"file"`
+	Value  string          `yaml:"value" json:"value" mapstructure:"value"`
 }
 
 // CredentialFile describes a file-based credential.
 type CredentialFile struct {
-	Path     string     `yaml:"path" json:"path"`
-	Format   FileFormat `yaml:"format" json:"format"`
-	JSONPath string     `yaml:"jsonPath" json:"jsonPath"`
+	Path     string     `yaml:"path" json:"path" mapstructure:"path"`
+	Format   FileFormat `yaml:"format" json:"format" mapstructure:"format"`
+	JSONPath string     `yaml:"jsonPath" json:"jsonPath" mapstructure:"jsonPath"`
 }
 
 // Prometheus defines configuration for Prometheus integration.
@@ -368,37 +368,37 @@ type GRPCClientAttributes struct {
 }
 
 type HTTPClient struct {
-	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"10s"`
+	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"10s" mapstructure:"timeout"`
 
 	//Deprecated [to be replaced by using MTLS]
-	RootCAs *SourceRef `yaml:"rootCAs" json:"rootCAs"`
+	RootCAs *SourceRef `yaml:"rootCAs" json:"rootCAs" mapstructure:"rootCAs"`
 	//Deprecated [to be replaced by using MTLS]
-	InsecureSkipVerify bool `yaml:"insecureSkipVerify" json:"insecureSkipVerify"`
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify" json:"insecureSkipVerify" mapstructure:"insecureSkipVerify"`
 	//Deprecated [to be replaced by using MTLS]
-	MinVersion uint16 `yaml:"minVersion" json:"minVersion"`
+	MinVersion uint16 `yaml:"minVersion" json:"minVersion" mapstructure:"minVersion"`
 	//Deprecated [to be replaced by using MTLS]
-	Cert *SourceRef `yaml:"cert" json:"cert"`
+	Cert *SourceRef `yaml:"cert" json:"cert" mapstructure:"cert"`
 	//Deprecated [to be replaced by using MTLS]
-	CertKey *SourceRef `yaml:"certKey" json:"certKey"`
+	CertKey *SourceRef `yaml:"certKey" json:"certKey" mapstructure:"certKey"`
 
-	APIToken            *SourceRef               `yaml:"apiToken" json:"apiToken"`
-	BasicAuth           *BasicAuth               `yaml:"basicAuth" json:"basicAuth"`
-	OAuth2Auth          *OAuth2                  `yaml:"oauth2Auth" json:"oauth2Auth"`
-	MTLS                *MTLS                    `yaml:"mtls" json:"mtls"`
-	TransportAttributes *HTTPTransportAttributes `yaml:"transportAttributes" json:"transportAttributes"`
+	APIToken            *SourceRef               `yaml:"apiToken" json:"apiToken" mapstructure:"apiToken"`
+	BasicAuth           *BasicAuth               `yaml:"basicAuth" json:"basicAuth" mapstructure:"basicAuth"`
+	OAuth2Auth          *OAuth2                  `yaml:"oauth2Auth" json:"oauth2Auth" mapstructure:"oauth2Auth"`
+	MTLS                *MTLS                    `yaml:"mtls" json:"mtls" mapstructure:"mtls"`
+	TransportAttributes *HTTPTransportAttributes `yaml:"transportAttributes" json:"transportAttributes" mapstructure:"transportAttributes"`
 }
 
 type HTTPTransportAttributes struct {
 	// TLSHandshakeTimeout specifies the maximum amount of time to
 	// wait for a TLS handshake. Zero means no timeout.
-	TLSHandshakeTimeout time.Duration `yaml:"tlsHandshakeTimeout" json:"tlsHandshakeTimeout" default:"0s"`
+	TLSHandshakeTimeout time.Duration `yaml:"tlsHandshakeTimeout" json:"tlsHandshakeTimeout" default:"0s" mapstructure:"tlsHandshakeTimeout"`
 
 	// DisableKeepAlives, if true, disables HTTP keep-alives and
 	// will only use the connection to the server for a single
 	// HTTP request.
 	//
 	// This is unrelated to the similarly named TCP keep-alives.
-	DisableKeepAlives bool `yaml:"disableKeepAlives" json:"disableKeepAlives"`
+	DisableKeepAlives bool `yaml:"disableKeepAlives" json:"disableKeepAlives" mapstructure:"disableKeepAlives"`
 
 	// DisableCompression, if true, prevents the Transport from
 	// requesting compression with an "Accept-Encoding: gzip"
@@ -408,35 +408,35 @@ type HTTPTransportAttributes struct {
 	// decoded in the Response.Body. However, if the user
 	// explicitly requested gzip it is not automatically
 	// uncompressed.
-	DisableCompression bool `yaml:"disableCompression" json:"disableCompression"`
+	DisableCompression bool `yaml:"disableCompression" json:"disableCompression" mapstructure:"disableCompression"`
 
 	// MaxIdleConns controls the maximum number of idle (keep-alive)
 	// connections across all hosts. Zero means no limit.
-	MaxIdleConns int `yaml:"maxIdleConns" json:"maxIdleConns" default:"0"`
+	MaxIdleConns int `yaml:"maxIdleConns" json:"maxIdleConns" default:"0" mapstructure:"maxIdleConns"`
 
 	// MaxIdleConnsPerHost, if non-zero, controls the maximum idle
 	// (keep-alive) connections to keep per-host. If zero,
 	// DefaultMaxIdleConnsPerHost is used.
-	MaxIdleConnsPerHost int `yaml:"maxIdleConnsPerHost" json:"maxIdleConnsPerHost" default:"0"`
+	MaxIdleConnsPerHost int `yaml:"maxIdleConnsPerHost" json:"maxIdleConnsPerHost" default:"0" mapstructure:"maxIdleConnsPerHost"`
 
 	// MaxConnsPerHost optionally limits the total number of
 	// connections per host, including connections in the dialing,
 	// active, and idle states. On limit violation, dials will block.
 	//
 	// Zero means no limit.
-	MaxConnsPerHost int `yaml:"maxConnsPerHost" json:"maxConnsPerHost" default:"0"`
+	MaxConnsPerHost int `yaml:"maxConnsPerHost" json:"maxConnsPerHost" default:"0" mapstructure:"maxConnsPerHost"`
 
 	// IdleConnTimeout is the maximum amount of time an idle
 	// (keep-alive) connection will remain idle before closing
 	// itself.
 	// Zero means no limit.
-	IdleConnTimeout time.Duration `yaml:"idleConnTimeout" json:"idleConnTimeout" default:"0s"`
+	IdleConnTimeout time.Duration `yaml:"idleConnTimeout" json:"idleConnTimeout" default:"0s" mapstructure:"idleConnTimeout"`
 
 	// ResponseHeaderTimeout, if non-zero, specifies the amount of
 	// time to wait for a server's response headers after fully
 	// writing the request (including its body, if any). This
 	// time does not include the time to read the response body.
-	ResponseHeaderTimeout time.Duration `yaml:"responseHeaderTimeout" json:"responseHeaderTimeout" default:"0s"`
+	ResponseHeaderTimeout time.Duration `yaml:"responseHeaderTimeout" json:"responseHeaderTimeout" default:"0s" mapstructure:"responseHeaderTimeout"`
 
 	// ExpectContinueTimeout, if non-zero, specifies the amount of
 	// time to wait for a server's first response headers after fully
@@ -445,7 +445,7 @@ type HTTPTransportAttributes struct {
 	// causes the body to be sent immediately, without
 	// waiting for the server to approve.
 	// This time does not include the time to send the request header.
-	ExpectContinueTimeout time.Duration `yaml:"expectContinueTimeout" json:"expectContinueTimeout" default:"0s"`
+	ExpectContinueTimeout time.Duration `yaml:"expectContinueTimeout" json:"expectContinueTimeout" default:"0s" mapstructure:"expectContinueTimeout"`
 }
 
 // BuildInfo holds metadata about the build
