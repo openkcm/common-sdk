@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.2](https://github.com/openkcm/common-sdk/compare/v1.15.1...v1.15.2) (2026-04-13)
+
+
+### Bug Fixes
+
+* **deps:** bump the gomod-group group across 1 directory with 20 updates ([#284](https://github.com/openkcm/common-sdk/issues/284)) ([8d67422](https://github.com/openkcm/common-sdk/commit/8d67422827c658a97947f54b6e3ca63d7b65acd3))
+
 ## [1.15.1](https://github.com/openkcm/common-sdk/compare/v1.15.0...v1.15.1) (2026-04-08)
 
 
