@@ -25,7 +25,7 @@ import (
 
 type errorReader struct{}
 
-func (errorReader) Read(p []byte) (n int, err error) {
+func (errorReader) Read(p []byte) (int, error) {
 	return 0, errors.New("mock read error")
 }
 
@@ -201,7 +201,7 @@ func TestNewClientFromOAuth2(t *testing.T) {
 					Cert: commoncfg.SourceRef{Source: "invalid"},
 				},
 			},
-			wantErr:    true,
+			wantErr: true,
 		},
 		{
 			name: "no AuthMethod provided",

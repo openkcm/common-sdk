@@ -333,8 +333,10 @@ func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response,
 	var q url.Values
 
 	var ct string
+
 	if contentType := newReq.Header.Get("Content-Type"); contentType != "" {
 		var err error
+
 		ct, _, err = mime.ParseMediaType(contentType)
 		if err != nil {
 			return nil, fmt.Errorf("parsing mime type: %w", err)
