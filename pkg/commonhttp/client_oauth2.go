@@ -332,9 +332,13 @@ func (t *clientOAuth2RoundTripper) RoundTrip(req *http.Request) (*http.Response,
 
 	var q url.Values
 
-	ct, _, err := mime.ParseMediaType(newReq.Header.Get("Content-Type"))
-	if err != nil {
-		return nil, fmt.Errorf("parsing mime type: %w", err)
+	var ct string
+	if contentType := newReq.Header.Get("Content-Type"); contentType != "" {
+		var err error
+		ct, _, err = mime.ParseMediaType(contentType)
+		if err != nil {
+			return nil, fmt.Errorf("parsing mime type: %w", err)
+		}
 	}
 
 	isFormBody := newReq.Method == http.MethodPost && ct == "application/x-www-form-urlencoded"
