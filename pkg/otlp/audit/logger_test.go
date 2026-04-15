@@ -17,7 +17,7 @@ import (
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
 
-var errLoadValue = errors.New("basic credentials missing password: field password not found")
+var errLoadValue = errors.New("basic credentials missing password: key error: password not found in object")
 var errLoadMTLSConfigFailed = errors.New("tls: failed to find any PEM data in certificate input")
 var errStatusNotOK = errors.New("response status not OK")
 

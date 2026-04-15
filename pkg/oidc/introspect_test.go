@@ -23,7 +23,7 @@ func TestIntrospectToken(t *testing.T) {
 				assert.Equal(t, http.MethodPost, r.Method)
 				assert.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
 				assert.Equal(t, "application/json", r.Header.Get("Accept"))
-				assert.Equal(t, "test-token", r.URL.Query().Get("token"))
+				assert.Equal(t, "test-token", r.PostFormValue("token"))
 
 				w.Header().Set("Content-Type", "application/json")
 				err := json.NewEncoder(w).Encode(introspectionResult)
@@ -51,9 +51,9 @@ func TestIntrospectToken(t *testing.T) {
 	t.Run("sends additional query parameters", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/introspect" {
-				assert.Equal(t, "test-token", r.URL.Query().Get("token"))
-				assert.Equal(t, "value1", r.URL.Query().Get("key1"))
-				assert.Equal(t, "value2", r.URL.Query().Get("key2"))
+				assert.Equal(t, "test-token", r.PostFormValue("token"))
+				assert.Equal(t, "value1", r.PostFormValue("key1"))
+				assert.Equal(t, "value2", r.PostFormValue("key2"))
 
 				w.Header().Set("Content-Type", "application/json")
 				err := json.NewEncoder(w).Encode(Introspection{Active: true})
