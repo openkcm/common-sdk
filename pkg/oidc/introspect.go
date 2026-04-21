@@ -6,6 +6,13 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
+)
+
+const (
+	urlencoded      = "application/x-www-form-urlencoded"
+	applicationJSON = "application/json"
 )
 
 // Introspection represents the response from an introspection request.
@@ -33,21 +40,25 @@ func (p *Provider) IntrospectToken(ctx context.Context, token string) (Introspec
 		return Introspection{}, ErrNoIntrospectionEndpoint
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.IntrospectionEndpoint, nil)
+	requestBody := make(url.Values, len(p.queryParametersIntrospect)+1)
+	requestBody.Set("token", token)
+
+	for k, v := range p.queryParametersIntrospect {
+		requestBody.Set(k, v)
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		cfg.IntrospectionEndpoint,
+		strings.NewReader(requestBody.Encode()),
+	)
 	if err != nil {
 		return Introspection{}, errors.Join(ErrCouldNotCreateHTTPRequest, err)
 	}
 
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
-	q := req.URL.Query()
-	q.Set("token", token)
-
-	for k, v := range p.queryParametersIntrospect {
-		q.Set(k, v)
-	}
-
-	req.URL.RawQuery = q.Encode()
+	req.Header.Set("Content-Type", urlencoded)
+	req.Header.Set("Accept", applicationJSON)
 
 	resp, err := p.secureHttpClient.Do(req)
 	if err != nil {
@@ -55,7 +66,7 @@ func (p *Provider) IntrospectToken(ctx context.Context, token string) (Introspec
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return Introspection{}, errors.Join(ErrCouldNotReadResponseBody, err)
 	}
@@ -63,17 +74,17 @@ func (p *Provider) IntrospectToken(ctx context.Context, token string) (Introspec
 	if resp.StatusCode != http.StatusOK {
 		return Introspection{}, ProviderRespondedNon200Error{
 			Code: resp.StatusCode,
-			Body: string(body),
+			Body: string(responseBody),
 		}
 	}
 
 	var intr Introspection
 
-	err = json.Unmarshal(body, &intr)
+	err = json.Unmarshal(responseBody, &intr)
 	if err != nil {
 		return Introspection{}, CouldNotUnmarshallResponseError{
 			Err:  err,
-			Body: string(body),
+			Body: string(responseBody),
 		}
 	}
 
