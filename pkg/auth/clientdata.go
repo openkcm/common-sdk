@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"time"
 )
 
 const (
@@ -32,6 +33,7 @@ var (
 	ErrInvalidClientData                   = errors.New("invalid client data")
 	ErrInvalidPrivateKey                   = errors.New("invalid private key")
 	ErrInvalidPublicKey                    = errors.New("invalid public key")
+	ErrClientDataExpired                   = errors.New("client data has expired")
 )
 
 type SignatureAlgorithm string
@@ -39,6 +41,9 @@ type SignatureAlgorithm string
 const (
 	SignatureAlgorithmRS256 SignatureAlgorithm = "RS256"
 )
+
+// To allow overriding for test purposes
+var nowFunc = time.Now
 
 type ClientData struct {
 	// Mandatory user attributes
@@ -61,6 +66,9 @@ type ClientData struct {
 	KeyID string `json:"kid"`
 	// SignatureAlgorithm is the algorithm used to sign the client data.
 	SignatureAlgorithm SignatureAlgorithm `json:"alg"`
+
+	// CreatedAt The datetime of when the object was created (RFC3339 format)
+	CreatedAt time.Time `json:"createdAt"`
 
 	b64data string
 }
@@ -86,6 +94,10 @@ func DecodeFrom(b64data string) (*ClientData, error) {
 
 // Verify verifies the signature of the client data using the provided public key.
 func (c *ClientData) Verify(publicKey any, b64sig string) error {
+	if nowFunc().After(c.CreatedAt.Add(time.Minute)) {
+		return ErrClientDataExpired
+	}
+
 	switch c.SignatureAlgorithm {
 	case SignatureAlgorithmRS256:
 		signature, err := base64.RawURLEncoding.DecodeString(b64sig)
@@ -109,6 +121,8 @@ func (c *ClientData) Verify(publicKey any, b64sig string) error {
 // Encode encodes the client data and signs it using the provided private key.
 // Both values are returned as base64 URL encoded strings.
 func (c *ClientData) Encode(privateKey any) (string, string, error) {
+	c.CreatedAt = nowFunc()
+
 	jsonString, err := json.Marshal(c)
 	if err != nil {
 		return "", "", err
