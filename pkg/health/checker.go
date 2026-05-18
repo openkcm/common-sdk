@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 )
@@ -558,7 +559,7 @@ func aggregateStatus(results map[string]CheckState) AvailabilityStatus {
 func withInterceptors(interceptors []Interceptor, target InterceptorFunc) InterceptorFunc {
 	chain := target
 
-	for idx := len(interceptors) - 1; idx >= 0; idx-- {
+	for idx := range slices.Backward(interceptors) {
 		chain = interceptors[idx](chain)
 	}
 
