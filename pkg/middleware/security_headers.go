@@ -1,18 +1,33 @@
 package middleware
 
-import "net/http"
+import (
+	"maps"
+	"net/http"
+)
+
+var SecurityHeaderDefaults = map[string]string{
+	"X-Content-Type-Options":       "nosniff",
+	"X-Frame-Options":              "DENY",
+	"Strict-Transport-Security":    "max-age=31536000; includeSubDomains",
+	"Referrer-Policy":              "strict-origin-when-cross-origin",
+	"Cache-Control":                "no-store",
+	"Cross-Origin-Opener-Policy":   "same-origin",
+	"Cross-Origin-Resource-Policy": "same-site",
+}
 
 // SecurityHeadersMiddleware adds baseline HTTP security headers to every response.
 // Content-Security-Policy is managed at the infrastructure level and is omitted here.
-func SecurityHeadersMiddleware(next http.Handler) http.Handler {
+func SecurityHeadersMiddleware(next http.Handler, customHeaders map[string]string) http.Handler {
+	headers := make(map[string]string)
+	maps.Copy(headers, SecurityHeaderDefaults)
+
+	maps.Copy(headers, customHeaders)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
-		w.Header().Set("Cross-Origin-Resource-Policy", "same-site")
+		for key, value := range headers {
+			w.Header().Set(key, value)
+		}
+
 		next.ServeHTTP(w, r)
 	})
 }
