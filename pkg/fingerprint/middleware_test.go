@@ -8,7 +8,7 @@ import (
 )
 
 func TestFingerprintCtxMiddlewareAndExtractFingerprint(t *testing.T) {
-	builder := NewBuilder(WithHeaderKeys([]string{"user-agent"}))
+	builder := NewBuilder(WithHeaderKeys(defaultHeaderKeys))
 
 	tests := []struct {
 		name           string

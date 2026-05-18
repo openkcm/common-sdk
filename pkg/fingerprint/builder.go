@@ -11,7 +11,11 @@ import (
 	envoyauth "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 )
 
-var defaultHeaderKeys = []string{"user-agent"}
+const (
+	UserAgent = "user-agent"
+)
+
+var defaultHeaderKeys = []string{UserAgent}
 
 type BuilderOption func(*Builder)
 
