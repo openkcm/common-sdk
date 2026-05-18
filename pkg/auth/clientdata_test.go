@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/openkcm/common-sdk/pkg/auth"
 )
@@ -39,36 +40,51 @@ func TestEndToEnd(t *testing.T) {
 		SignatureAlgorithm: auth.SignatureAlgorithmRS256,
 	}
 
+	expiredClientData := defClientData
+	expiredClientData.CreatedAt = time.Now().Add(time.Hour)
+
 	// create the test cases
 	tests := []struct {
-		name       string
-		clientData *auth.ClientData
-		privateKey any
-		publicKey  any
-		wantError  bool
-		wantError2 bool
-		wantError3 bool
+		name              string
+		clientData        *auth.ClientData
+		privateKey        any
+		publicKey         any
+		wantError         bool
+		wantError2        bool
+		wantError3        bool
+		postDecodeNowFunc func() time.Time
 	}{
 		{
-			name:       "invalid signature algorithm",
-			clientData: &auth.ClientData{},
-			wantError:  true,
+			name:              "invalid signature algorithm",
+			clientData:        &auth.ClientData{},
+			wantError:         true,
+			postDecodeNowFunc: time.Now,
 		}, {
-			name:       "invalid private key",
-			clientData: defClientData,
-			privateKey: "not a private key",
-			wantError:  true,
+			name:              "invalid private key",
+			clientData:        defClientData,
+			privateKey:        "not a private key",
+			wantError:         true,
+			postDecodeNowFunc: time.Now,
 		}, {
-			name:       "invalid public key",
-			clientData: defClientData,
-			privateKey: rsaPrivateKey,
-			publicKey:  "not a public key",
-			wantError3: true,
+			name:              "invalid public key",
+			clientData:        defClientData,
+			privateKey:        rsaPrivateKey,
+			publicKey:         "not a public key",
+			wantError3:        true,
+			postDecodeNowFunc: time.Now,
 		}, {
-			name:       "ok",
-			clientData: defClientData,
-			privateKey: rsaPrivateKey,
-			publicKey:  rsaPublicKey,
+			name:              "expired",
+			clientData:        expiredClientData,
+			privateKey:        rsaPrivateKey,
+			publicKey:         rsaPublicKey,
+			wantError3:        true,
+			postDecodeNowFunc: func() time.Time { return time.Now().Add(time.Second * 61) },
+		}, {
+			name:              "ok",
+			clientData:        defClientData,
+			privateKey:        rsaPrivateKey,
+			publicKey:         rsaPublicKey,
+			postDecodeNowFunc: time.Now,
 		},
 	}
 
@@ -102,6 +118,8 @@ func TestEndToEnd(t *testing.T) {
 							if reflect.DeepEqual(clientData, tc.clientData) {
 								t.Error("client data does not match")
 							}
+
+							auth.SetNowFunc(tc.postDecodeNowFunc)
 
 							// Act Verify
 							err3 := clientData.Verify(tc.publicKey, b64sig)
