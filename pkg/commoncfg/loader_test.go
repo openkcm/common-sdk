@@ -415,6 +415,7 @@ func generateTestCert(t *testing.T) ([]byte, []byte) {
 
 	keyDER, err := x509.MarshalECPrivateKey(key)
 	require.NoError(t, err)
+
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
 
 	return certPEM, keyPEM
@@ -479,7 +480,7 @@ func TestExtractValueFromSourceRef_JSONFileNoPath(t *testing.T) {
 	}
 	val, err := commoncfg.ExtractValueFromSourceRef(&ref)
 	require.NoError(t, err)
-	assert.Equal(t, []byte(`{"token": "abc"}`), val)
+	assert.JSONEq(t, `{"token": "abc"}`, string(val))
 }
 
 func TestExtractValueFromSourceRef_JSONFileInvalidJSON(t *testing.T) {
