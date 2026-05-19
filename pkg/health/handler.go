@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 )
 
 type (
@@ -122,7 +123,7 @@ func createConfig(options []HandlerOption) HandlerConfig {
 
 func withMiddleware(interceptors []Middleware, target MiddlewareFunc) MiddlewareFunc {
 	chain := target
-	for idx := len(interceptors) - 1; idx >= 0; idx-- {
+	for idx := range slices.Backward(interceptors) {
 		chain = interceptors[idx](chain)
 	}
 

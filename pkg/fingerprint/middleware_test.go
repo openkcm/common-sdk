@@ -8,7 +8,7 @@ import (
 )
 
 func TestFingerprintCtxMiddlewareAndExtractFingerprint(t *testing.T) {
-	builder := NewBuilder(WithHeaderKeys([]string{"user-agent"}))
+	builder := NewBuilder(WithHeaderKeys([]string{UserAgentHeader}))
 
 	tests := []struct {
 		name           string
@@ -27,8 +27,8 @@ func TestFingerprintCtxMiddlewareAndExtractFingerprint(t *testing.T) {
 		{
 			name: "with headers",
 			headers: map[string][]string{
-				"User-Agent": {"Foo"},
-				"Accept":     {"Bar"},
+				UserAgentHeader: {"Foo"},
+				"Accept":        {"Bar"},
 			},
 			expectError: false,
 			expectedFPFunc: func(r *http.Request) (string, error) {
@@ -38,7 +38,7 @@ func TestFingerprintCtxMiddlewareAndExtractFingerprint(t *testing.T) {
 		{
 			name: "missing accept header",
 			headers: map[string][]string{
-				"User-Agent": {"AgentX"},
+				UserAgentHeader: {"AgentX"},
 			},
 			expectError: false,
 			expectedFPFunc: func(r *http.Request) (string, error) {
@@ -48,8 +48,8 @@ func TestFingerprintCtxMiddlewareAndExtractFingerprint(t *testing.T) {
 		{
 			name: "multiple values for headers",
 			headers: map[string][]string{
-				"User-Agent": {"A", "B"},
-				"Accept":     {"C", "D"},
+				UserAgentHeader: {"A", "B"},
+				"Accept":        {"C", "D"},
 			},
 			expectError: false,
 			expectedFPFunc: func(r *http.Request) (string, error) {
@@ -59,7 +59,7 @@ func TestFingerprintCtxMiddlewareAndExtractFingerprint(t *testing.T) {
 		{
 			name: "case-insensitive header keys",
 			headers: map[string][]string{
-				"user-agent": {"foo"},
+				"useR-agenT": {"foo"},
 				"ACCEPT":     {"bar"},
 			},
 			expectError: false,
