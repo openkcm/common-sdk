@@ -1,10 +1,18 @@
 package commoncfg_test
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -382,4 +390,375 @@ func createTempFile(t *testing.T, content string) string {
 	require.NoError(t, tmpFile.Close())
 
 	return tmpFile.Name()
+}
+
+// generateTestCert creates a self-signed certificate and returns certPEM, keyPEM.
+func generateTestCert(t *testing.T) ([]byte, []byte) {
+	t.Helper()
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+
+	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	require.NoError(t, err)
+
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	require.NoError(t, err)
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+
+	return certPEM, keyPEM
+}
+
+func TestDisableViperErrorUnused(t *testing.T) {
+	tmpdir := t.TempDir()
+	cfg := &MyConfig{}
+
+	// Config has an extra key not present in MyConfig — with ErrorUnused disabled this should succeed.
+	err := os.WriteFile(filepath.Join(tmpdir, "config.yaml"), []byte("key1: foo\nextra: ignored"), 0o644)
+	require.NoError(t, err)
+
+	loader := commoncfg.NewLoader(cfg,
+		commoncfg.WithPaths(tmpdir),
+		commoncfg.DisableViperErrorUnused(),
+	)
+	assert.NoError(t, loader.LoadConfig())
+}
+
+func TestLoadValueFromSourceRef_DelegatesToExtract(t *testing.T) {
+	t.Run("delegates to ExtractValueFromSourceRef", func(t *testing.T) {
+		ref := commoncfg.SourceRef{
+			Source: commoncfg.EmbeddedSourceValue,
+			Value:  "hello",
+		}
+		val, err := commoncfg.LoadValueFromSourceRef(ref)
+		require.NoError(t, err)
+		assert.Equal(t, []byte("hello"), val)
+	})
+}
+
+func TestExtractValueFromSourceRef_NilCredential(t *testing.T) {
+	_, err := commoncfg.ExtractValueFromSourceRef(nil)
+	assert.Error(t, err)
+}
+
+func TestExtractValueFromSourceRef_YAMLFile(t *testing.T) {
+	tmpFile := createTempFile(t, "key: value")
+
+	ref := commoncfg.SourceRef{
+		Source: commoncfg.FileSourceValue,
+		File: commoncfg.CredentialFile{
+			Path:   tmpFile,
+			Format: commoncfg.YAMLFileFormat,
+		},
+	}
+	val, err := commoncfg.ExtractValueFromSourceRef(&ref)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("key: value"), val)
+}
+
+func TestExtractValueFromSourceRef_JSONFileNoPath(t *testing.T) {
+	tmpFile := createTempFile(t, `{"token": "abc"}`)
+
+	ref := commoncfg.SourceRef{
+		Source: commoncfg.FileSourceValue,
+		File: commoncfg.CredentialFile{
+			Path:   tmpFile,
+			Format: commoncfg.JSONFileFormat,
+		},
+	}
+	val, err := commoncfg.ExtractValueFromSourceRef(&ref)
+	require.NoError(t, err)
+	assert.Equal(t, []byte(`{"token": "abc"}`), val)
+}
+
+func TestExtractValueFromSourceRef_JSONFileInvalidJSON(t *testing.T) {
+	tmpFile := createTempFile(t, "not-json")
+
+	ref := commoncfg.SourceRef{
+		Source: commoncfg.FileSourceValue,
+		File: commoncfg.CredentialFile{
+			Path:     tmpFile,
+			Format:   commoncfg.JSONFileFormat,
+			JSONPath: "$.token",
+		},
+	}
+	_, err := commoncfg.ExtractValueFromSourceRef(&ref)
+	assert.Error(t, err)
+}
+
+func TestExtractValueFromSourceRef_JSONFileNonStringResult(t *testing.T) {
+	tmpFile := createTempFile(t, `{"count": 42}`)
+
+	ref := commoncfg.SourceRef{
+		Source: commoncfg.FileSourceValue,
+		File: commoncfg.CredentialFile{
+			Path:     tmpFile,
+			Format:   commoncfg.JSONFileFormat,
+			JSONPath: "$.count",
+		},
+	}
+	_, err := commoncfg.ExtractValueFromSourceRef(&ref)
+	assert.Error(t, err)
+}
+
+func TestLoadMTLSClientCertificate(t *testing.T) {
+	certPEM, keyPEM := generateTestCert(t)
+
+	t.Run("nil config returns error", func(t *testing.T) {
+		_, err := commoncfg.LoadMTLSClientCertificate(nil)
+		assert.ErrorIs(t, err, commoncfg.ErrMTLSIsNil)
+	})
+
+	t.Run("valid cert and key", func(t *testing.T) {
+		cert, err := commoncfg.LoadMTLSClientCertificate(&commoncfg.MTLS{
+			Cert:    commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)},
+			CertKey: commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)},
+		})
+		require.NoError(t, err)
+		assert.NotNil(t, cert)
+	})
+
+	t.Run("cert extraction error", func(t *testing.T) {
+		_, err := commoncfg.LoadMTLSClientCertificate(&commoncfg.MTLS{
+			Cert:    commoncfg.SourceRef{Source: "unknown"},
+			CertKey: commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)},
+		})
+		assert.Error(t, err)
+	})
+
+	t.Run("key extraction error", func(t *testing.T) {
+		_, err := commoncfg.LoadMTLSClientCertificate(&commoncfg.MTLS{
+			Cert:    commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)},
+			CertKey: commoncfg.SourceRef{Source: "unknown"},
+		})
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid key pair", func(t *testing.T) {
+		otherCertPEM, _ := generateTestCert(t)
+		_, err := commoncfg.LoadMTLSClientCertificate(&commoncfg.MTLS{
+			Cert:    commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(otherCertPEM)},
+			CertKey: commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)},
+		})
+		assert.Error(t, err)
+	})
+}
+
+func TestLoadMTLSCACertPool(t *testing.T) {
+	certPEM, _ := generateTestCert(t)
+
+	t.Run("nil config returns error", func(t *testing.T) {
+		_, err := commoncfg.LoadMTLSCACertPool(nil)
+		assert.ErrorIs(t, err, commoncfg.ErrMTLSIsNil)
+	})
+
+	t.Run("empty CAs returns nil pool", func(t *testing.T) {
+		pool, err := commoncfg.LoadMTLSCACertPool(&commoncfg.MTLS{})
+		require.NoError(t, err)
+		assert.Nil(t, pool)
+	})
+
+	t.Run("with ServerCA", func(t *testing.T) {
+		serverCA := commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)}
+		pool, err := commoncfg.LoadMTLSCACertPool(&commoncfg.MTLS{
+			ServerCA: &serverCA,
+		})
+		require.NoError(t, err)
+		assert.NotNil(t, pool)
+	})
+
+	t.Run("with RootCAs", func(t *testing.T) {
+		pool, err := commoncfg.LoadMTLSCACertPool(&commoncfg.MTLS{
+			RootCAs: []commoncfg.SourceRef{
+				{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)},
+			},
+		})
+		require.NoError(t, err)
+		assert.NotNil(t, pool)
+	})
+
+	t.Run("invalid CA source returns error", func(t *testing.T) {
+		serverCA := commoncfg.SourceRef{Source: "unknown"}
+		_, err := commoncfg.LoadMTLSCACertPool(&commoncfg.MTLS{
+			ServerCA: &serverCA,
+		})
+		assert.Error(t, err)
+	})
+}
+
+func TestLoadCACertPool(t *testing.T) {
+	certPEM, _ := generateTestCert(t)
+
+	t.Run("nil ref returns nil pool", func(t *testing.T) {
+		pool, err := commoncfg.LoadCACertPool(nil)
+		require.NoError(t, err)
+		assert.Nil(t, pool)
+	})
+
+	t.Run("valid cert ref", func(t *testing.T) {
+		ref := &commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)}
+		pool, err := commoncfg.LoadCACertPool(ref)
+		require.NoError(t, err)
+		assert.NotNil(t, pool)
+	})
+
+	t.Run("extraction error", func(t *testing.T) {
+		ref := &commoncfg.SourceRef{Source: "unknown"}
+		_, err := commoncfg.LoadCACertPool(ref)
+		assert.Error(t, err)
+	})
+}
+
+func TestLoadCAsCertPool(t *testing.T) {
+	certPEM, _ := generateTestCert(t)
+
+	t.Run("empty slice returns nil pool", func(t *testing.T) {
+		pool, err := commoncfg.LoadCAsCertPool(nil)
+		require.NoError(t, err)
+		assert.Nil(t, pool)
+	})
+
+	t.Run("valid certs", func(t *testing.T) {
+		refs := []commoncfg.SourceRef{
+			{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)},
+		}
+		pool, err := commoncfg.LoadCAsCertPool(refs)
+		require.NoError(t, err)
+		assert.NotNil(t, pool)
+	})
+
+	t.Run("extraction error", func(t *testing.T) {
+		refs := []commoncfg.SourceRef{
+			{Source: "unknown"},
+		}
+		_, err := commoncfg.LoadCAsCertPool(refs)
+		assert.Error(t, err)
+	})
+}
+
+func TestLoadClientCertificate(t *testing.T) {
+	certPEM, keyPEM := generateTestCert(t)
+
+	t.Run("nil certRef returns error", func(t *testing.T) {
+		keyRef := &commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)}
+		_, err := commoncfg.LoadClientCertificate(nil, keyRef)
+		assert.ErrorIs(t, err, commoncfg.ErrCertificateIsNil)
+	})
+
+	t.Run("nil keyRef returns error", func(t *testing.T) {
+		certRef := &commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)}
+		_, err := commoncfg.LoadClientCertificate(certRef, nil)
+		assert.ErrorIs(t, err, commoncfg.ErrKeyCertificateIsNil)
+	})
+
+	t.Run("valid cert and key", func(t *testing.T) {
+		certRef := &commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)}
+		keyRef := &commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)}
+		cert, err := commoncfg.LoadClientCertificate(certRef, keyRef)
+		require.NoError(t, err)
+		assert.NotNil(t, cert)
+	})
+
+	t.Run("cert extraction error", func(t *testing.T) {
+		certRef := &commoncfg.SourceRef{Source: "unknown"}
+		keyRef := &commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)}
+		_, err := commoncfg.LoadClientCertificate(certRef, keyRef)
+		assert.Error(t, err)
+	})
+
+	t.Run("key extraction error", func(t *testing.T) {
+		certRef := &commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)}
+		keyRef := &commoncfg.SourceRef{Source: "unknown"}
+		_, err := commoncfg.LoadClientCertificate(certRef, keyRef)
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid key pair", func(t *testing.T) {
+		otherCertPEM, _ := generateTestCert(t)
+		certRef := &commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(otherCertPEM)}
+		keyRef := &commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)}
+		_, err := commoncfg.LoadClientCertificate(certRef, keyRef)
+		assert.Error(t, err)
+	})
+}
+
+func TestLoadMTLSConfig(t *testing.T) {
+	certPEM, keyPEM := generateTestCert(t)
+
+	validMTLS := &commoncfg.MTLS{
+		Cert:    commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)},
+		CertKey: commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)},
+	}
+
+	t.Run("nil config returns error", func(t *testing.T) {
+		_, err := commoncfg.LoadMTLSConfig(nil)
+		assert.ErrorIs(t, err, commoncfg.ErrMTLSIsNil)
+	})
+
+	t.Run("valid config without CA", func(t *testing.T) {
+		tlsCfg, err := commoncfg.LoadMTLSConfig(validMTLS)
+		require.NoError(t, err)
+		assert.NotNil(t, tlsCfg)
+		assert.Nil(t, tlsCfg.RootCAs)
+	})
+
+	t.Run("valid config with TLS attributes", func(t *testing.T) {
+		mtls := &commoncfg.MTLS{
+			Cert:    commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)},
+			CertKey: commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)},
+			Attributes: &commoncfg.TLSAttributes{
+				InsecureSkipVerify:     true,
+				ServerName:             "example.com",
+				SessionTicketsDisabled: true,
+			},
+		}
+		tlsCfg, err := commoncfg.LoadMTLSConfig(mtls)
+		require.NoError(t, err)
+		assert.True(t, tlsCfg.InsecureSkipVerify)
+		assert.Equal(t, "example.com", tlsCfg.ServerName)
+		assert.True(t, tlsCfg.SessionTicketsDisabled)
+	})
+
+	t.Run("valid config with CA", func(t *testing.T) {
+		caRef := commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)}
+		mtls := &commoncfg.MTLS{
+			Cert:     commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)},
+			CertKey:  commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)},
+			ServerCA: &caRef,
+		}
+		tlsCfg, err := commoncfg.LoadMTLSConfig(mtls)
+		require.NoError(t, err)
+		assert.NotNil(t, tlsCfg.RootCAs)
+	})
+
+	t.Run("cert load error propagates", func(t *testing.T) {
+		mtls := &commoncfg.MTLS{
+			Cert:    commoncfg.SourceRef{Source: "unknown"},
+			CertKey: commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)},
+		}
+		_, err := commoncfg.LoadMTLSConfig(mtls)
+		assert.Error(t, err)
+	})
+
+	t.Run("CA load error propagates", func(t *testing.T) {
+		invalidCA := commoncfg.SourceRef{Source: "unknown"}
+		mtls := &commoncfg.MTLS{
+			Cert:     commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM)},
+			CertKey:  commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(keyPEM)},
+			ServerCA: &invalidCA,
+		}
+		_, err := commoncfg.LoadMTLSConfig(mtls)
+		assert.Error(t, err)
+	})
 }

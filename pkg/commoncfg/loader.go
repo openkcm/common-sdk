@@ -89,15 +89,6 @@ func DisableViperErrorUnused() Option {
 	}
 }
 
-// EnableViperErrorUnused enable the ErrorUnused flag for viper DecoderConfig, which means that it will return an error
-// if there are unknown keys in the config file. This is enabled by default, but you can use this option to explicitly
-// enable it if you have disabled it before.
-func EnableViperErrorUnused() Option {
-	return func(l *Loader) {
-		l.decoderConfig.ErrorUnused = false
-	}
-}
-
 // WithFile sets the file name and type of the config file
 func WithFile(name string, extension FileFormat) Option {
 	return func(l *Loader) {
