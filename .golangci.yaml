@@ -1,8 +1,8 @@
 version: "2"
 linters:
-  default: all
   enable:
     - gomodguard_v2
+  default: all
   disable:
     - godoclint
     - contextcheck

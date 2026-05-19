@@ -38,6 +38,8 @@ type Loader struct {
 	useEnv     bool
 	fileName   string
 	fileFormat FileFormat
+
+	decoderConfig mapstructure.DecoderConfig
 }
 
 type Option func(*Loader)
@@ -45,7 +47,12 @@ type Option func(*Loader)
 // NewLoader creates a new config loader
 // Uses config.yaml as default config file
 func NewLoader(cfg any, options ...Option) *Loader {
-	loader := &Loader{cfg: cfg}
+	loader := &Loader{
+		cfg: cfg,
+		decoderConfig: mapstructure.DecoderConfig{
+			ErrorUnused: true,
+		},
+	}
 
 	loader.fileName = DefaultFileName
 	loader.fileFormat = DefaultFileFormat
@@ -70,6 +77,15 @@ func WithDefaults(defaults map[string]any) Option {
 func WithPaths(paths ...string) Option {
 	return func(l *Loader) {
 		l.paths = paths
+	}
+}
+
+// DisableViperErrorUnused disable the ErrorUnused flag for viper DecoderConfig, which means that it will not return an
+// error if there are unknown keys in the config file. This can be useful if you want to allow extra fields in the
+// config file that are not defined in the struct, but it can also hide potential issues with the config file, so use it with caution.
+func DisableViperErrorUnused() Option {
+	return func(l *Loader) {
+		l.decoderConfig.ErrorUnused = false
 	}
 }
 
@@ -133,7 +149,7 @@ func (l *Loader) LoadConfig() error {
 
 	err = v.Unmarshal(l.cfg,
 		func(c *mapstructure.DecoderConfig) {
-			c.ErrorUnused = true // error if there are unknown keys in the config
+			c.ErrorUnused = l.decoderConfig.ErrorUnused // error if there are unknown keys in the config
 		},
 	)
 	if err != nil {
