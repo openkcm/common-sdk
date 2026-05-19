@@ -31,13 +31,13 @@ func TestAll(t *testing.T) {
 		}, {
 			name: "normal requests",
 			req1: &http.Request{Header: http.Header{
-				"User-Agent": []string{"Foo"},
-				"Accept":     []string{"Bar"},
+				UserAgentHeader: []string{"Foo"},
+				"Accept":        []string{"Bar"},
 			}},
 			wantError1: false,
 			req2: &envoy.AttributeContext_HttpRequest{Headers: map[string]string{
-				"user-agent": "Foo",
-				"accept":     "Bar",
+				UserAgentHeader: "Foo",
+				"accept":        "Bar",
 			}},
 			wantError2: false,
 		},
