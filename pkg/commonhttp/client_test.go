@@ -42,7 +42,7 @@ func TestNewClient(t *testing.T) {
 
 	// test nil config
 	t.Run("nil config", func(t *testing.T) {
-		client, err := commonhttp.NewClient(nil)
+		client, err := commonhttp.NewHTTPClient(nil)
 		if err == nil {
 			t.Errorf("expected error for nil config, got client: %v", client)
 		}
@@ -104,7 +104,7 @@ func TestNewClient(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Act
-			client, err := commonhttp.NewClient(&tc.cfg)
+			client, err := commonhttp.NewHTTPClient(&tc.cfg)
 
 			// Assert
 			if err != nil {
