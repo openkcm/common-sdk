@@ -7,9 +7,13 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
+	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +22,16 @@ import (
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/pointers"
 )
+
+type errorReader struct{}
+
+func (errorReader) Read(p []byte) (int, error) {
+	return 0, errors.New("mock read error")
+}
+
+func (errorReader) Close() error {
+	return nil
+}
 
 const tokenURL = "https://example.com/token"
 
@@ -155,6 +169,51 @@ func TestNewClientFromOAuth2(t *testing.T) {
 				assert.Nil(t, rt.ClientAssertionType)
 			},
 		},
+		{
+			name: "load ClientID error",
+			config: &commoncfg.OAuth2{
+				Credentials: commoncfg.OAuth2Credentials{
+					ClientID: commoncfg.SourceRef{Source: "invalid"},
+				},
+			},
+			wantErr:    true,
+			errMessage: "OAuth2 credentials missing client ID",
+		},
+		{
+			name: "load URL error",
+			config: &commoncfg.OAuth2{
+				Credentials: commoncfg.OAuth2Credentials{
+					ClientID: *strRef("id"),
+				},
+				URL: &commoncfg.SourceRef{Source: "invalid"},
+			},
+			wantErr:    true,
+			errMessage: "OAuth2 credentials missing URL",
+		},
+		{
+			name: "load MTLS error",
+			config: &commoncfg.OAuth2{
+				Credentials: commoncfg.OAuth2Credentials{
+					ClientID:   *strRef("id"),
+					AuthMethod: "none",
+				},
+				MTLS: &commoncfg.MTLS{
+					Cert: commoncfg.SourceRef{Source: "invalid"},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "no AuthMethod provided",
+			config: &commoncfg.OAuth2{
+				Credentials: commoncfg.OAuth2Credentials{
+					ClientID:   *strRef("id"),
+					AuthMethod: "post",
+				},
+			},
+			wantErr:    true,
+			errMessage: "no client authentication method provided",
+		},
 	}
 
 	for _, tt := range tests {
@@ -180,6 +239,17 @@ func TestNewClientFromOAuth2(t *testing.T) {
 	}
 }
 
+func TestValidateCombinationError(t *testing.T) {
+	creds := &commoncfg.OAuth2{}
+	rt := &clientOAuth2RoundTripper{
+		ClientSecretPost: pointers.String("secret"),
+		ClientAssertion:  pointers.String("assertion"),
+	}
+	err := validate(creds, rt)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot combine clientSecret with clientAssertion")
+}
+
 func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 	clientID := "test-client"
 
@@ -187,6 +257,7 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 		name       string
 		rt         *clientOAuth2RoundTripper
 		check      func(r *http.Request)
+		reqMod     func(r *http.Request)
 		wantErr    bool
 		errMessage string
 	}{
@@ -198,8 +269,10 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 				Next:             http.DefaultTransport,
 			},
 			check: func(r *http.Request) {
-				assert.Equal(t, clientID, r.URL.Query().Get("client_id"))
-				assert.Equal(t, "secret", r.URL.Query().Get("client_secret"))
+				bodyBytes, _ := io.ReadAll(r.Body)
+				q, _ := url.ParseQuery(string(bodyBytes))
+				assert.Equal(t, clientID, q.Get("client_id"))
+				assert.Equal(t, "secret", q.Get("client_secret"))
 			},
 		},
 		{
@@ -226,8 +299,10 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 				jwtCache:        make(map[string]cachedJWT),
 			},
 			check: func(r *http.Request) {
-				assert.Equal(t, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", r.URL.Query().Get("client_assertion_type"))
-				assert.NotEmpty(t, r.URL.Query().Get("client_assertion"))
+				bodyBytes, _ := io.ReadAll(r.Body)
+				q, _ := url.ParseQuery(string(bodyBytes))
+				assert.Equal(t, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", q.Get("client_assertion_type"))
+				assert.NotEmpty(t, q.Get("client_assertion"))
 			},
 		},
 		{
@@ -241,8 +316,65 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 				jwtCache:            make(map[string]cachedJWT),
 			},
 			check: func(r *http.Request) {
-				assert.Equal(t, "urn:custom:type", r.URL.Query().Get("client_assertion_type"))
-				assert.NotEmpty(t, r.URL.Query().Get("client_assertion"))
+				bodyBytes, _ := io.ReadAll(r.Body)
+				q, _ := url.ParseQuery(string(bodyBytes))
+				assert.Equal(t, "urn:custom:type", q.Get("client_assertion_type"))
+				assert.NotEmpty(t, q.Get("client_assertion"))
+			},
+		},
+		{
+			name: "mime type error",
+			rt: &clientOAuth2RoundTripper{
+				ClientID: clientID,
+				Next:     http.DefaultTransport,
+			},
+			reqMod: func(r *http.Request) {
+				r.Header.Set("Content-Type", "invalid/mime;type=unquoted\"")
+			},
+			wantErr:    true,
+			errMessage: "parsing mime type",
+		},
+		{
+			name: "body read error",
+			rt: &clientOAuth2RoundTripper{
+				ClientID: clientID,
+				Next:     http.DefaultTransport,
+			},
+			reqMod: func(r *http.Request) {
+				r.Body = errorReader{}
+			},
+			wantErr:    true,
+			errMessage: "reading request body",
+		},
+		{
+			name: "form parsing error",
+			rt: &clientOAuth2RoundTripper{
+				ClientID: clientID,
+				Next:     http.DefaultTransport,
+			},
+			reqMod: func(r *http.Request) {
+				r.Body = io.NopCloser(strings.NewReader("%ZZ=1"))
+			},
+			wantErr:    true,
+			errMessage: "parsing form body",
+		},
+		{
+			name: "GET request with client_secret_post",
+			rt: &clientOAuth2RoundTripper{
+				ClientID:         clientID,
+				ClientSecretPost: pointers.String("secret"),
+				Next:             http.DefaultTransport,
+			},
+			reqMod: func(r *http.Request) {
+				r.Method = http.MethodGet
+				r.Header.Del("Content-Type")
+				r.Body = nil
+				r.ContentLength = 0
+			},
+			check: func(r *http.Request) {
+				q := r.URL.Query()
+				assert.Equal(t, clientID, q.Get("client_id"))
+				assert.Empty(t, q.Get("client_secret"))
 			},
 		},
 	}
@@ -258,8 +390,13 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			}))
 			defer server.Close()
 
-			req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+			req, err := http.NewRequest(http.MethodPost, server.URL, strings.NewReader("dummy=data"))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			assert.NoError(t, err)
+
+			if tt.reqMod != nil {
+				tt.reqMod(req)
+			}
 
 			rep, err := tt.rt.RoundTrip(req)
 			if tt.wantErr {
@@ -271,7 +408,10 @@ func TestClientOAuth2RoundTripper_RoundTrip(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
-			defer rep.Body.Close()
+
+			if rep != nil {
+				defer rep.Body.Close()
+			}
 		})
 	}
 }

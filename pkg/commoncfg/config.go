@@ -348,6 +348,7 @@ type GRPCServerAttributes struct {
 type GRPCClient struct {
 	Enabled    bool                 `yaml:"enabled" json:"enabled"`
 	Address    string               `yaml:"address" json:"address"`
+	Version    string               `yaml:"version" json:"version" default:"v1"`
 	Attributes GRPCClientAttributes `yaml:"attributes" json:"attributes"`
 	Pool       GRPCPool             `yaml:"pool" json:"pool"`
 	SecretRef  *SecretRef           `yaml:"secretRef" json:"secretRef"`
@@ -369,17 +370,6 @@ type GRPCClientAttributes struct {
 
 type HTTPClient struct {
 	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"10s" mapstructure:"timeout"`
-
-	//Deprecated [to be replaced by using MTLS]
-	RootCAs *SourceRef `yaml:"rootCAs" json:"rootCAs" mapstructure:"rootCAs"`
-	//Deprecated [to be replaced by using MTLS]
-	InsecureSkipVerify bool `yaml:"insecureSkipVerify" json:"insecureSkipVerify" mapstructure:"insecureSkipVerify"`
-	//Deprecated [to be replaced by using MTLS]
-	MinVersion uint16 `yaml:"minVersion" json:"minVersion" mapstructure:"minVersion"`
-	//Deprecated [to be replaced by using MTLS]
-	Cert *SourceRef `yaml:"cert" json:"cert" mapstructure:"cert"`
-	//Deprecated [to be replaced by using MTLS]
-	CertKey *SourceRef `yaml:"certKey" json:"certKey" mapstructure:"certKey"`
 
 	APIToken            *SourceRef               `yaml:"apiToken" json:"apiToken" mapstructure:"apiToken"`
 	BasicAuth           *BasicAuth               `yaml:"basicAuth" json:"basicAuth" mapstructure:"basicAuth"`
