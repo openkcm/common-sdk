@@ -8,7 +8,7 @@ import (
 )
 
 func TestAll(t *testing.T) {
-	builder := NewBuilder(WithHeaderKeys(defaultHeaderKeys))
+	builder := NewBuilder(WithHeaderKeys([]string{UserAgentHeader}))
 
 	// create the test cases
 	tests := []struct {

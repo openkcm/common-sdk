@@ -559,8 +559,8 @@ func aggregateStatus(results map[string]CheckState) AvailabilityStatus {
 func withInterceptors(interceptors []Interceptor, target InterceptorFunc) InterceptorFunc {
 	chain := target
 
-	for _, v := range slices.Backward(interceptors) {
-		chain = v(chain)
+	for idx := range slices.Backward(interceptors) {
+		chain = interceptors[idx](chain)
 	}
 
 	return chain

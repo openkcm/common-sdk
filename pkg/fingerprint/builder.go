@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	UserAgent = "user-agent"
+	UserAgentHeader = "User-Agent"
 )
 
-var defaultHeaderKeys = []string{UserAgent}
+var defaultHeaderKeys = []string{UserAgentHeader}
 
 type BuilderOption func(*Builder)
 

@@ -45,7 +45,8 @@ const (
 	DefPeriodicReaderInterval = 2 * time.Second
 	DefBatchTimeout           = 2 * time.Second
 	DefShutdownTimeout        = 5 * time.Second
-	DefAuthorizationHeader    = "Authorization"
+
+	AuthorizationHeader = "Authorization"
 )
 
 type registry struct {
@@ -308,14 +309,14 @@ func initTraceGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 			return nil, err
 		}
 
-		sec = otlptracegrpc.WithHeaders(map[string]string{DefAuthorizationHeader: token})
+		sec = otlptracegrpc.WithHeaders(map[string]string{AuthorizationHeader: token})
 	case commoncfg.BasicSecretType:
 		value, err := computeBasicAuthorizationHeader(&cfg.Traces.SecretRef.Basic)
 		if err != nil {
 			return nil, err
 		}
 
-		sec = otlptracegrpc.WithHeaders(map[string]string{DefAuthorizationHeader: value})
+		sec = otlptracegrpc.WithHeaders(map[string]string{AuthorizationHeader: value})
 	case commoncfg.MTLSSecretType:
 		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Traces.SecretRef.MTLS)
 		if err != nil {
@@ -466,14 +467,14 @@ func initMetricGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 			return nil, err
 		}
 
-		sec = otlpmetricgrpc.WithHeaders(map[string]string{DefAuthorizationHeader: token})
+		sec = otlpmetricgrpc.WithHeaders(map[string]string{AuthorizationHeader: token})
 	case commoncfg.BasicSecretType:
 		value, err := computeBasicAuthorizationHeader(&cfg.Metrics.SecretRef.Basic)
 		if err != nil {
 			return nil, err
 		}
 
-		sec = otlpmetricgrpc.WithHeaders(map[string]string{DefAuthorizationHeader: value})
+		sec = otlpmetricgrpc.WithHeaders(map[string]string{AuthorizationHeader: value})
 	case commoncfg.MTLSSecretType:
 		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Metrics.SecretRef.MTLS)
 		if err != nil {
@@ -623,14 +624,14 @@ func initLoggerGrpcExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otl
 			return nil, err
 		}
 
-		sec = otlploggrpc.WithHeaders(map[string]string{DefAuthorizationHeader: token})
+		sec = otlploggrpc.WithHeaders(map[string]string{AuthorizationHeader: token})
 	case commoncfg.BasicSecretType:
 		value, err := computeBasicAuthorizationHeader(&cfg.Logs.SecretRef.Basic)
 		if err != nil {
 			return nil, err
 		}
 
-		sec = otlploggrpc.WithHeaders(map[string]string{DefAuthorizationHeader: value})
+		sec = otlploggrpc.WithHeaders(map[string]string{AuthorizationHeader: value})
 	case commoncfg.MTLSSecretType:
 		tlsConfig, err := commoncfg.LoadMTLSConfig(&cfg.Logs.SecretRef.MTLS)
 		if err != nil {

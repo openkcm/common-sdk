@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.16.0](https://github.com/openkcm/common-sdk/compare/v1.15.2...v1.16.0) (2026-05-18)
+
+
+### Features
+
+* Add middleware for common security headers ([#290](https://github.com/openkcm/common-sdk/issues/290)) ([17dc792](https://github.com/openkcm/common-sdk/commit/17dc7923e6b4ed6fd44fff04efa4e383749abd02))
+
+
+### Bug Fixes
+
+* clientData hijack potential ([#288](https://github.com/openkcm/common-sdk/issues/288)) ([dab998a](https://github.com/openkcm/common-sdk/commit/dab998a84d4b5d4c3e64cc10514b8dd7a6076026))
+* **deps:** bump go.opentelemetry.io/collector/pdata from 1.55.0 to 1.56.0 in the gomod-group group ([#286](https://github.com/openkcm/common-sdk/issues/286)) ([67dba59](https://github.com/openkcm/common-sdk/commit/67dba59abfe8158f6c3baf07e8d9f17f26c24ac7))
+* **deps:** bump the gomod-group group with 3 updates ([#289](https://github.com/openkcm/common-sdk/issues/289)) ([cce654e](https://github.com/openkcm/common-sdk/commit/cce654e1b4b9584dfffd6ccf99ed850afffc149a))
+* linter findings ([#291](https://github.com/openkcm/common-sdk/issues/291)) ([c236369](https://github.com/openkcm/common-sdk/commit/c236369218db85a3ad6b1be3c5a13c5cf69e3aee))
+
 ## [1.15.2](https://github.com/openkcm/common-sdk/compare/v1.15.1...v1.15.2) (2026-04-13)
 
 

@@ -123,8 +123,8 @@ func createConfig(options []HandlerOption) HandlerConfig {
 
 func withMiddleware(interceptors []Middleware, target MiddlewareFunc) MiddlewareFunc {
 	chain := target
-	for _, v := range slices.Backward(interceptors) {
-		chain = v(chain)
+	for idx := range slices.Backward(interceptors) {
+		chain = interceptors[idx](chain)
 	}
 
 	return chain
