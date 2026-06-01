@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.16.1](https://github.com/openkcm/common-sdk/compare/v1.16.0...v1.16.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* add possibility to disable the viper decoder config ([#287](https://github.com/openkcm/common-sdk/issues/287)) ([d2e11bb](https://github.com/openkcm/common-sdk/commit/d2e11bba999d27f0a81a4e9b7b54043773c3abe9))
+* bump otel semantic conventions ([#295](https://github.com/openkcm/common-sdk/issues/295)) ([b00fba9](https://github.com/openkcm/common-sdk/commit/b00fba9910d0563e074ee3d2393cbd1bd039c341))
+* commonhttp client oath2 secrets injections ([#268](https://github.com/openkcm/common-sdk/issues/268)) ([0239c7b](https://github.com/openkcm/common-sdk/commit/0239c7bae42e09fdd424b87ccce6407c150de60a))
+* **deps:** bump github.com/samber/oops from 1.21.0 to 1.22.0 in the gomod-group group across 1 directory ([#296](https://github.com/openkcm/common-sdk/issues/296)) ([6eee11a](https://github.com/openkcm/common-sdk/commit/6eee11af6bd066d2fc1b1db52223cec01d744ab7))
+* **deps:** bump the gomod-group group with 2 updates ([#293](https://github.com/openkcm/common-sdk/issues/293)) ([b01bb12](https://github.com/openkcm/common-sdk/commit/b01bb12ba160a35df0c068e194696846182abfdb))
+* include the version field into the GRPCClient config ([#270](https://github.com/openkcm/common-sdk/issues/270)) ([8bc245f](https://github.com/openkcm/common-sdk/commit/8bc245ff5bf3a9e4a999c2f48559763753a7968f))
+* remove deprecated creation http client and usage of it ([#183](https://github.com/openkcm/common-sdk/issues/183)) ([d6b2253](https://github.com/openkcm/common-sdk/commit/d6b22536bfc928d6dcc2ecb0e9fa6120c7de86b5))
+
 ## [1.16.0](https://github.com/openkcm/common-sdk/compare/v1.15.2...v1.16.0) (2026-05-18)
 
 
