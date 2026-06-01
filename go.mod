@@ -15,7 +15,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/oliveagle/jsonpath v0.1.4
 	github.com/prometheus/client_golang v1.23.2
-	github.com/samber/oops v1.21.0
+	github.com/samber/oops v1.22.0
 	github.com/samber/slog-formatter v1.3.0
 	github.com/samber/slog-multi v1.8.0
 	github.com/spf13/viper v1.21.0
