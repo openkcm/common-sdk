@@ -64,13 +64,25 @@ type ClientData struct {
 	// This way the consumer can determine which key to use to verify the signature
 	// and when to fetch a new public key.
 	KeyID string `json:"kid"`
+
 	// SignatureAlgorithm is the algorithm used to sign the client data.
 	SignatureAlgorithm SignatureAlgorithm `json:"alg"`
 
 	// CreatedAt The datetime of when the object was created (RFC3339 format)
 	CreatedAt time.Time `json:"createdAt"`
 
+	// TTL is the amount of time the clientdata is valid
+	TTL time.Duration `json:"ttl" default:"1m"`
+
 	b64data string
+}
+
+type ClientDataOpts func(*ClientData)
+
+func WithTTL(ttl time.Duration) ClientDataOpts {
+	return func(cd *ClientData) {
+		cd.TTL = ttl
+	}
 }
 
 // DecodeFrom decodes the base64 URL encoded client data and unmarshals it into a ClientData struct.
@@ -93,8 +105,8 @@ func DecodeFrom(b64data string) (*ClientData, error) {
 }
 
 // Verify verifies the signature of the client data using the provided public key.
-func (c *ClientData) Verify(publicKey any, b64sig string) error {
-	if nowFunc().After(c.CreatedAt.Add(time.Minute)) {
+func (c *ClientData) Verify(publicKey rsa.PublicKey, b64sig string) error {
+	if nowFunc().After(c.CreatedAt.Add(c.TTL)) {
 		return ErrClientDataExpired
 	}
 
@@ -107,12 +119,7 @@ func (c *ClientData) Verify(publicKey any, b64sig string) error {
 
 		hashedData := sha256.Sum256([]byte(c.b64data))
 
-		rsaPublicKey, ok := publicKey.(*rsa.PublicKey)
-		if !ok {
-			return ErrInvalidPublicKey
-		}
-
-		return rsa.VerifyPKCS1v15(rsaPublicKey, crypto.SHA256, hashedData[:], signature)
+		return rsa.VerifyPKCS1v15(&publicKey, crypto.SHA256, hashedData[:], signature) // NOSONAR
 	}
 
 	return ErrInvalidClientDataSignatureAlgorithm
@@ -120,8 +127,17 @@ func (c *ClientData) Verify(publicKey any, b64sig string) error {
 
 // Encode encodes the client data and signs it using the provided private key.
 // Both values are returned as base64 URL encoded strings.
-func (c *ClientData) Encode(privateKey any) (string, string, error) {
+func (c *ClientData) Encode(privateKey any, opts ...ClientDataOpts) (string, string, error) {
 	c.CreatedAt = nowFunc()
+
+	// By default set TTL to 1min
+	if c.TTL == 0 {
+		c.TTL = 1 * time.Minute
+	}
+
+	for _, o := range opts {
+		o(c)
+	}
 
 	jsonString, err := json.Marshal(c)
 	if err != nil {
