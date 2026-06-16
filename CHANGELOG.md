@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.17.0](https://github.com/openkcm/common-sdk/compare/v1.16.1...v1.17.0) (2026-06-16)
+
+
+### Features
+
+* configurable client data ttl ([#298](https://github.com/openkcm/common-sdk/issues/298)) ([6c2c00e](https://github.com/openkcm/common-sdk/commit/6c2c00e512ab6dd766c9ff4804307b50e3a3d553))
+
+
+### Bug Fixes
+
+* **deps:** bump go.opentelemetry.io/collector/pdata from 1.59.0 to 1.60.0 in the gomod-group group ([#299](https://github.com/openkcm/common-sdk/issues/299)) ([3566959](https://github.com/openkcm/common-sdk/commit/35669598b74c9c75201b095e352d32d050d69523))
+
 ## [1.16.1](https://github.com/openkcm/common-sdk/compare/v1.16.0...v1.16.1) (2026-06-01)
 
 
