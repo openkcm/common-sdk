@@ -3,23 +3,20 @@ package auth_test
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"reflect"
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/openkcm/common-sdk/pkg/auth"
 )
 
 func TestEndToEnd(t *testing.T) {
-	// Arrange
-	rsaPrivateKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		t.Fatalf("could not generate RSA key: %s", err)
-	}
+	key, err := rsa.GenerateKey(rand.Reader, 4096)
+	assert.NoError(t, err)
 
-	rsaPublicKey := &rsaPrivateKey.PublicKey
-
-	defClientData := &auth.ClientData{
+	clientData := &auth.ClientData{
 		// Mandatory user attributes
 		Identifier: "test-subject",
 		Email:      "test-email",
@@ -40,103 +37,83 @@ func TestEndToEnd(t *testing.T) {
 		SignatureAlgorithm: auth.SignatureAlgorithmRS256,
 	}
 
-	expiredClientData := defClientData
-	expiredClientData.CreatedAt = time.Now().Add(time.Hour)
+	ErrDecode := errors.New("error decoding")
+	ErrEncode := errors.New("error encoding")
+	ErrVerify := errors.New("error verifying")
 
 	// create the test cases
 	tests := []struct {
 		name              string
 		clientData        *auth.ClientData
 		privateKey        any
-		publicKey         any
-		wantError         bool
-		wantError2        bool
-		wantError3        bool
+		publicKey         rsa.PublicKey
+		err               error
 		postDecodeNowFunc func() time.Time
+		ttl               time.Duration
 	}{
 		{
 			name:              "invalid signature algorithm",
 			clientData:        &auth.ClientData{},
-			wantError:         true,
+			err:               ErrEncode,
 			postDecodeNowFunc: time.Now,
 		}, {
 			name:              "invalid private key",
-			clientData:        defClientData,
+			clientData:        clientData,
 			privateKey:        "not a private key",
-			wantError:         true,
+			err:               ErrEncode,
 			postDecodeNowFunc: time.Now,
 		}, {
-			name:              "invalid public key",
-			clientData:        defClientData,
-			privateKey:        rsaPrivateKey,
-			publicKey:         "not a public key",
-			wantError3:        true,
-			postDecodeNowFunc: time.Now,
+			name:              "expired client data using default ttl (1min)",
+			clientData:        clientData,
+			privateKey:        key,
+			publicKey:         key.PublicKey,
+			err:               ErrVerify,
+			postDecodeNowFunc: func() time.Time { return time.Now().Add(time.Minute * 2) },
 		}, {
-			name:              "expired",
-			clientData:        expiredClientData,
-			privateKey:        rsaPrivateKey,
-			publicKey:         rsaPublicKey,
-			wantError3:        true,
-			postDecodeNowFunc: func() time.Time { return time.Now().Add(time.Second * 61) },
+			name:              "not fail if expoire is less than custom ttl (5min)",
+			clientData:        clientData,
+			privateKey:        key,
+			publicKey:         key.PublicKey,
+			postDecodeNowFunc: func() time.Time { return time.Now().Add(time.Minute * 2) },
+			ttl:               5 * time.Minute,
 		}, {
 			name:              "ok",
-			clientData:        defClientData,
-			privateKey:        rsaPrivateKey,
-			publicKey:         rsaPublicKey,
+			clientData:        clientData,
+			privateKey:        key,
+			publicKey:         key.PublicKey,
 			postDecodeNowFunc: time.Now,
 		},
 	}
 
-	// run the tests
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Act Encode
-			b64data, b64sig, err := tc.clientData.Encode(tc.privateKey)
+			b64data, b64sig, err := tc.clientData.Encode(tc.privateKey, auth.WithTTL(tc.ttl))
 
-			// Assert Encode
-			if tc.wantError {
-				if err == nil {
-					t.Error("expected error, but got nil")
-				}
+			if errors.Is(tc.err, ErrEncode) {
+				assert.Error(t, err)
+				return
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %s", err)
-				} else {
-					// Act Decode
-					clientData, err2 := auth.DecodeFrom(b64data)
+				assert.NoError(t, err)
+			}
 
-					// Assert Decode
-					if tc.wantError2 {
-						if err2 == nil {
-							t.Error("expected error, but got nil")
-						}
-					} else {
-						if err2 != nil {
-							t.Errorf("unexpected error: %s", err2)
-						} else {
-							if reflect.DeepEqual(clientData, tc.clientData) {
-								t.Error("client data does not match")
-							}
+			clientData, err := auth.DecodeFrom(b64data)
 
-							auth.SetNowFunc(tc.postDecodeNowFunc)
+			if errors.Is(tc.err, ErrDecode) {
+				assert.Error(t, err)
+				return
+			} else {
+				assert.NoError(t, err)
+			}
 
-							// Act Verify
-							err3 := clientData.Verify(tc.publicKey, b64sig)
+			auth.SetNowFunc(tc.postDecodeNowFunc)
 
-							// Assert Verify
-							if tc.wantError3 {
-								if err3 == nil {
-									t.Error("expected error, but got nil")
-								}
-							} else {
-								if err3 != nil {
-									t.Errorf("unexpected error: %s", err3)
-								}
-							}
-						}
-					}
-				}
+			err = clientData.Verify(tc.publicKey, b64sig)
+
+			if errors.Is(tc.err, ErrVerify) {
+				assert.Error(t, err)
+				return
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}
