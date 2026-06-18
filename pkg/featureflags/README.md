@@ -44,7 +44,7 @@ When `Enabled` is `false`, no provider is registered. The OpenFeature SDK's buil
 
 ```go
 client := openfeature.NewClient("my-service")
-evalCtx := openfeature.NewEvaluationContext(tenantID, map[string]interface{}{
+evalCtx := openfeature.NewEvaluationContext(tenantID, map[string]any{
     "tenantID": tenantID,
 })
 enabled, err := client.BooleanValue(ctx, "cmk_my_flag", false, evalCtx)
@@ -92,7 +92,7 @@ func setFlags(t *testing.T, flags map[string]memprovider.InMemoryFlag) {
 func TestHandle_FlagEnabled(t *testing.T) { // no t.Parallel()
     setFlags(t, map[string]memprovider.InMemoryFlag{
         "cmk_my_flag": {State: memprovider.Enabled, DefaultVariant: "on",
-            Variants: map[string]interface{}{"on": true, "off": false}},
+            Variants: map[string]any{"on": true, "off": false}},
     })
     // assert behaviour when flag is on
 }
