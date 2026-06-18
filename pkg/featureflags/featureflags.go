@@ -79,7 +79,11 @@ func (p *EmbeddedProvider) Shutdown() {
 
 // Status implements openfeature.StateHandler.
 func (p *EmbeddedProvider) Status() openfeature.State {
-	return openfeature.ReadyState
+	if p.initialized {
+		return openfeature.ReadyState
+	}
+
+	return openfeature.NotReadyState
 }
 
 // BooleanEvaluation implements openfeature.FeatureProvider.

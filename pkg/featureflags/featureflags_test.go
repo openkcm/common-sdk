@@ -117,8 +117,14 @@ func TestEmbeddedProvider_Status(t *testing.T) {
 		t.Fatal("provider does not implement Status()")
 	}
 
+	if got := sh.Status(); got != openfeature.NotReadyState {
+		t.Fatalf("expected NotReadyState before Init, got %v", got)
+	}
+
+	initProvider(t, p)
+
 	if got := sh.Status(); got != openfeature.ReadyState {
-		t.Fatalf("expected ReadyState, got %v", got)
+		t.Fatalf("expected ReadyState after Init, got %v", got)
 	}
 }
 
