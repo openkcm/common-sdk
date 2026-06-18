@@ -1,0 +1,39 @@
+bool-flag:
+  variations:
+    "on": true
+    "off": false
+  defaultRule:
+    variation: "off"
+  targeting:
+    - query: 'targetingKey eq "tenant-abc"'
+      variation: "on"
+
+string-flag:
+  variations:
+    v1: "hello"
+    v2: "world"
+  defaultRule:
+    variation: v1
+
+int-flag:
+  variations:
+    high: 42
+    low: 0
+  defaultRule:
+    variation: high
+
+float-flag:
+  variations:
+    high: 3.14
+    low: 0.0
+  defaultRule:
+    variation: high
+
+object-flag:
+  variations:
+    v1:
+      key: "value"
+    v2:
+      key: "other"
+  defaultRule:
+    variation: v1

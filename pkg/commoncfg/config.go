@@ -66,10 +66,18 @@ var ErrFeatureNotFound = errors.New("feature not found")
 type BaseConfig struct {
 	Application  Application  `yaml:"application" json:"application"`
 	FeatureGates FeatureGates `yaml:"featureGates" json:"featureGates"`
+	FeatureFlags FeatureFlags `yaml:"featureFlags" json:"featureFlags"`
 	Status       Status       `yaml:"status" json:"status"`
 	Logger       Logger       `yaml:"logger" json:"logger"`
 	Telemetry    Telemetry    `yaml:"telemetry" json:"telemetry"`
 	Audit        Audit        `yaml:"audit" json:"audit"`
+}
+
+// FeatureFlags holds configuration for the OpenFeature-based feature flag provider.
+type FeatureFlags struct {
+	Enabled         bool          `yaml:"enabled" json:"enabled" default:"false"`
+	FilePath        string        `yaml:"filePath" json:"filePath" default:"/etc/featureflags/flags.yaml"`
+	PollingInterval time.Duration `yaml:"pollingInterval" json:"pollingInterval" default:"60s"`
 }
 
 // FeatureGates are a set of key=value pairs that describe service features.
