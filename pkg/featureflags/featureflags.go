@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"time"
 
-	ffclient "github.com/thomaspoignant/go-feature-flag"
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/thomaspoignant/go-feature-flag/ffcontext"
 	"github.com/thomaspoignant/go-feature-flag/modules/core/flag"
 	"github.com/thomaspoignant/go-feature-flag/modules/core/model"
 	"github.com/thomaspoignant/go-feature-flag/retriever/fileretriever"
 
-	"github.com/open-feature/go-sdk/openfeature"
+	ffclient "github.com/thomaspoignant/go-feature-flag"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
@@ -36,6 +36,7 @@ func NewEmbeddedProvider(cfg commoncfg.FeatureFlags) (openfeature.FeatureProvide
 	if cfg.FilePath == "" {
 		return nil, ErrEmptyFilePath
 	}
+
 	return &EmbeddedProvider{
 		flagFilePath:    cfg.FilePath,
 		pollingInterval: cfg.PollingInterval,
@@ -54,13 +55,16 @@ func (p *EmbeddedProvider) Hooks() []openfeature.Hook {
 
 // Init implements openfeature.StateHandler — called by SetProviderAndWait.
 func (p *EmbeddedProvider) Init(_ openfeature.EvaluationContext) error {
-	if err := ffclient.Init(ffclient.Config{
+	err := ffclient.Init(ffclient.Config{
 		PollingInterval: p.pollingInterval,
 		Retriever:       &fileretriever.Retriever{Path: p.flagFilePath},
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
+
 	p.initialized = true
+
 	return nil
 }
 
@@ -68,6 +72,7 @@ func (p *EmbeddedProvider) Init(_ openfeature.EvaluationContext) error {
 func (p *EmbeddedProvider) Shutdown() {
 	if p.initialized {
 		ffclient.Close()
+
 		p.initialized = false
 	}
 }
@@ -81,6 +86,7 @@ func (p *EmbeddedProvider) Status() openfeature.State {
 func (p *EmbeddedProvider) BooleanEvaluation(_ context.Context, flag string, defaultValue bool, flatCtx openfeature.FlattenedContext) openfeature.BoolResolutionDetail {
 	user := toEvalContext(flatCtx)
 	res, err := ffclient.BoolVariationDetails(flag, user, defaultValue)
+
 	return openfeature.BoolResolutionDetail{
 		Value:                    res.Value,
 		ProviderResolutionDetail: toResolutionDetail(res, err),
@@ -91,6 +97,7 @@ func (p *EmbeddedProvider) BooleanEvaluation(_ context.Context, flag string, def
 func (p *EmbeddedProvider) StringEvaluation(_ context.Context, flag string, defaultValue string, flatCtx openfeature.FlattenedContext) openfeature.StringResolutionDetail {
 	user := toEvalContext(flatCtx)
 	res, err := ffclient.StringVariationDetails(flag, user, defaultValue)
+
 	return openfeature.StringResolutionDetail{
 		Value:                    res.Value,
 		ProviderResolutionDetail: toResolutionDetail(res, err),
@@ -103,6 +110,7 @@ func (p *EmbeddedProvider) StringEvaluation(_ context.Context, flag string, defa
 func (p *EmbeddedProvider) IntEvaluation(_ context.Context, flag string, defaultValue int64, flatCtx openfeature.FlattenedContext) openfeature.IntResolutionDetail {
 	user := toEvalContext(flatCtx)
 	res, err := ffclient.IntVariationDetails(flag, user, int(defaultValue))
+
 	return openfeature.IntResolutionDetail{
 		Value:                    int64(res.Value),
 		ProviderResolutionDetail: toResolutionDetail(res, err),
@@ -113,6 +121,7 @@ func (p *EmbeddedProvider) IntEvaluation(_ context.Context, flag string, default
 func (p *EmbeddedProvider) FloatEvaluation(_ context.Context, flag string, defaultValue float64, flatCtx openfeature.FlattenedContext) openfeature.FloatResolutionDetail {
 	user := toEvalContext(flatCtx)
 	res, err := ffclient.Float64VariationDetails(flag, user, defaultValue)
+
 	return openfeature.FloatResolutionDetail{
 		Value:                    res.Value,
 		ProviderResolutionDetail: toResolutionDetail(res, err),
@@ -120,8 +129,9 @@ func (p *EmbeddedProvider) FloatEvaluation(_ context.Context, flag string, defau
 }
 
 // ObjectEvaluation implements openfeature.FeatureProvider.
-func (p *EmbeddedProvider) ObjectEvaluation(_ context.Context, flag string, defaultValue interface{}, flatCtx openfeature.FlattenedContext) openfeature.InterfaceResolutionDetail {
+func (p *EmbeddedProvider) ObjectEvaluation(_ context.Context, flag string, defaultValue any, flatCtx openfeature.FlattenedContext) openfeature.InterfaceResolutionDetail {
 	user := toEvalContext(flatCtx)
+
 	defMap, ok := defaultValue.(map[string]any)
 	if !ok {
 		return openfeature.InterfaceResolutionDetail{
@@ -132,7 +142,9 @@ func (p *EmbeddedProvider) ObjectEvaluation(_ context.Context, flag string, defa
 			},
 		}
 	}
+
 	res, err := ffclient.JSONVariationDetails(flag, user, defMap)
+
 	return openfeature.InterfaceResolutionDetail{
 		Value:                    res.Value,
 		ProviderResolutionDetail: toResolutionDetail(res, err),
@@ -142,18 +154,23 @@ func (p *EmbeddedProvider) ObjectEvaluation(_ context.Context, flag string, defa
 // toEvalContext converts an OpenFeature FlattenedContext into an ffcontext.Context.
 func toEvalContext(flatCtx openfeature.FlattenedContext) ffcontext.Context {
 	var key string
+
 	if tk, ok := flatCtx["targetingKey"]; ok {
 		if s, isStr := tk.(string); isStr {
 			key = s
 		}
 	}
+
 	b := ffcontext.NewEvaluationContextBuilder(key)
+
 	for k, v := range flatCtx {
 		if k == "targetingKey" {
 			continue
 		}
+
 		b.AddCustom(k, v)
 	}
+
 	return b.Build()
 }
 
@@ -163,6 +180,7 @@ func toResolutionDetail[T model.JSONType](res model.VariationResult[T], err erro
 		Variant: res.VariationType,
 		Reason:  openfeature.Reason(res.Reason),
 	}
+
 	if res.Failed || err != nil {
 		var resErr openfeature.ResolutionError
 		if err != nil {
@@ -170,15 +188,18 @@ func toResolutionDetail[T model.JSONType](res model.VariationResult[T], err erro
 		} else {
 			resErr = goffErrorToResolutionError(res.ErrorCode, res.ErrorDetails)
 		}
+
 		prd.ResolutionError = resErr
 		prd.Reason = openfeature.ErrorReason
 	}
+
 	return prd
 }
 
 // goffErrorToResolutionError maps a GOFF error code to the matching OpenFeature resolution error.
 func goffErrorToResolutionError(errorCode, errorDetails string) openfeature.ResolutionError {
 	msg := errorDetails
+
 	switch errorCode {
 	case flag.ErrorCodeFlagNotFound:
 		return openfeature.NewFlagNotFoundResolutionError(msg)

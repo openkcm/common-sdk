@@ -19,16 +19,19 @@ import (
 // flagsFile returns the absolute path to the test fixture flag file.
 func flagsFile(t *testing.T) string {
 	t.Helper()
+
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
+
 	return filepath.Join(filepath.Dir(file), "testdata", "flags.yaml")
 }
 
 // newProvider creates a valid provider pointing at the test fixture.
 func newProvider(t *testing.T) openfeature.FeatureProvider {
 	t.Helper()
+
 	p, err := NewEmbeddedProvider(commoncfg.FeatureFlags{
 		FilePath:        flagsFile(t),
 		PollingInterval: 0,
@@ -36,19 +39,24 @@ func newProvider(t *testing.T) openfeature.FeatureProvider {
 	if err != nil {
 		t.Fatalf("NewEmbeddedProvider: %v", err)
 	}
+
 	return p
 }
 
 // initProvider initialises the provider and registers a cleanup that shuts it down.
 func initProvider(t *testing.T, p openfeature.FeatureProvider) {
 	t.Helper()
+
 	sh, ok := p.(openfeature.StateHandler)
 	if !ok {
 		t.Fatal("provider does not implement StateHandler")
 	}
-	if err := sh.Init(openfeature.EvaluationContext{}); err != nil {
+
+	err := sh.Init(openfeature.EvaluationContext{})
+	if err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	t.Cleanup(sh.Shutdown)
 }
 
@@ -56,21 +64,25 @@ func initProvider(t *testing.T, p openfeature.FeatureProvider) {
 
 func TestNewEmbeddedProvider_EmptyFilePath(t *testing.T) {
 	cfg := commoncfg.FeatureFlags{Enabled: true, FilePath: "", PollingInterval: 60 * time.Second}
+
 	_, err := NewEmbeddedProvider(cfg)
 	if err == nil {
 		t.Fatal("expected error for empty FilePath, got nil")
 	}
-	if err != ErrEmptyFilePath {
+
+	if !errors.Is(err, ErrEmptyFilePath) {
 		t.Fatalf("expected ErrEmptyFilePath, got %v", err)
 	}
 }
 
 func TestNewEmbeddedProvider_Valid(t *testing.T) {
 	cfg := commoncfg.FeatureFlags{Enabled: true, FilePath: "/etc/featureflags/flags.yaml", PollingInterval: 60 * time.Second}
+
 	p, err := NewEmbeddedProvider(cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if p == nil {
 		t.Fatal("expected non-nil provider")
 	}
@@ -80,6 +92,7 @@ func TestNewEmbeddedProvider_Valid(t *testing.T) {
 
 func TestEmbeddedProvider_Metadata(t *testing.T) {
 	p := newProvider(t)
+
 	name := p.Metadata().Name
 	if name == "" {
 		t.Fatal("expected non-empty provider name")
@@ -88,6 +101,7 @@ func TestEmbeddedProvider_Metadata(t *testing.T) {
 
 func TestEmbeddedProvider_Hooks(t *testing.T) {
 	p := newProvider(t)
+
 	if hooks := p.Hooks(); hooks != nil {
 		t.Fatalf("expected nil hooks, got %v", hooks)
 	}
@@ -97,10 +111,12 @@ func TestEmbeddedProvider_Hooks(t *testing.T) {
 
 func TestEmbeddedProvider_Status(t *testing.T) {
 	p := newProvider(t)
+
 	sh, ok := p.(interface{ Status() openfeature.State })
 	if !ok {
 		t.Fatal("provider does not implement Status()")
 	}
+
 	if got := sh.Status(); got != openfeature.ReadyState {
 		t.Fatalf("expected ReadyState, got %v", got)
 	}
@@ -116,8 +132,14 @@ func TestEmbeddedProvider_Init_MissingFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected construction error: %v", err)
 	}
-	sh := p.(openfeature.StateHandler)
-	if err := sh.Init(openfeature.EvaluationContext{}); err == nil {
+
+	sh, ok := p.(openfeature.StateHandler)
+	if !ok {
+		t.Fatal("provider does not implement StateHandler")
+	}
+
+	err = sh.Init(openfeature.EvaluationContext{})
+	if err == nil {
 		t.Fatal("expected Init to fail for missing file, got nil")
 	}
 }
@@ -125,18 +147,30 @@ func TestEmbeddedProvider_Init_MissingFile(t *testing.T) {
 func TestEmbeddedProvider_Shutdown_WithoutInit(t *testing.T) {
 	// Shutdown on an uninitialised provider must not panic.
 	p := newProvider(t)
-	p.(openfeature.StateHandler).Shutdown()
+
+	sh, ok := p.(openfeature.StateHandler)
+	if !ok {
+		t.Fatal("provider does not implement StateHandler")
+	}
+
+	sh.Shutdown()
 }
 
 func TestEmbeddedProvider_Shutdown_AfterInit(t *testing.T) {
 	p := newProvider(t)
-	sh := p.(openfeature.StateHandler)
-	if err := sh.Init(openfeature.EvaluationContext{}); err != nil {
+
+	sh, ok := p.(openfeature.StateHandler)
+	if !ok {
+		t.Fatal("provider does not implement StateHandler")
+	}
+
+	err := sh.Init(openfeature.EvaluationContext{})
+	if err != nil {
 		t.Fatalf("Init: %v", err)
 	}
+
 	sh.Shutdown() // must not panic
-	// second Shutdown must also be safe
-	sh.Shutdown()
+	sh.Shutdown() // second call must also be safe
 }
 
 // ---- Evaluation methods ---------------------------------------------------------
@@ -153,8 +187,9 @@ func TestEmbeddedProvider_BooleanEvaluation(t *testing.T) {
 		t.Fatalf("expected true for targeting key tenant-abc, got false")
 	}
 
-	// Default rule returns false
+	// Default rule returns false.
 	flatOther := openfeature.FlattenedContext{"targetingKey": "other"}
+
 	res2 := p.BooleanEvaluation(ctx, "bool-flag", true, flatOther)
 	if res2.Value {
 		t.Fatalf("expected false from default rule, got true")
@@ -169,8 +204,9 @@ func TestEmbeddedProvider_BooleanEvaluation_UnknownFlag(t *testing.T) {
 	if res.Value != true {
 		t.Fatalf("expected default value true on unknown flag, got %v", res.Value)
 	}
-	if res.ProviderResolutionDetail.Reason != openfeature.ErrorReason {
-		t.Fatalf("expected ErrorReason, got %v", res.ProviderResolutionDetail.Reason)
+
+	if res.Reason != openfeature.ErrorReason {
+		t.Fatalf("expected ErrorReason, got %v", res.Reason)
 	}
 }
 
@@ -209,11 +245,14 @@ func TestEmbeddedProvider_ObjectEvaluation(t *testing.T) {
 	initProvider(t, p)
 
 	defaultVal := map[string]any{"key": "fallback"}
+
 	res := p.ObjectEvaluation(context.Background(), "object-flag", defaultVal, openfeature.FlattenedContext{})
+
 	m, ok := res.Value.(map[string]any)
 	if !ok {
 		t.Fatalf("expected map[string]any, got %T", res.Value)
 	}
+
 	if m["key"] != "value" {
 		t.Fatalf("expected key=value, got %v", m["key"])
 	}
@@ -224,9 +263,10 @@ func TestEmbeddedProvider_ObjectEvaluation_NonMapDefault(t *testing.T) {
 	initProvider(t, p)
 
 	res := p.ObjectEvaluation(context.Background(), "object-flag", "not-a-map", openfeature.FlattenedContext{})
-	if res.ProviderResolutionDetail.Reason != openfeature.ErrorReason {
-		t.Fatalf("expected ErrorReason for non-map default, got %v", res.ProviderResolutionDetail.Reason)
+	if res.Reason != openfeature.ErrorReason {
+		t.Fatalf("expected ErrorReason for non-map default, got %v", res.Reason)
 	}
+
 	if res.Value != "not-a-map" {
 		t.Fatalf("expected default value to be returned unchanged")
 	}
@@ -238,6 +278,7 @@ func TestToEvalContext_TargetingKey(t *testing.T) {
 	flatCtx := openfeature.FlattenedContext{
 		"targetingKey": "tenant-abc",
 	}
+
 	ctx := ToEvalContext(flatCtx)
 	if ctx.GetKey() != "tenant-abc" {
 		t.Fatalf("expected key %q, got %q", "tenant-abc", ctx.GetKey())
@@ -249,12 +290,16 @@ func TestToEvalContext_CustomAttributes(t *testing.T) {
 		"targetingKey": "tenant-abc",
 		"region":       "eu-west-1",
 	}
+
 	ctx := ToEvalContext(flatCtx)
+
 	custom := ctx.GetCustom()
+
 	val, ok := custom["region"]
 	if !ok {
 		t.Fatal("expected custom attribute 'region' to be present")
 	}
+
 	if val != "eu-west-1" {
 		t.Fatalf("expected region %q, got %v", "eu-west-1", val)
 	}
@@ -264,6 +309,7 @@ func TestToEvalContext_MissingTargetingKey(t *testing.T) {
 	flatCtx := openfeature.FlattenedContext{
 		"region": "eu-west-1",
 	}
+
 	ctx := ToEvalContext(flatCtx)
 	if ctx.GetKey() != "" {
 		t.Fatalf("expected empty key, got %q", ctx.GetKey())
@@ -274,6 +320,7 @@ func TestToEvalContext_NonStringTargetingKey(t *testing.T) {
 	flatCtx := openfeature.FlattenedContext{
 		"targetingKey": 42, // non-string: should fall back to empty key
 	}
+
 	ctx := ToEvalContext(flatCtx)
 	if ctx.GetKey() != "" {
 		t.Fatalf("expected empty key for non-string targeting key, got %q", ctx.GetKey())
@@ -288,13 +335,17 @@ func TestToResolutionDetail_Success(t *testing.T) {
 		VariationType: "on",
 		Reason:        "STATIC",
 	}
+
 	prd := ToResolutionDetailBool(res, nil)
+
 	if prd.Variant != "on" {
 		t.Fatalf("expected variant %q, got %q", "on", prd.Variant)
 	}
+
 	if prd.Reason != openfeature.Reason("STATIC") {
 		t.Fatalf("expected reason STATIC, got %v", prd.Reason)
 	}
+
 	if (prd.ResolutionError != openfeature.ResolutionError{}) {
 		t.Fatalf("expected no resolution error, got %v", prd.ResolutionError)
 	}
@@ -302,10 +353,12 @@ func TestToResolutionDetail_Success(t *testing.T) {
 
 func TestToResolutionDetail_ExternalError(t *testing.T) {
 	res := model.VariationResult[bool]{}
+
 	prd := ToResolutionDetailBool(res, errors.New("network failure"))
 	if prd.Reason != openfeature.ErrorReason {
 		t.Fatalf("expected ErrorReason, got %v", prd.Reason)
 	}
+
 	if prd.ResolutionError.Error() == "" {
 		t.Fatal("expected non-empty resolution error message")
 	}
@@ -317,6 +370,7 @@ func TestToResolutionDetail_FailedResult(t *testing.T) {
 		ErrorCode:    flag.ErrorCodeFlagNotFound,
 		ErrorDetails: "flag missing",
 	}
+
 	prd := ToResolutionDetailBool(res, nil)
 	if prd.Reason != openfeature.ErrorReason {
 		t.Fatalf("expected ErrorReason, got %v", prd.Reason)
@@ -338,39 +392,33 @@ func TestGoffErrorToResolutionError(t *testing.T) {
 		{flag.ErrorCodeInvalidContext, string(openfeature.InvalidContextCode)},
 		{"UNKNOWN_CODE", string(openfeature.GeneralCode)},
 	}
+
 	for _, tc := range cases {
 		t.Run(tc.code, func(t *testing.T) {
 			resErr := GoffErrorToResolutionError(tc.code, "details")
+
 			errStr := resErr.Error()
 			if errStr == "" {
 				t.Fatal("expected non-empty error string")
 			}
-			// Verify the correct OpenFeature error code is embedded.
-			if tc.wantContain != "" {
-				found := false
-				for _, seg := range []string{errStr} {
-					if len(seg) > 0 && contains(seg, tc.wantContain) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Fatalf("expected error string to contain %q, got %q", tc.wantContain, errStr)
-				}
+
+			if !containsSubstring(errStr, tc.wantContain) {
+				t.Fatalf("expected error string to contain %q, got %q", tc.wantContain, errStr)
 			}
 		})
 	}
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && findSubstring(s, substr))
-}
+func containsSubstring(s, substr string) bool {
+	if len(substr) == 0 {
+		return true
+	}
 
-func findSubstring(s, substr string) bool {
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {
 			return true
 		}
 	}
+
 	return false
 }
