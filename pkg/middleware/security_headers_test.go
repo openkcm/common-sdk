@@ -15,7 +15,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := middleware.SecurityHeadersMiddleware(next, nil)
+	handler := middleware.SecurityHeadersMiddleware(nil)(next)
 
 	t.Run("sets all required security headers", func(t *testing.T) {
 		rec := httptest.NewRecorder()
@@ -42,7 +42,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-		middleware.SecurityHeadersMiddleware(nextWithFlag, nil).ServeHTTP(rec, req)
+		middleware.SecurityHeadersMiddleware(nil)(nextWithFlag).ServeHTTP(rec, req)
 
 		assert.True(t, calledNextHandler, "next handler was not called")
 	})
@@ -55,7 +55,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-		middleware.SecurityHeadersMiddleware(nextWithOverride, nil).ServeHTTP(rec, req)
+		middleware.SecurityHeadersMiddleware(nil)(nextWithOverride).ServeHTTP(rec, req)
 
 		assert.Equal(t, "public, max-age=3600", rec.Header().Get("Cache-Control"))
 	})
@@ -67,7 +67,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 			"Referrer-Policy":           "no-referrer",
 		}
 
-		handler := middleware.SecurityHeadersMiddleware(next, customHeaders)
+		handler := middleware.SecurityHeadersMiddleware(customHeaders)(next)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -91,7 +91,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 			"Content-Security-Policy": "default-src 'self'",
 		}
 
-		handler := middleware.SecurityHeadersMiddleware(next, customHeaders)
+		handler := middleware.SecurityHeadersMiddleware(customHeaders)(next)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -111,7 +111,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 	t.Run("empty custom headers map does not affect defaults", func(t *testing.T) {
 		customHeaders := map[string]string{}
 
-		handler := middleware.SecurityHeadersMiddleware(next, customHeaders)
+		handler := middleware.SecurityHeadersMiddleware(customHeaders)(next)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -133,7 +133,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 			"X-Frame-Options": "",
 		}
 
-		handler := middleware.SecurityHeadersMiddleware(next, customHeaders)
+		handler := middleware.SecurityHeadersMiddleware(customHeaders)(next)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -155,7 +155,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 			"X-Frame-Options": "SAMEORIGIN",
 		}
 
-		handler := middleware.SecurityHeadersMiddleware(next, customHeaders)
+		handler := middleware.SecurityHeadersMiddleware(customHeaders)(next)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
