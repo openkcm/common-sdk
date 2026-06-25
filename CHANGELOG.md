@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.18.0](https://github.com/openkcm/common-sdk/compare/v1.17.0...v1.18.0) (2026-06-25)
+
+
+### Features
+
+* introduce feature flags ([#301](https://github.com/openkcm/common-sdk/issues/301)) ([ec69c38](https://github.com/openkcm/common-sdk/commit/ec69c3828185fbd87e30d148ac1648a5b209f9c7))
+
+
+### Bug Fixes
+
+* change SecurityHeadersMiddleware to constructor pattern ([#303](https://github.com/openkcm/common-sdk/issues/303)) ([a9d985d](https://github.com/openkcm/common-sdk/commit/a9d985dfad282e064cfffb011a10e615ff7e2ee6))
+
 ## [1.17.0](https://github.com/openkcm/common-sdk/compare/v1.16.1...v1.17.0) (2026-06-16)
 
 
