@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.19.0](https://github.com/openkcm/common-sdk/compare/v1.18.0...v1.19.0) (2026-08-05)
+
+
+### Features
+
+* Add wrapper repo fields to BuildInfo ([#311](https://github.com/openkcm/common-sdk/issues/311)) ([a3e2f93](https://github.com/openkcm/common-sdk/commit/a3e2f93)) - Adds wrapperSha, wrapperRepo, and wrapperOrg fields to the Component struct to support tracking wrapper repository information
+
+
+### Bug Fixes
+
+* **deps:** bump the gomod-group group across 1 directory with 6 updates ([#307](https://github.com/openkcm/common-sdk/issues/307)) ([726eabc](https://github.com/openkcm/common-sdk/commit/726eabc840e1c85c32c99d4b125b53d11fa79bb6))
+* **deps:** bump the gomod-group group with 2 updates ([#308](https://github.com/openkcm/common-sdk/issues/308)) ([0a878bb](https://github.com/openkcm/common-sdk/commit/0a878bbd35dbaf8a869392d5872d7d73f94b233e))
+
 ## [1.18.0](https://github.com/openkcm/common-sdk/compare/v1.17.0...v1.18.0) (2026-06-25)
 
 
