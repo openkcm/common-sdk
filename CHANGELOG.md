@@ -1,6 +1,11 @@
 # Changelog
 
-## [1.18.1](https://github.com/openkcm/common-sdk/compare/v1.18.0...v1.18.1) (2026-08-05)
+## [1.19.0](https://github.com/openkcm/common-sdk/compare/v1.18.0...v1.19.0) (2026-08-05)
+
+
+### Features
+
+* Add wrapper repo fields to BuildInfo ([#311](https://github.com/openkcm/common-sdk/issues/311)) ([a3e2f93](https://github.com/openkcm/common-sdk/commit/a3e2f93)) - Adds wrapperSha, wrapperRepo, and wrapperOrg fields to the Component struct to support tracking wrapper repository information
 
 
 ### Bug Fixes
