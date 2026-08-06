@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.1](https://github.com/openkcm/common-sdk/compare/v1.19.0...v1.19.1) (2026-08-06)
+
+
+### Bug Fixes
+
+* bump otel to v1.45.0 and align semconv to resolve schema URL con… ([#315](https://github.com/openkcm/common-sdk/issues/315)) ([27aa67f](https://github.com/openkcm/common-sdk/commit/27aa67fa80241c0e5d293dfffba3b0fc36a721d6))
+
 ## [1.19.0](https://github.com/openkcm/common-sdk/compare/v1.18.0...v1.19.0) (2026-08-05)
 
 
