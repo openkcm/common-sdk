@@ -3,6 +3,7 @@
 package commoncfg
 
 import (
+	"crypto/tls"
 	"errors"
 	"runtime/debug"
 	"time"
@@ -239,6 +240,13 @@ type TLSAttributes struct {
 	// false, the size of TLS records may be adjusted in an attempt to
 	// improve latency.
 	DynamicRecordSizingDisabled bool `yaml:"dynamicRecordSizingDisabled" json:"dynamicRecordSizingDisabled" mapstructure:"dynamicRecordSizingDisabled"`
+
+	// Renegotiation controls what types of renegotiation are supported.
+	// Valid values are:
+	//   - 0 (RenegotiateNever): disables renegotiation (default)
+	//   - 1 (RenegotiateOnceAsClient): allows a remote server to request renegotiation once per connection
+	//   - 2 (RenegotiateFreelyAsClient): allows a remote server to repeatedly request renegotiation
+	Renegotiation tls.RenegotiationSupport `yaml:"renegotiation" json:"renegotiation" mapstructure:"renegotiation"`
 }
 
 // Audit holds the audit log library configuration.

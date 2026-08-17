@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -722,6 +723,7 @@ func TestLoadMTLSConfig(t *testing.T) {
 				InsecureSkipVerify:     true,
 				ServerName:             "example.com",
 				SessionTicketsDisabled: true,
+				Renegotiation:          tls.RenegotiateOnceAsClient,
 			},
 		}
 		tlsCfg, err := commoncfg.LoadMTLSConfig(mtls)
@@ -729,6 +731,7 @@ func TestLoadMTLSConfig(t *testing.T) {
 		assert.True(t, tlsCfg.InsecureSkipVerify)
 		assert.Equal(t, "example.com", tlsCfg.ServerName)
 		assert.True(t, tlsCfg.SessionTicketsDisabled)
+		assert.Equal(t, tls.RenegotiateOnceAsClient, tlsCfg.Renegotiation)
 	})
 
 	t.Run("valid config with CA", func(t *testing.T) {
