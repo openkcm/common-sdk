@@ -4,7 +4,6 @@ linters:
     - gomodguard_v2
   default: all
   disable:
-    - godoclint
     - contextcheck
     - cyclop
     - depguard
@@ -12,14 +11,16 @@ linters:
     - err113
     - exhaustive
     - exhaustruct
+    - exhaustruct_v5
     - forbidigo
-    - funlen
     - funcorder
+    - funlen
     - ginkgolinter
     - gochecknoglobals
     - gochecknoinits
     - gocognit
     - gocritic
+    - godoclint
     - godot
     - godox
     - gosec
