@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.19.2](https://github.com/openkcm/common-sdk/compare/v1.19.1...v1.19.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* **deps:** bump go.opentelemetry.io/collector/pdata from 1.62.0 to 1.63.0 in the gomod-group group across 1 directory ([#314](https://github.com/openkcm/common-sdk/issues/314)) ([ed18bcd](https://github.com/openkcm/common-sdk/commit/ed18bcd9d836481e413f1f06a7ee9adb1311e81b))
+* **deps:** bump the gomod-group group across 1 directory with 4 updates ([#319](https://github.com/openkcm/common-sdk/issues/319)) ([19fc0e5](https://github.com/openkcm/common-sdk/commit/19fc0e525485fd6259cf440c5436b68cff61c5e5))
+* **deps:** bump the gomod-group group across 1 directory with 4 updates ([#320](https://github.com/openkcm/common-sdk/issues/320)) ([d3edca4](https://github.com/openkcm/common-sdk/commit/d3edca4eb8ef22adc6ae6def06ce0acb570b5e42))
+* **deps:** bump the gomod-group group with 18 updates ([#322](https://github.com/openkcm/common-sdk/issues/322)) ([2e4b52f](https://github.com/openkcm/common-sdk/commit/2e4b52f0671d73de74ee71c180ba07c684fd0731))
+* disable exhaustruct_v5 linter ([#321](https://github.com/openkcm/common-sdk/issues/321)) ([fd15484](https://github.com/openkcm/common-sdk/commit/fd154844402521b9d6a2e68c3b8c1a27d49b2dcf))
+
 ## [1.19.1](https://github.com/openkcm/common-sdk/compare/v1.19.0...v1.19.1) (2026-08-06)
 
 
