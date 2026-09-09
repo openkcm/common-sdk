@@ -10,9 +10,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"uuid"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/pointers"
@@ -460,7 +460,7 @@ func (t *clientOAuth2RoundTripper) requestJWT(key, secret string) (string, error
 		"aud": t.TokenURL,
 		"iat": now,
 		"exp": now + 60, // valid for 60s
-		"jti": uuid.NewString(),
+		"jti": uuid.New().String(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

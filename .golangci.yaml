@@ -23,6 +23,7 @@ linters:
     - godoclint
     - godot
     - godox
+    - gomodguard # Replaced by gomodguard_v2
     - gosec
     - ireturn
     - lll

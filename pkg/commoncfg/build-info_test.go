@@ -25,15 +25,13 @@ func TestUpdateConfigVersion(t *testing.T) {
 	b64 := base64.StdEncoding.EncodeToString([]byte(plainJson))
 
 	wantBuildInfo := commoncfg.BuildInfo{
-		Component: commoncfg.Component{
-			Branch:    "main",
-			Org:       "openkcm",
-			Product:   "common-sdk",
-			Repo:      "github.com/openkcm/common-sdk",
-			SHA:       "abc123def456",
-			Version:   "1.2.3",
-			BuildTime: "2024-01-01T12:00:00Z",
-		},
+		Branch:    "main",
+		Org:       "openkcm",
+		Product:   "common-sdk",
+		Repo:      "github.com/openkcm/common-sdk",
+		SHA:       "abc123def456",
+		Version:   "1.2.3",
+		BuildTime: "2024-01-01T12:00:00Z",
 	}
 
 	plainJsonWithComponents :=
@@ -70,15 +68,13 @@ func TestUpdateConfigVersion(t *testing.T) {
 	b64WithComponents := base64.StdEncoding.EncodeToString([]byte(plainJsonWithComponents))
 
 	wantBuildInfoWithComponents := commoncfg.BuildInfo{
-		Component: commoncfg.Component{
-			Branch:    "main",
-			Org:       "openkcm",
-			Product:   "common-sdk",
-			Repo:      "github.com/openkcm/common-sdk",
-			SHA:       "abc123def456",
-			Version:   "1.2.3",
-			BuildTime: "2024-01-01T12:00:00Z",
-		},
+		Branch:    "main",
+		Org:       "openkcm",
+		Product:   "common-sdk",
+		Repo:      "github.com/openkcm/common-sdk",
+		SHA:       "abc123def456",
+		Version:   "1.2.3",
+		BuildTime: "2024-01-01T12:00:00Z",
 		Components: []commoncfg.Component{
 			{
 				Branch:    "dev",

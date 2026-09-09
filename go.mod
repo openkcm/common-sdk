@@ -1,6 +1,6 @@
 module github.com/openkcm/common-sdk
 
-go 1.26.6
+go 1.27
 
 require (
 	github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0
@@ -12,7 +12,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/google/uuid v1.6.0
 	github.com/oliveagle/jsonpath v0.1.4
 	github.com/open-feature/go-sdk v1.18.0
 	github.com/prometheus/client_golang v1.24.1
@@ -59,6 +58,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
 	github.com/hashicorp/go-version v1.9.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
