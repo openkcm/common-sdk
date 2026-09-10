@@ -139,11 +139,9 @@ func (p *EmbeddedProvider) ObjectEvaluation(_ context.Context, flag string, defa
 	defMap, ok := defaultValue.(map[string]any)
 	if !ok {
 		return openfeature.InterfaceResolutionDetail{
-			Value: defaultValue,
-			ProviderResolutionDetail: openfeature.ProviderResolutionDetail{
-				ResolutionError: openfeature.NewTypeMismatchResolutionError("defaultValue must be map[string]any for object flags"),
-				Reason:          openfeature.ErrorReason,
-			},
+			Value:           defaultValue,
+			ResolutionError: openfeature.NewTypeMismatchResolutionError("defaultValue must be map[string]any for object flags"),
+			Reason:          openfeature.ErrorReason,
 		}
 	}
 

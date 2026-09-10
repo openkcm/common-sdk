@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -240,7 +239,7 @@ func TestEncodeAndDecode(t *testing.T) {
 
 	t.Run("should create a jwks.json file and read", func(t *testing.T) {
 		// given
-		file := filepath.Join(t.TempDir(), uuid.NewString()+".json")
+		file := filepath.Join(t.TempDir(), "jwks.json")
 		fw, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0o600)
 		assert.NoError(t, err)
 
@@ -266,7 +265,7 @@ func TestEncodeAndDecode(t *testing.T) {
 
 	t.Run("should overwrite the existing  jwks.json file", func(t *testing.T) {
 		// given
-		file := filepath.Join(t.TempDir(), uuid.NewString()+".json")
+		file := filepath.Join(t.TempDir(), "jwks.json")
 		fw, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0o600)
 		assert.NoError(t, err)
 
@@ -320,7 +319,7 @@ func TestDecode(t *testing.T) {
 	t.Run("should return error if", func(t *testing.T) {
 		t.Run("file is empty", func(t *testing.T) {
 			// given
-			file := filepath.Join(t.TempDir(), uuid.NewString()+".json")
+			file := filepath.Join(t.TempDir(), "jwks.json")
 			fw, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0o600)
 			assert.NoError(t, err)
 
@@ -344,7 +343,7 @@ func TestDecode(t *testing.T) {
 
 		t.Run("file is empty json", func(t *testing.T) {
 			// given
-			file := filepath.Join(t.TempDir(), uuid.NewString()+".json")
+			file := filepath.Join(t.TempDir(), "jwks.json")
 			fw, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0o600)
 			assert.NoError(t, err)
 
@@ -373,7 +372,7 @@ func TestDecode(t *testing.T) {
 
 		t.Run("file has an invalid key", func(t *testing.T) {
 			// given
-			file := filepath.Join(t.TempDir(), uuid.NewString()+".json")
+			file := filepath.Join(t.TempDir(), "jwks.json")
 			fw, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE, 0o600)
 			assert.NoError(t, err)
 
