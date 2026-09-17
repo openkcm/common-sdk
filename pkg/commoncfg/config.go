@@ -64,20 +64,20 @@ const (
 var ErrFeatureNotFound = errors.New("feature not found")
 
 type BaseConfig struct {
-	Application  Application  `yaml:"application" json:"application"`
-	FeatureGates FeatureGates `yaml:"featureGates" json:"featureGates"`
-	FeatureFlags FeatureFlags `yaml:"featureFlags" json:"featureFlags"`
-	Status       Status       `yaml:"status" json:"status"`
-	Logger       Logger       `yaml:"logger" json:"logger"`
-	Telemetry    Telemetry    `yaml:"telemetry" json:"telemetry"`
-	Audit        Audit        `yaml:"audit" json:"audit"`
+	Application  Application  `yaml:"application" json:"application" mapstructure:"application"`
+	FeatureGates FeatureGates `yaml:"featureGates" json:"featureGates" mapstructure:"featureGates"`
+	FeatureFlags FeatureFlags `yaml:"featureFlags" json:"featureFlags" mapstructure:"featureFlags"`
+	Status       Status       `yaml:"status" json:"status" mapstructure:"status"`
+	Logger       Logger       `yaml:"logger" json:"logger" mapstructure:"logger"`
+	Telemetry    Telemetry    `yaml:"telemetry" json:"telemetry" mapstructure:"telemetry"`
+	Audit        Audit        `yaml:"audit" json:"audit" mapstructure:"audit"`
 }
 
 // FeatureFlags holds configuration for the OpenFeature-based feature flag provider.
 type FeatureFlags struct {
-	Enabled         bool          `yaml:"enabled" json:"enabled" default:"false"`
-	FilePath        string        `yaml:"filePath" json:"filePath" default:"/etc/featureflags/flags.yaml"`
-	PollingInterval time.Duration `yaml:"pollingInterval" json:"pollingInterval" default:"60s"`
+	Enabled         bool          `yaml:"enabled" json:"enabled" mapstructure:"enabled" default:"false"`
+	FilePath        string        `yaml:"filePath" json:"filePath" mapstructure:"filePath" default:"/etc/featureflags/flags.yaml"`
+	PollingInterval time.Duration `yaml:"pollingInterval" json:"pollingInterval" mapstructure:"pollingInterval" default:"60s"`
 }
 
 // FeatureGates are a set of key=value pairs that describe service features.
@@ -99,109 +99,109 @@ func (fg FeatureGates) Feature(feature string) (bool, error) {
 
 // Application holds minimal application configuration.
 type Application struct {
-	Name             string            `yaml:"name" json:"name"`
-	Environment      string            `yaml:"environment" json:"environment"`
-	Labels           map[string]string `yaml:"labels" json:"labels"`
+	Name             string            `yaml:"name" json:"name" mapstructure:"name"`
+	Environment      string            `yaml:"environment" json:"environment" mapstructure:"environment"`
+	Labels           map[string]string `yaml:"labels" json:"labels" mapstructure:"labels"`
 	BuildInfo        BuildInfo
 	RuntimeBuildInfo *debug.BuildInfo
 }
 
 type Status struct {
-	Enabled bool `yaml:"enabled" json:"enabled"`
+	Enabled bool `yaml:"enabled" json:"enabled" mapstructure:"enabled"`
 	// Status.Address is the address to listen on for status reporting
-	Address string `yaml:"address" json:"address" default:":8888"`
+	Address string `yaml:"address" json:"address" mapstructure:"address" default:":8888"`
 	// Timeout defines a timeout duration for all checks
-	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"10s"`
+	Timeout time.Duration `yaml:"timeout" json:"timeout" mapstructure:"timeout" default:"10s"`
 	// Status.Profiling enables profiling on the status server
-	Profiling bool `yaml:"profiling" json:"profiling"`
+	Profiling bool `yaml:"profiling" json:"profiling" mapstructure:"profiling"`
 }
 
 // Logger holds the configuration for logging.
 type Logger struct {
-	Source    bool            `yaml:"source" json:"source"`
-	Format    LoggerFormat    `yaml:"format" json:"format" default:"json"`
-	Level     string          `yaml:"level" json:"level" default:"info"`
-	Formatter LoggerFormatter `yaml:"formatter" json:"formatter"`
+	Source    bool            `yaml:"source" json:"source" mapstructure:"source"`
+	Format    LoggerFormat    `yaml:"format" json:"format" mapstructure:"format" default:"json"`
+	Level     string          `yaml:"level" json:"level" mapstructure:"level" default:"info"`
+	Formatter LoggerFormatter `yaml:"formatter" json:"formatter" mapstructure:"formatter"`
 }
 
 // LoggerTime holds configuration for the time formatting in logs.
 type LoggerTime struct {
-	Type      LoggerTimeType `yaml:"type" json:"type" default:"unix"`
-	Pattern   string         `yaml:"pattern" json:"pattern" default:"Mon Jan 02 15:04:05 -0700 2006"`
-	Precision string         `yaml:"precision" json:"precision" default:"1us"`
+	Type      LoggerTimeType `yaml:"type" json:"type" mapstructure:"type" default:"unix"`
+	Pattern   string         `yaml:"pattern" json:"pattern" mapstructure:"pattern" default:"Mon Jan 02 15:04:05 -0700 2006"`
+	Precision string         `yaml:"precision" json:"precision" mapstructure:"precision" default:"1us"`
 }
 
 // LoggerFormatter holds the logger formatter configuration.
 type LoggerFormatter struct {
-	Time   LoggerTime   `yaml:"time" json:"time"`
-	Fields LoggerFields `yaml:"fields" json:"fields"`
+	Time   LoggerTime   `yaml:"time" json:"time" mapstructure:"time"`
+	Fields LoggerFields `yaml:"fields" json:"fields" mapstructure:"fields"`
 }
 
 // LoggerOTel holds configuration for the OpenTelemetry fields.
 type LoggerOTel struct {
-	TraceID string `yaml:"traceId" json:"traceId" default:"traceId"`
-	SpanID  string `yaml:"spanId" json:"spanId" default:"spanId"`
+	TraceID string `yaml:"traceId" json:"traceId" mapstructure:"traceId" default:"traceId"`
+	SpanID  string `yaml:"spanId" json:"spanId" mapstructure:"spanId" default:"spanId"`
 }
 
 // LoggerFields holds the mapping of log attributes.
 type LoggerFields struct {
-	Time    string              `yaml:"time" json:"time" default:"time"`
-	Error   string              `yaml:"error" json:"error" default:"error"`
-	Level   string              `yaml:"level" json:"level" default:"info"`
-	Message string              `yaml:"message" json:"message" default:"msg"`
-	OTel    LoggerOTel          `yaml:"otel" json:"otel"`
-	Masking LoggerFieldsMasking `yaml:"masking" json:"masking"`
+	Time    string              `yaml:"time" json:"time" mapstructure:"time" default:"time"`
+	Error   string              `yaml:"error" json:"error" mapstructure:"error" default:"error"`
+	Level   string              `yaml:"level" json:"level" mapstructure:"level" default:"info"`
+	Message string              `yaml:"message" json:"message" mapstructure:"message" default:"msg"`
+	OTel    LoggerOTel          `yaml:"otel" json:"otel" mapstructure:"otel"`
+	Masking LoggerFieldsMasking `yaml:"masking" json:"masking" mapstructure:"masking"`
 }
 
 // LoggerFieldsMasking holds configuration for masking log fields.
 type LoggerFieldsMasking struct {
-	PII   []string          `yaml:"pii" json:"pii"`
-	Other map[string]string `yaml:"other" json:"other"`
+	PII   []string          `yaml:"pii" json:"pii" mapstructure:"pii"`
+	Other map[string]string `yaml:"other" json:"other" mapstructure:"other"`
 }
 
 // Telemetry defines the configuration for telemetry components.
 type Telemetry struct {
-	DynatraceOneAgent bool   `yaml:"dynatraceOneAgent" json:"dynatraceOneAgent"`
-	Traces            Trace  `yaml:"traces" json:"traces"`
-	Metrics           Metric `yaml:"metrics" json:"metrics"`
-	Logs              Log    `yaml:"logs" json:"logs"`
+	DynatraceOneAgent bool   `yaml:"dynatraceOneAgent" json:"dynatraceOneAgent" mapstructure:"dynatraceOneAgent"`
+	Traces            Trace  `yaml:"traces" json:"traces" mapstructure:"traces"`
+	Metrics           Metric `yaml:"metrics" json:"metrics" mapstructure:"metrics"`
+	Logs              Log    `yaml:"logs" json:"logs" mapstructure:"logs"`
 }
 
 // Trace defines settings for distributed tracing.
 type Trace struct {
-	Enabled   bool      `yaml:"enabled" json:"enabled"`
-	Protocol  Protocol  `yaml:"protocol" json:"protocol"`
-	Host      SourceRef `yaml:"host" json:"host"`
-	URL       string    `yaml:"url" json:"url"`
-	SecretRef SecretRef `yaml:"secretRef" json:"secretRef"`
+	Enabled   bool      `yaml:"enabled" json:"enabled" mapstructure:"enabled"`
+	Protocol  Protocol  `yaml:"protocol" json:"protocol" mapstructure:"protocol"`
+	Host      SourceRef `yaml:"host" json:"host" mapstructure:"host"`
+	URL       string    `yaml:"url" json:"url" mapstructure:"url"`
+	SecretRef SecretRef `yaml:"secretRef" json:"secretRef" mapstructure:"secretRef"`
 }
 
 // Log defines settings for structured logging export.
 type Log struct {
-	Enabled   bool      `yaml:"enabled" json:"enabled"`
-	Protocol  Protocol  `yaml:"protocol" json:"protocol"`
-	Host      SourceRef `yaml:"host" json:"host"`
-	URL       string    `yaml:"url" json:"url"`
-	SecretRef SecretRef `yaml:"secretRef" json:"secretRef"`
+	Enabled   bool      `yaml:"enabled" json:"enabled" mapstructure:"enabled"`
+	Protocol  Protocol  `yaml:"protocol" json:"protocol" mapstructure:"protocol"`
+	Host      SourceRef `yaml:"host" json:"host" mapstructure:"host"`
+	URL       string    `yaml:"url" json:"url" mapstructure:"url"`
+	SecretRef SecretRef `yaml:"secretRef" json:"secretRef" mapstructure:"secretRef"`
 }
 
 // Metric defines settings for metrics export and Prometheus.
 type Metric struct {
-	Enabled    bool       `yaml:"enabled" json:"enabled"`
-	Protocol   Protocol   `yaml:"protocol" json:"protocol"`
-	Host       SourceRef  `yaml:"host" json:"host"`
-	URL        string     `yaml:"url" json:"url"`
-	SecretRef  SecretRef  `yaml:"secretRef" json:"secretRef"`
-	Prometheus Prometheus `yaml:"prometheus" json:"prometheus"`
+	Enabled    bool       `yaml:"enabled" json:"enabled" mapstructure:"enabled"`
+	Protocol   Protocol   `yaml:"protocol" json:"protocol" mapstructure:"protocol"`
+	Host       SourceRef  `yaml:"host" json:"host" mapstructure:"host"`
+	URL        string     `yaml:"url" json:"url" mapstructure:"url"`
+	SecretRef  SecretRef  `yaml:"secretRef" json:"secretRef" mapstructure:"secretRef"`
+	Prometheus Prometheus `yaml:"prometheus" json:"prometheus" mapstructure:"prometheus"`
 }
 
 // SecretRef defines how credentials or certificates are provided.
 type SecretRef struct {
-	Type     SecretType `yaml:"type" json:"type"`
-	MTLS     MTLS       `yaml:"mtls" json:"mtls"`
-	APIToken SourceRef  `yaml:"apiToken" json:"apiToken"`
-	OAuth2   OAuth2     `yaml:"oauth2" json:"oauth2"`
-	Basic    BasicAuth  `yaml:"basic" json:"basic"`
+	Type     SecretType `yaml:"type" json:"type" mapstructure:"type"`
+	MTLS     MTLS       `yaml:"mtls" json:"mtls" mapstructure:"mtls"`
+	APIToken SourceRef  `yaml:"apiToken" json:"apiToken" mapstructure:"apiToken"`
+	OAuth2   OAuth2     `yaml:"oauth2" json:"oauth2" mapstructure:"oauth2"`
+	Basic    BasicAuth  `yaml:"basic" json:"basic" mapstructure:"basic"`
 }
 
 // MTLS holds mTLS configuration for audit library.
@@ -210,7 +210,7 @@ type MTLS struct {
 	CertKey SourceRef `yaml:"certKey" json:"certKey" mapstructure:"certKey"`
 
 	ServerCA *SourceRef  `yaml:"serverCa" json:"serverCa" mapstructure:"serverCa"`
-	RootCAs  []SourceRef `yaml:"rootCAs,omitempty" json:"rootCAs,omitempty" mapstructure:"rootCAs"`
+	RootCAs  []SourceRef `yaml:"rootCAs,omitempty" json:"rootCAs,omitempty" mapstructure:"rootCAs,omitempty"`
 
 	Attributes *TLSAttributes `yaml:"attributes" json:"attributes" mapstructure:"attributes"`
 }
@@ -243,12 +243,12 @@ type TLSAttributes struct {
 
 // Audit holds the audit log library configuration.
 type Audit struct {
-	Endpoint string `yaml:"endpoint" json:"endpoint"`
+	Endpoint string `yaml:"endpoint" json:"endpoint" mapstructure:"endpoint"`
 
-	HTTPClient HTTPClient `yaml:"httpClient" json:"httpClient"`
+	HTTPClient HTTPClient `yaml:"httpClient" json:"httpClient" mapstructure:"httpClient"`
 
 	// Optional set of additional properties to be added to OTLP log object. Must be added as a literal string to maintain casing.
-	AdditionalProperties string `yaml:"additionalProperties" json:"additionalProperties"`
+	AdditionalProperties string `yaml:"additionalProperties" json:"additionalProperties" mapstructure:"additionalProperties"`
 }
 
 // BasicAuth holds basic auth configuration for audit library.
@@ -267,19 +267,19 @@ type OAuth2 struct {
 type OAuth2Credentials struct {
 	ClientID SourceRef `yaml:"clientID" json:"clientID" mapstructure:"clientID"`
 
-	AuthMethod OAuth2ClientAuthMethod `yaml:"authMethod" json:"authMethod" default:"post" mapstructure:"authMethod"`
+	AuthMethod OAuth2ClientAuthMethod `yaml:"authMethod" json:"authMethod" mapstructure:"authMethod" default:"post"`
 
 	// Option A: client_secret authentication
-	ClientSecret *SourceRef `yaml:"clientSecret,omitempty" json:"clientSecret,omitempty" mapstructure:"clientSecret"`
+	ClientSecret *SourceRef `yaml:"clientSecret,omitempty" json:"clientSecret,omitempty" mapstructure:"clientSecret,omitempty"`
 
 	// Option B: private_key_jwt authentication (RFC 7523)
-	ClientAssertionType *SourceRef `yaml:"clientAssertionType,omitempty" json:"clientAssertionType,omitempty" mapstructure:"clientAssertionType"`
-	ClientAssertion     *SourceRef `yaml:"clientAssertion,omitempty" json:"clientAssertion,omitempty" mapstructure:"clientAssertion"`
+	ClientAssertionType *SourceRef `yaml:"clientAssertionType,omitempty" json:"clientAssertionType,omitempty" mapstructure:"clientAssertionType,omitempty"`
+	ClientAssertion     *SourceRef `yaml:"clientAssertion,omitempty" json:"clientAssertion,omitempty" mapstructure:"clientAssertion,omitempty"`
 }
 
 // SourceRef defines a reference to a source for retrieving a value.
 type SourceRef struct {
-	Source SourceValueType `yaml:"source" json:"source" default:"embedded" mapstructure:"source"`
+	Source SourceValueType `yaml:"source" json:"source" mapstructure:"source" default:"embedded"`
 	Env    string          `yaml:"env" json:"env" mapstructure:"env"`
 	File   CredentialFile  `yaml:"file" json:"file" mapstructure:"file"`
 	Value  string          `yaml:"value" json:"value" mapstructure:"value"`
@@ -294,37 +294,37 @@ type CredentialFile struct {
 
 // Prometheus defines configuration for Prometheus integration.
 type Prometheus struct {
-	Enabled bool `yaml:"enabled" json:"enabled"`
+	Enabled bool `yaml:"enabled" json:"enabled" mapstructure:"enabled"`
 }
 
 // GRPCServer specifies the gRPC server configuration e.g. used by the
 // business gRPC server if any.
 type GRPCServer struct {
-	Enabled bool   `yaml:"enabled" json:"enabled"`
-	Address string `yaml:"address" json:"address" default:":9092"`
-	Flags   Flags  `yaml:"flags" json:"flags"`
+	Enabled bool   `yaml:"enabled" json:"enabled" mapstructure:"enabled"`
+	Address string `yaml:"address" json:"address" mapstructure:"address" default:":9092"`
+	Flags   Flags  `yaml:"flags" json:"flags" mapstructure:"flags"`
 	// MaxSendMsgSize returns a ServerOption to set the max message size in bytes the server can send.
 	// If this is not set, gRPC uses the default `2147483647`.
-	MaxSendMsgSize int `yaml:"maxSendMsgSize" json:"maxSendMsgSize" default:"2147483647"`
+	MaxSendMsgSize int `yaml:"maxSendMsgSize" json:"maxSendMsgSize" mapstructure:"maxSendMsgSize" default:"2147483647"`
 	// MaxRecvMsgSize returns a ServerOption to set the max message size in bytes the server can receive.
 	// If this is not set, gRPC uses the default 4MB.
-	MaxRecvMsgSize int `yaml:"maxRecvMsgSize" json:"maxRecvMsgSize" default:"125829120"`
+	MaxRecvMsgSize int `yaml:"maxRecvMsgSize" json:"maxRecvMsgSize" mapstructure:"maxRecvMsgSize" default:"125829120"`
 	// MinTime is the minimum amount of time a client should wait before sending
 	// a keepalive ping.
-	EfPolMinTime time.Duration `yaml:"efPolMinTime" json:"efPolMinTime" default:"180s"` // The current default value is 5 minutes.
+	EfPolMinTime time.Duration `yaml:"efPolMinTime" json:"efPolMinTime" mapstructure:"efPolMinTime" default:"180s"` // The current default value is 5 minutes.
 	// If true, server allows keepalive pings even when there are no active
 	// streams(RPCs). If false, and client sends ping when there are no active
 	// streams, server will send GOAWAY and close the connection.
-	EfPolPermitWithoutStream bool                 `yaml:"efPolPermitWithoutStream" json:"efPolPermitWithoutStream"` // false by default.
-	Attributes               GRPCServerAttributes `yaml:"attributes" json:"attributes"`
+	EfPolPermitWithoutStream bool                 `yaml:"efPolPermitWithoutStream" json:"efPolPermitWithoutStream" mapstructure:"efPolPermitWithoutStream"` // false by default.
+	Attributes               GRPCServerAttributes `yaml:"attributes" json:"attributes" mapstructure:"attributes"`
 }
 
 type Flags struct {
 	// Reflection is a protocol that gRPC servers can use to declare the protobuf-defined APIs.
 	// Reflection is used by debugging tools like grpcurl or grpcui.
 	// See https://grpc.io/docs/guides/reflection/.
-	Reflection bool `yaml:"reflection" json:"reflection"`
-	Health     bool `yaml:"health" json:"health"`
+	Reflection bool `yaml:"reflection" json:"reflection" mapstructure:"reflection"`
+	Health     bool `yaml:"health" json:"health" mapstructure:"health"`
 }
 
 type GRPCServerAttributes struct {
@@ -332,52 +332,52 @@ type GRPCServerAttributes struct {
 	// idle connection would be closed by sending a GoAway. Idleness duration is
 	// defined since the most recent time the number of outstanding RPCs became
 	// zero or the connection establishment.
-	MaxConnectionIdle time.Duration `yaml:"maxConnectionIdle" json:"maxConnectionIdle" default:"1800s"` // The current default value is infinity.
+	MaxConnectionIdle time.Duration `yaml:"maxConnectionIdle" json:"maxConnectionIdle" mapstructure:"maxConnectionIdle" default:"1800s"` // The current default value is infinity.
 	// MaxConnectionAge is a duration for the maximum amount of time a
 	// connection may exist before it will be closed by sending a GoAway. A
 	// random jitter of +/-10% will be added to MaxConnectionAge to spread out
 	// connection storms.
-	MaxConnectionAge time.Duration `yaml:"maxConnectionAge" json:"maxConnectionAge" default:"1800s"` // The current default value is infinity.
+	MaxConnectionAge time.Duration `yaml:"maxConnectionAge" json:"maxConnectionAge" mapstructure:"maxConnectionAge" default:"1800s"` // The current default value is infinity.
 	// MaxConnectionAgeGrace is an additive period after MaxConnectionAge after
 	// which the connection will be forcibly closed.
-	MaxConnectionAgeGrace time.Duration `yaml:"maxConnectionAgeGrace" json:"maxConnectionAgeGrace" default:"300s"` // The current default value is infinity.
+	MaxConnectionAgeGrace time.Duration `yaml:"maxConnectionAgeGrace" json:"maxConnectionAgeGrace" mapstructure:"maxConnectionAgeGrace" default:"300s"` // The current default value is infinity.
 	// After a duration of this time if the server doesn't see any activity it
 	// pings the client to see if the transport is still alive.
 	// If set below 1s, a minimum value of 1s will be used instead.
-	Time time.Duration `yaml:"time" json:"time" default:"120m"` // The current default value is 2 hours.
+	Time time.Duration `yaml:"time" json:"time" mapstructure:"time" default:"120m"` // The current default value is 2 hours.
 	// After having pinged for keepalive check, the server waits for a duration
 	// of Timeout and if no activity is seen even after that the connection is
 	// closed.
-	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"20s"` // The current default value is 20 seconds.
+	Timeout time.Duration `yaml:"timeout" json:"timeout" mapstructure:"timeout" default:"20s"` // The current default value is 20 seconds.
 }
 
 // GRPCClient specifies the gRPC client configuration e.g. used by the
 // gRPC health check client.
 type GRPCClient struct {
-	Enabled    bool                 `yaml:"enabled" json:"enabled"`
-	Address    string               `yaml:"address" json:"address"`
-	Version    string               `yaml:"version" json:"version" default:"v1"`
-	Attributes GRPCClientAttributes `yaml:"attributes" json:"attributes"`
-	Pool       GRPCPool             `yaml:"pool" json:"pool"`
-	SecretRef  *SecretRef           `yaml:"secretRef" json:"secretRef"`
+	Enabled    bool                 `yaml:"enabled" json:"enabled" mapstructure:"enabled"`
+	Address    string               `yaml:"address" json:"address" mapstructure:"address"`
+	Version    string               `yaml:"version" json:"version" mapstructure:"version" default:"v1"`
+	Attributes GRPCClientAttributes `yaml:"attributes" json:"attributes" mapstructure:"attributes"`
+	Pool       GRPCPool             `yaml:"pool" json:"pool" mapstructure:"pool"`
+	SecretRef  *SecretRef           `yaml:"secretRef" json:"secretRef" mapstructure:"secretRef"`
 }
 
 type GRPCPool struct {
-	InitialCapacity int           `yaml:"initialCapacity" json:"initialCapacity" default:"1"`
-	MaxCapacity     int           `yaml:"maxCapacity" json:"maxCapacity" default:"1"`
-	IdleTimeout     time.Duration `yaml:"idleTimeout" json:"idleTimeout" default:"5s"`
-	MaxLifeDuration time.Duration `yaml:"maxLifeDuration" json:"maxLifeDuration" default:"60s"`
+	InitialCapacity int           `yaml:"initialCapacity" json:"initialCapacity" mapstructure:"initialCapacity" default:"1"`
+	MaxCapacity     int           `yaml:"maxCapacity" json:"maxCapacity" mapstructure:"maxCapacity" default:"1"`
+	IdleTimeout     time.Duration `yaml:"idleTimeout" json:"idleTimeout" mapstructure:"idleTimeout" default:"5s"`
+	MaxLifeDuration time.Duration `yaml:"maxLifeDuration" json:"maxLifeDuration" mapstructure:"maxLifeDuration" default:"60s"`
 }
 
 type GRPCClientAttributes struct {
 	//  GRPC KeepaliveTime option
-	KeepaliveTime time.Duration `yaml:"keepaliveTime" json:"keepaliveTime" default:"80s"`
+	KeepaliveTime time.Duration `yaml:"keepaliveTime" json:"keepaliveTime" mapstructure:"keepaliveTime" default:"80s"`
 	//  GRPC KeepaliveTimeout option
-	KeepaliveTimeout time.Duration `yaml:"keepaliveTimeout" json:"keepaliveTimeout" default:"40s"`
+	KeepaliveTimeout time.Duration `yaml:"keepaliveTimeout" json:"keepaliveTimeout" mapstructure:"keepaliveTimeout" default:"40s"`
 }
 
 type HTTPClient struct {
-	Timeout time.Duration `yaml:"timeout" json:"timeout" default:"10s" mapstructure:"timeout"`
+	Timeout time.Duration `yaml:"timeout" json:"timeout" mapstructure:"timeout" default:"10s"`
 
 	APIToken            *SourceRef               `yaml:"apiToken" json:"apiToken" mapstructure:"apiToken"`
 	BasicAuth           *BasicAuth               `yaml:"basicAuth" json:"basicAuth" mapstructure:"basicAuth"`
@@ -389,7 +389,7 @@ type HTTPClient struct {
 type HTTPTransportAttributes struct {
 	// TLSHandshakeTimeout specifies the maximum amount of time to
 	// wait for a TLS handshake. Zero means no timeout.
-	TLSHandshakeTimeout time.Duration `yaml:"tlsHandshakeTimeout" json:"tlsHandshakeTimeout" default:"0s" mapstructure:"tlsHandshakeTimeout"`
+	TLSHandshakeTimeout time.Duration `yaml:"tlsHandshakeTimeout" json:"tlsHandshakeTimeout" mapstructure:"tlsHandshakeTimeout" default:"0s"`
 
 	// DisableKeepAlives, if true, disables HTTP keep-alives and
 	// will only use the connection to the server for a single
@@ -410,31 +410,31 @@ type HTTPTransportAttributes struct {
 
 	// MaxIdleConns controls the maximum number of idle (keep-alive)
 	// connections across all hosts. Zero means no limit.
-	MaxIdleConns int `yaml:"maxIdleConns" json:"maxIdleConns" default:"0" mapstructure:"maxIdleConns"`
+	MaxIdleConns int `yaml:"maxIdleConns" json:"maxIdleConns" mapstructure:"maxIdleConns" default:"0"`
 
 	// MaxIdleConnsPerHost, if non-zero, controls the maximum idle
 	// (keep-alive) connections to keep per-host. If zero,
 	// DefaultMaxIdleConnsPerHost is used.
-	MaxIdleConnsPerHost int `yaml:"maxIdleConnsPerHost" json:"maxIdleConnsPerHost" default:"0" mapstructure:"maxIdleConnsPerHost"`
+	MaxIdleConnsPerHost int `yaml:"maxIdleConnsPerHost" json:"maxIdleConnsPerHost" mapstructure:"maxIdleConnsPerHost" default:"0"`
 
 	// MaxConnsPerHost optionally limits the total number of
 	// connections per host, including connections in the dialing,
 	// active, and idle states. On limit violation, dials will block.
 	//
 	// Zero means no limit.
-	MaxConnsPerHost int `yaml:"maxConnsPerHost" json:"maxConnsPerHost" default:"0" mapstructure:"maxConnsPerHost"`
+	MaxConnsPerHost int `yaml:"maxConnsPerHost" json:"maxConnsPerHost" mapstructure:"maxConnsPerHost" default:"0"`
 
 	// IdleConnTimeout is the maximum amount of time an idle
 	// (keep-alive) connection will remain idle before closing
 	// itself.
 	// Zero means no limit.
-	IdleConnTimeout time.Duration `yaml:"idleConnTimeout" json:"idleConnTimeout" default:"0s" mapstructure:"idleConnTimeout"`
+	IdleConnTimeout time.Duration `yaml:"idleConnTimeout" json:"idleConnTimeout" mapstructure:"idleConnTimeout" default:"0s"`
 
 	// ResponseHeaderTimeout, if non-zero, specifies the amount of
 	// time to wait for a server's response headers after fully
 	// writing the request (including its body, if any). This
 	// time does not include the time to read the response body.
-	ResponseHeaderTimeout time.Duration `yaml:"responseHeaderTimeout" json:"responseHeaderTimeout" default:"0s" mapstructure:"responseHeaderTimeout"`
+	ResponseHeaderTimeout time.Duration `yaml:"responseHeaderTimeout" json:"responseHeaderTimeout" mapstructure:"responseHeaderTimeout" default:"0s"`
 
 	// ExpectContinueTimeout, if non-zero, specifies the amount of
 	// time to wait for a server's first response headers after fully
@@ -443,25 +443,25 @@ type HTTPTransportAttributes struct {
 	// causes the body to be sent immediately, without
 	// waiting for the server to approve.
 	// This time does not include the time to send the request header.
-	ExpectContinueTimeout time.Duration `yaml:"expectContinueTimeout" json:"expectContinueTimeout" default:"0s" mapstructure:"expectContinueTimeout"`
+	ExpectContinueTimeout time.Duration `yaml:"expectContinueTimeout" json:"expectContinueTimeout" mapstructure:"expectContinueTimeout" default:"0s"`
 }
 
 // BuildInfo holds metadata about the build
 type BuildInfo struct {
-	Component `mapstructure:",squash" yaml:",inline"`
+	Component `yaml:",inline" mapstructure:",squash"`
 
-	Components []Component `json:"components,omitempty"`
+	Components []Component `yaml:"components,omitempty" json:"components,omitempty" mapstructure:"components,omitempty"`
 }
 
 type Component struct {
-	Branch      string `json:"branch,omitempty"`
-	Org         string `json:"org,omitempty"`
-	Product     string `json:"product,omitempty"`
-	Repo        string `json:"repo,omitempty"`
-	SHA         string `json:"sha,omitempty"`
-	Version     string `json:"version,omitempty"`
-	BuildTime   string `json:"buildTime,omitempty"`
-	WrapperSha  string `json:"wrapperSha,omitempty"`
-	WrapperRepo string `json:"wrapperRepo,omitempty"`
-	WrapperOrg  string `json:"wrapperOrg,omitempty"`
+	Branch      string `yaml:"branch,omitempty" json:"branch,omitempty" mapstructure:"branch,omitempty"`
+	Org         string `yaml:"org,omitempty" json:"org,omitempty" mapstructure:"org,omitempty"`
+	Product     string `yaml:"product,omitempty" json:"product,omitempty" mapstructure:"product,omitempty"`
+	Repo        string `yaml:"repo,omitempty" json:"repo,omitempty" mapstructure:"repo,omitempty"`
+	SHA         string `yaml:"sha,omitempty" json:"sha,omitempty" mapstructure:"sha,omitempty"`
+	Version     string `yaml:"version,omitempty" json:"version,omitempty" mapstructure:"version,omitempty"`
+	BuildTime   string `yaml:"buildTime,omitempty" json:"buildTime,omitempty" mapstructure:"buildTime,omitempty"`
+	WrapperSha  string `yaml:"wrapperSha,omitempty" json:"wrapperSha,omitempty" mapstructure:"wrapperSha,omitempty"`
+	WrapperRepo string `yaml:"wrapperRepo,omitempty" json:"wrapperRepo,omitempty" mapstructure:"wrapperRepo,omitempty"`
+	WrapperOrg  string `yaml:"wrapperOrg,omitempty" json:"wrapperOrg,omitempty" mapstructure:"wrapperOrg,omitempty"`
 }
