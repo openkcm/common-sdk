@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.3](https://github.com/openkcm/common-sdk/compare/v1.19.2...v1.19.3) (2026-09-18)
+
+
+### Bug Fixes
+
+* **deps:** bump the gomod-group group across 1 directory with 5 updates ([#327](https://github.com/openkcm/common-sdk/issues/327)) ([4655525](https://github.com/openkcm/common-sdk/commit/4655525a99a2b4261c9521f203eaf88dad289c45))
+
 ## [1.19.2](https://github.com/openkcm/common-sdk/compare/v1.19.1...v1.19.2) (2026-09-07)
 
 
