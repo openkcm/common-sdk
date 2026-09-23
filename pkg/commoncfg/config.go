@@ -239,6 +239,12 @@ type TLSAttributes struct {
 	// false, the size of TLS records may be adjusted in an attempt to
 	// improve latency.
 	DynamicRecordSizingDisabled bool `yaml:"dynamicRecordSizingDisabled" json:"dynamicRecordSizingDisabled" mapstructure:"dynamicRecordSizingDisabled"`
+
+	// AllowTLSRenegotiationOnce enables TLS renegotiation as a client.
+	// When true, sets tls.Config.Renegotiation to tls.RenegotiateOnceAsClient,
+	// allowing exactly one renegotiation per connection.
+	// Default is false (tls.RenegotiateNever).
+	AllowTLSRenegotiationOnce bool `yaml:"allowTLSRenegotiationOnce"`
 }
 
 // Audit holds the audit log library configuration.
