@@ -331,8 +331,11 @@ func LoadMTLSConfig(cfg *MTLS) (*tls.Config, error) {
 	if cfg.Attributes != nil {
 		tlsConfig.InsecureSkipVerify = cfg.Attributes.InsecureSkipVerify
 		tlsConfig.ServerName = cfg.Attributes.ServerName
+
 		tlsConfig.SessionTicketsDisabled = cfg.Attributes.SessionTicketsDisabled
-		tlsConfig.SessionTicketsDisabled = cfg.Attributes.SessionTicketsDisabled
+		if cfg.Attributes.AllowTLSRenegotiationOnce {
+			tlsConfig.Renegotiation = tls.RenegotiateOnceAsClient
+		}
 	}
 
 	caCertPool, err := LoadMTLSCACertPool(cfg)
