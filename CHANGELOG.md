@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.19.4](https://github.com/openkcm/common-sdk/compare/v1.19.3...v1.19.4) (2026-09-23)
+
+
+### Bug Fixes
+
+* allow tls renegotiation ([#331](https://github.com/openkcm/common-sdk/issues/331)) ([e28c626](https://github.com/openkcm/common-sdk/commit/e28c6267ba01da5288246590cb1a66e2961ae3ad))
+* **deps:** bump the gomod-group group with 4 updates ([#330](https://github.com/openkcm/common-sdk/issues/330)) ([8f5d298](https://github.com/openkcm/common-sdk/commit/8f5d2980a027a879300670d1639aa4ca23e08493))
+
 ## [1.19.3](https://github.com/openkcm/common-sdk/compare/v1.19.2...v1.19.3) (2026-09-18)
 
 
