@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.4](https://github.com/openkcm/common-sdk/compare/v1.19.3...v1.19.4) (2026-09-23)
+
+
+### Bug Fixes
+
+* allow tls renegotiation ([#331](https://github.com/openkcm/common-sdk/issues/331)) ([e28c626](https://github.com/openkcm/common-sdk/commit/e28c6267ba01da5288246590cb1a66e2961ae3ad))
+
 ## [1.19.3](https://github.com/openkcm/common-sdk/compare/v1.19.2...v1.19.3) (2026-09-18)
 
 
