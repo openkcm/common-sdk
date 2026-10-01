@@ -444,6 +444,24 @@ func NewUnauthorizedRequestEvent(metadata EventMetadata, resource, action string
 	return createEvent(m)
 }
 
+func NewAccessGrantedEvent(metadata EventMetadata, resource, action string, value any) (plog.Logs, error) {
+	uid, ok := metadata[UserInitiatorIDKey]
+	if !ok {
+		return plog.Logs{}, errEventCreation
+	}
+
+	if !hasValues(resource, action) {
+		return plog.Logs{}, errEventCreation
+	}
+
+	m := newEventProperties(uid, AccessGrantedEvent, metadata)
+	m[ResourceKey] = resource
+	m[ActionKey] = action
+	m[ValueKey] = value
+
+	return createEvent(m)
+}
+
 func NewUnauthenticatedRequestEvent(metadata EventMetadata) (plog.Logs, error) {
 	uid, ok := metadata[UserInitiatorIDKey]
 	if !ok {

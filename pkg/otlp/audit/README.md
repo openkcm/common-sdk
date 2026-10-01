@@ -129,5 +129,6 @@ additionalProperties: |
 | `cmkUnavailable`         |                                 `NewCmkUnavailableEvent(metadata EventMetadata, cmkID string)`                                  |
 | `unauthenticatedRequest` |                                    `NewUnauthenticatedRequestEvent(metadata EventMetadata)`                                     |
 | `unauthorizedRequest`    |                      `NewUnauthorizedRequestEvent(metadata EventMetadata, resource string, action string)`                      |
+| `accessGranted`          |              `NewAccessGrantedEvent(metadata EventMetadata, resource, action string, value any)`                                 |
 
 All the enums in the functions above are provided within this library. For every enum values can be empty (it will be set to `UNSPECIFIED`), but if they are provided they must match the enums defined in this library, otherwise there will be an error. All `*value` properties are optional with the exception of ones present in event types: `tenantUpdate`, `configurationCreate`, `configurationRead`, `configurationDelete` and `configurationUpdate`. All other properties are considered required.

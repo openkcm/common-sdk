@@ -46,6 +46,7 @@ const (
 	CmkAvailableEvent           = "cmkAvailable"
 	CmkUnavailableEvent         = "cmkUnavailable"
 	UnauthorizedRequestEvent    = "unauthorizedRequest"
+	AccessGrantedEvent          = "accessGranted"
 	UnauthenticatedRequestEvent = "unauthenticatedRequest"
 )
 
