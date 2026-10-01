@@ -2095,6 +2095,100 @@ func TestNewCmkTenantModificationEvent(t *testing.T) {
 	}
 }
 
+func TestNewAccessGrantedEvent(t *testing.T) {
+	type args struct {
+		metadata EventMetadata
+		resource string
+		action   string
+		value    any
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "T3100_AccessGranted_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				resource: "resource",
+				action:   "action",
+				value:    "someValue",
+			},
+			wantErr: false,
+		},
+		{
+			name: "T3101_AccessGranted_EmptyResource_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				resource: "",
+				action:   "action",
+				value:    "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3102_AccessGranted_EmptyAction_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				resource: "resource",
+				action:   "",
+				value:    "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3103_AccessGranted_MissingUserInitiatorID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				resource: "resource",
+				action:   "action",
+				value:    "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3104_AccessGranted_NilValue_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				resource: "resource",
+				action:   "action",
+				value:    nil,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewAccessGrantedEvent(tt.args.metadata, tt.args.resource, tt.args.action, tt.args.value)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewAccessGrantedEvent() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
 func TestRequestEvents(t *testing.T) {
 	type args struct {
 		metadata EventMetadata

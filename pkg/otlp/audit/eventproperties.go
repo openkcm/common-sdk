@@ -30,6 +30,10 @@ func isZeroVal[T comparable](v T) bool {
 		return true
 	}
 
+	if !valueType.Comparable() {
+		return false
+	}
+
 	zeroValue := reflect.Zero(valueType).Interface()
 	comparableZero, _ := zeroValue.(T)
 
