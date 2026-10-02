@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.20.0](https://github.com/openkcm/common-sdk/compare/v1.19.4...v1.20.0) (2026-10-02)
+
+
+### Features
+
+* **audit:** add accessGranted event ([#335](https://github.com/openkcm/common-sdk/issues/335)) ([bee3fb8](https://github.com/openkcm/common-sdk/commit/bee3fb8674b112767bb280a01b662e429dc0c6f8))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/open-feature/go-sdk from 1.18.0 to 1.19.0 in the gomod-group group ([#334](https://github.com/openkcm/common-sdk/issues/334)) ([4b625fa](https://github.com/openkcm/common-sdk/commit/4b625fa23b080d116bf30d4d6954328a6e2ff7e6))
+
 ## [1.19.4](https://github.com/openkcm/common-sdk/compare/v1.19.3...v1.19.4) (2026-09-23)
 
 
