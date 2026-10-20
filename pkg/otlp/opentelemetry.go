@@ -20,7 +20,6 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -585,7 +584,7 @@ func (reg *registry) initLogger(ctx context.Context) error {
 		log.WithProcessor(processor),
 		log.WithResource(reg.res),
 	)
-	global.SetLoggerProvider(reg.loggerProvider)
+	otel.SetLoggerProvider(reg.loggerProvider)
 
 	otelLogger := otelslog.NewLogger(reg.appCfg.Name, otelslog.WithLoggerProvider(reg.loggerProvider)).
 		With(
