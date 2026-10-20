@@ -93,7 +93,7 @@ func TestSuite(t *testing.T) {
 
 			// Assert
 			ckr.AssertNumberOfCalls(t, "Check", 1)
-			assert.Equal(t, "application/json; charset=utf-8", response.Header().Get("content-type"))
+			assert.Equal(t, "application/json; charset=utf-8", response.Header().Get("Content-Type"))
 			assert.Equal(t, tc.expectedStatusCode, response.Result().StatusCode)
 
 			result := health.Result{}
