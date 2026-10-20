@@ -1,6 +1,6 @@
 module github.com/openkcm/common-sdk
 
-go 1.27
+go 1.27.3
 
 require (
 	github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0

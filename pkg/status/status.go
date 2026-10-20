@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/samber/oops"
 
@@ -77,11 +78,16 @@ func versionHandlerFunc(cfg *commoncfg.Application) func(w http.ResponseWriter, 
 }
 
 // registerDefaultHandlers registers the default http handlers for the status server
-func registerDefaultHandlers(cfg *commoncfg.BaseConfig,
+func registerDefaultHandlers(ctx context.Context,
+	cfg *commoncfg.BaseConfig,
 	mux *http.ServeMux,
 	probeHandlers map[string]func(http.ResponseWriter, *http.Request),
 ) {
 	if cfg.Telemetry.Metrics.Prometheus.Enabled {
+		// Expose standard build identity, allowlisted build settings and FIPS
+		// runtime evidence on the default registry served by promhttp.Handler.
+		registerRuntimeEvidence(ctx, prometheus.DefaultRegisterer)
+
 		mux.Handle("/metrics", promhttp.Handler())
 	}
 
@@ -102,7 +108,7 @@ func createStatusServer(ctx context.Context,
 	mux *http.ServeMux,
 	probeHandlers map[string]func(http.ResponseWriter, *http.Request),
 ) *http.Server {
-	registerDefaultHandlers(cfg, mux, probeHandlers)
+	registerDefaultHandlers(ctx, cfg, mux, probeHandlers)
 
 	slogctx.Info(ctx, "Creating status server", "address", cfg.Status.Address)
 
