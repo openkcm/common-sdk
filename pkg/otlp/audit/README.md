@@ -72,6 +72,49 @@ eventMetadata, _ := otlpaudit.NewEventMetadata("userInitID", "tenantID", "eventC
 event, _ := otlpaudit.NewCmkCreateEvent(eventMetadata, "cmkID")
 auditLogger.SendEvent(ctx, event) 
 ```
+
+#### Non-blocking / queued delivery
+
+`SendEvent` above blocks the caller until the HTTP request to the collector
+completes and returns an error if the collector is unavailable. When a service
+should emit audit events fire-and-forget and let the SDK handle eventual
+delivery, wrap the logger in a `QueuedAuditLogger` via `NewQueuedLogger`. It
+buffers events in an in-memory queue and delivers them from background workers,
+retrying transient failures with exponential backoff.
+
+```
+auditLogger, _ := otlpaudit.NewLogger(&cfg.Audit)
+queued := otlpaudit.NewQueuedLogger(auditLogger, otlpaudit.QueuedOptions{
+    OnError: func(err error) { slog.Error("audit delivery failed", "error", err) },
+})
+defer queued.Close(ctx) // drains the queue on shutdown
+
+event, _ := otlpaudit.NewCmkCreateEvent(eventMetadata, "cmkID")
+if err := queued.SendEvent(event); err != nil {
+    // queue is full (otlpaudit errQueueFull) or the logger is closed
+}
+```
+
+`QueuedAuditLogger.SendEvent` never blocks and takes no context — delivery (and
+its context) is owned by the background workers. It returns an error only when
+the event could not be enqueued: the queue is full, or the logger has been
+closed. Behavior is configured via `QueuedOptions` (all fields optional):
+
+| Field        | Default | Description                                                              |
+|--------------|---------|--------------------------------------------------------------------------|
+| `QueueSize`  | 1024    | Capacity of the buffered queue. When full, `SendEvent` drops and errors. |
+| `Workers`    | 1       | Number of background delivery goroutines.                                |
+| `MaxRetries` | 5       | Retry attempts after the first failure before the event is dropped.      |
+| `BaseDelay`  | 100ms   | First exponential-backoff step (doubles each retry, with jitter).        |
+| `MaxDelay`   | 30s     | Upper bound on the backoff step.                                         |
+| `OnError`    | nil     | Receives errors for events dropped after exhausting all retries.         |
+
+Events dropped because the queue was full are reported to the caller via the
+`SendEvent` return value; events dropped after exhausting all retries are routed
+to `OnError`. Always call `Close(ctx)` on shutdown to drain buffered events; if
+`ctx` expires before the queue is drained, in-flight sends are aborted and the
+context's error is returned.
+
 #### Additional Properties
 
 There is also a functionality of additional properties introduced that allow to add properties to OTLP logs separate from those belonging to specific event types. Please keep in mind that they'll be propagated to **every** event. The additional properties are loaded via config as a literal:
