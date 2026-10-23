@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -18,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/commontls"
 )
 
@@ -801,4 +803,83 @@ func captureLogs(t *testing.T) *syncBuffer {
 	t.Cleanup(func() { slog.SetDefault(previous) })
 
 	return logs
+}
+
+// TestEveryCredentialFileIsFollowed uses one file per role, each in its own
+// directory: the client chain and key, the server CA and two root CA files.
+// Each file is rotated on its own, then all at once, with the real watcher,
+// and every rotation must reach a client built once at the start.
+func TestEveryCredentialFileIsFollowed(t *testing.T) {
+	t.Parallel()
+
+	f := newFixture(t) // client certificate and key, in f.dir
+	serverCAPath := filepath.Join(t.TempDir(), "ca.crt")
+	root1Path := filepath.Join(t.TempDir(), "root1.crt")
+	root2Path := filepath.Join(t.TempDir(), "root2.crt")
+
+	caA, caB, caC := newCA(t, "ca-a", nil, elliptic.P256()), newCA(t, "ca-b", nil, elliptic.P256()), newCA(t, "ca-c", nil, elliptic.P256())
+	writeFile(t, serverCAPath, certPEM(caA.cert))
+	writeFile(t, root1Path, certPEM(caB.cert))
+	writeFile(t, root2Path, certPEM(caC.cert))
+
+	mtls := f.mtls(withServerName())
+	serverCA := fileRef(serverCAPath)
+	mtls.ServerCA = &serverCA
+	mtls.RootCAs = []commoncfg.SourceRef{fileRef(root1Path), fileRef(root2Path)}
+
+	dyn, err := commontls.NewDynamicTLSConfig(throttle, mtls)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = dyn.Close() })
+
+	requireTrustEventually := func(trusted []*testCA, untrusted ...*testCA) {
+		t.Helper()
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			for _, ca := range trusted {
+				assert.True(c, trusts(t, dyn, ca), "must trust %s", ca.cert.Subject.CommonName)
+			}
+
+			for _, ca := range untrusted {
+				assert.False(c, trusts(t, dyn, ca), "must not trust %s", ca.cert.Subject.CommonName)
+			}
+		}, waitFor, tick)
+	}
+
+	requireTrustEventually([]*testCA{caA, caB, caC})
+
+	// Each file on its own.
+	caD := newCA(t, "ca-d", nil, elliptic.P256())
+	writeFile(t, root2Path, certPEM(caD.cert))
+	requireTrustEventually([]*testCA{caA, caB, caD}, caC)
+
+	caE := newCA(t, "ca-e", nil, elliptic.P256())
+	writeFile(t, serverCAPath, certPEM(caE.cert))
+	requireTrustEventually([]*testCA{caE, caB, caD}, caA)
+
+	caF := newCA(t, "ca-f", nil, elliptic.P256())
+	writeFile(t, root1Path, certPEM(caF.cert))
+	requireTrustEventually([]*testCA{caE, caF, caD}, caB)
+
+	issuing := newCA(t, "client-issuing", f.clientCA, elliptic.P256())
+	f.writeClientChain(t, "client-v2", issuing)
+	require.Eventually(t, func() bool { return activeClientCN(t, dyn) == "client-v2" }, waitFor, tick)
+
+	// Everything at once, checked end to end through a client built at the
+	// start: the server presents a certificate from the new server CA and
+	// requires the new client certificate.
+	srv := startServer(t, f.serverCertificate(t, caE), f.clientCA.cert)
+	client := newClient(dyn.Config, "")
+	requireClientCertEventually(t, client, srv.URL, "client-v2")
+
+	caG, caH, caI := newCA(t, "ca-g", nil, elliptic.P256()), newCA(t, "ca-h", nil, elliptic.P256()), newCA(t, "ca-i", nil, elliptic.P256())
+	newServerCert := f.serverCertificate(t, caG)
+
+	writeFile(t, serverCAPath, certPEM(caG.cert))
+	writeFile(t, root1Path, certPEM(caH.cert))
+	writeFile(t, root2Path, certPEM(caI.cert))
+	f.writeClientChain(t, "client-v3", newCA(t, "client-issuing-2", f.clientCA, elliptic.P256()))
+	srv.cert.Store(&newServerCert)
+
+	requireTrustEventually([]*testCA{caG, caH, caI}, caE, caF, caD)
+	requireClientCertEventually(t, client, srv.URL, "client-v3")
 }
