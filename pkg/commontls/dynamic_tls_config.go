@@ -375,12 +375,26 @@ func (d *DynamicTLSConfig) newClientConfig(loaded *tls.Config) *tls.Config {
 	cfg.GetClientCertificate = d.getClientCertificate
 
 	if d.reloadAuthorities {
-		cfg.RootCAs = nil
-		cfg.InsecureSkipVerify = true // the server is verified by VerifyConnection
-		cfg.VerifyConnection = d.verifyConnection
+		verifyInCallback(cfg, d.verifyConnection)
 	}
 
 	return cfg
+}
+
+// verifyInCallback replaces the verification crypto/tls does of the server by
+// verify, which checks the server against certificate authorities that can
+// change. crypto/tls verifies against RootCAs of the configuration in use, and
+// that field cannot be changed safely once the configuration has been handed
+// out. Its own check is therefore turned off with InsecureSkipVerify and done
+// by verify instead, as VerifyConnection, which crypto/tls calls on every
+// handshake, resumptions included, whatever InsecureSkipVerify says (see the
+// example of tls.Config.VerifyConnection). The fields are only ever set here,
+// together, so InsecureSkipVerify is never set without the check replacing
+// the one it turns off.
+func verifyInCallback(cfg *tls.Config, verify func(tls.ConnectionState) error) {
+	cfg.RootCAs = nil
+	cfg.InsecureSkipVerify = true
+	cfg.VerifyConnection = verify
 }
 
 // refresh reads the credentials again and activates each part that changed
