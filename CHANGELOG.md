@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.21.0](https://github.com/openkcm/common-sdk/compare/v1.20.0...v1.21.0) (2026-10-23)
+
+
+### Features
+
+* queued audit logger ([#341](https://github.com/openkcm/common-sdk/issues/341)) ([ba47bed](https://github.com/openkcm/common-sdk/commit/ba47bedde91624d2cdcd56d387155db921b22536))
+* **status:** expose build info and FIPS-140 evidence via prometheus ([#340](https://github.com/openkcm/common-sdk/issues/340)) ([202b2fa](https://github.com/openkcm/common-sdk/commit/202b2fa0b7fe308bfafec5b12a2d23ab2678c6c6))
+
+
+### Bug Fixes
+
+* **deps:** bump the gomod-group group across 1 directory with 21 updates ([#339](https://github.com/openkcm/common-sdk/issues/339)) ([a3f16f3](https://github.com/openkcm/common-sdk/commit/a3f16f321e07a6f369ef6d142aa231cf65ae8678))
+* update README.md content to include project details and security policy link. ([cf18e80](https://github.com/openkcm/common-sdk/commit/cf18e80b3f933cbb149036c510a16d691cd9f30f))
+
 ## [1.20.0](https://github.com/openkcm/common-sdk/compare/v1.19.4...v1.20.0) (2026-10-02)
 
 
