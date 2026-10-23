@@ -59,16 +59,25 @@ type testCA struct {
 	key  *ecdsa.PrivateKey
 }
 
-// newCA creates a certificate authority, self-signed when parent is nil.
+// newCA creates a certificate authority, self-signed when parent is nil,
+// valid from an hour ago to an hour from now.
 func newCA(t *testing.T, name string, parent *testCA, curve elliptic.Curve) *testCA {
+	t.Helper()
+
+	return newCAValid(t, name, parent, curve, time.Now().Add(-time.Hour), time.Now().Add(time.Hour))
+}
+
+// newCAValid creates a certificate authority, self-signed when parent is nil,
+// valid from notBefore to notAfter.
+func newCAValid(t *testing.T, name string, parent *testCA, curve elliptic.Curve, notBefore, notAfter time.Time) *testCA {
 	t.Helper()
 
 	key := newKey(t, curve)
 	tmpl := &x509.Certificate{
 		SerialNumber:          newSerial(t),
 		Subject:               pkix.Name{CommonName: name},
-		NotBefore:             time.Now().Add(-time.Hour),
-		NotAfter:              time.Now().Add(time.Hour),
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
 		IsCA:                  true,
 		BasicConstraintsValid: true,
 		KeyUsage:              x509.KeyUsageCertSign,
@@ -82,14 +91,22 @@ func newCA(t *testing.T, name string, parent *testCA, curve elliptic.Curve) *tes
 	return &testCA{cert: createCertificate(t, tmpl, issuer, key, issuerKey), key: key}
 }
 
-// issue creates a leaf certificate from tmpl, signed by ca, with a new key on curve.
+// issue creates a leaf certificate from tmpl, signed by ca, with a new key on
+// curve. Unless tmpl sets them, it is valid from an hour ago to an hour from
+// now.
 func (ca *testCA) issue(t *testing.T, tmpl *x509.Certificate, curve elliptic.Curve) (*x509.Certificate, *ecdsa.PrivateKey) {
 	t.Helper()
 
 	key := newKey(t, curve)
 	tmpl.SerialNumber = newSerial(t)
-	tmpl.NotBefore = time.Now().Add(-time.Hour)
-	tmpl.NotAfter = time.Now().Add(time.Hour)
+
+	if tmpl.NotBefore.IsZero() {
+		tmpl.NotBefore = time.Now().Add(-time.Hour)
+	}
+
+	if tmpl.NotAfter.IsZero() {
+		tmpl.NotAfter = time.Now().Add(time.Hour)
+	}
 
 	return createCertificate(t, tmpl, ca.cert, key, ca.key), key
 }
