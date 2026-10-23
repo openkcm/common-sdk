@@ -821,6 +821,29 @@ func skipWithoutIPv6(t *testing.T) {
 	_ = lis.Close()
 }
 
+// TestDynamicClientConnWithEmbeddedCA uses a certificate authority that is
+// not read from a file. It cannot change, so the server is verified by
+// crypto/tls itself, while the client certificate is still reloaded.
+func TestDynamicClientConnWithEmbeddedCA(t *testing.T) {
+	t.Parallel()
+
+	f := newFixture(t)
+	srv := f.startServer(t, serverOptions{maxConnectionAge: shortConnectionAge})
+
+	cfg := f.clientConfig(srv.addr, nil)
+	embeddedCA := commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM(f.serverCA.cert))}
+	cfg.SecretRef.MTLS.ServerCA = &embeddedCA
+
+	conn := newDynamicClientConn(t, cfg)
+	client := healthpb.NewHealthClient(conn)
+
+	requireClientCNEventually(t, client, "client-v1")
+
+	f.writeClientCert(t, "client-v2")
+
+	requireClientCNEventually(t, client, "client-v2")
+}
+
 // --- Rotation ---
 
 func TestDynamicClientConnClientCertificateRotation(t *testing.T) {

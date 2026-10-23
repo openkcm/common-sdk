@@ -330,17 +330,15 @@ func (n *Notifier) onEvent(event fsnotify.Event) {
 	n.cacheMu.Lock()
 	defer n.cacheMu.Unlock()
 
-	dir := filepath.Dir(event.Name)
-	for dir != "/" && len(dir) > 1 {
-		_, ok := n.cacheEvents[dir]
-		if !ok {
-			dir = filepath.Dir(dir)
-			continue
+	// Group the event under the watched path it concerns: the path itself
+	// when a single file is watched, otherwise the closest watched directory
+	// above it.
+	for path := event.Name; path != "/" && len(path) > 1; path = filepath.Dir(path) {
+		_, ok := n.cacheEvents[path]
+		if ok {
+			n.cacheEvents[path] = append(n.cacheEvents[path], event)
+			break
 		}
-
-		n.cacheEvents[dir] = append(n.cacheEvents[dir], event)
-
-		break
 	}
 
 	if n.limiter.Allow() {
@@ -400,6 +398,12 @@ func (n *Notifier) sendCachedEvents() {
 		}
 	}()
 
+	// The throttle timer can fire after the events were already sent; there
+	// is nothing to report then.
+	if !n.hasCachedEvents() {
+		return
+	}
+
 	if n.eventHandler != nil {
 		for path, events := range n.cacheEvents {
 			if len(events) > 0 {
@@ -410,10 +414,21 @@ func (n *Notifier) sendCachedEvents() {
 		return
 	}
 
-	if n.simpleHandler != nil && len(n.cacheEvents) > 0 {
+	if n.simpleHandler != nil {
 		n.simpleHandler()
-		return
 	}
+}
+
+// hasCachedEvents reports whether events are waiting to be sent. The caller
+// must hold cacheMu.
+func (n *Notifier) hasCachedEvents() bool {
+	for _, events := range n.cacheEvents {
+		if len(events) > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 // onError is the internal error handler that accumulates errors
