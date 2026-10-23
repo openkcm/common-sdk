@@ -341,8 +341,13 @@ func TestForOperations(t *testing.T) {
 	dir := t.TempDir()
 	_, st := startLoader(t, dir, append(pemLoaderOptions(), loader.ForOperations(fsnotify.Create))...)
 
+	// A file written in place may be seen empty at its Create event, and its
+	// Write events are not followed; it has to appear with its contents.
+	staged := filepath.Join(t.TempDir(), "key1.pem")
+	writeFile(t, staged, "pemdata1")
+
 	file := filepath.Join(dir, "key1.pem")
-	writeFile(t, file, "pemdata1")
+	require.NoError(t, os.Rename(staged, file))
 	requireValueEventually(t, st, "key1", "pemdata1")
 
 	// Writes and removals are not followed.

@@ -233,6 +233,11 @@ func WithStorage(storage keyvalue.StringToBytesStorage) Option {
 // several operations at once, such as Write|Chmod. The default is Create,
 // Write, Rename and Remove.
 //
+// Without Write, a file must appear with its contents, for example by being
+// renamed into the location: a file written in place can be read before its
+// contents are written, at its Create event, and its later Write events are
+// not followed.
+//
 // Supported operations are defined in fsnotify.Op:
 //
 //	fsnotify.Create, fsnotify.Write, fsnotify.Remove, fsnotify.Rename, fsnotify.Chmod
