@@ -1,4 +1,4 @@
-// Package tls provides [DynamicTLSConfig], a *tls.Config for mutual TLS
+// Package commontls provides [DynamicTLSConfig], a *tls.Config for mutual TLS
 // clients whose credentials follow certificate rotation on disk.
 //
 // A DynamicTLSConfig embeds the *tls.Config to use. It loads a client
@@ -28,7 +28,7 @@
 //	    },
 //	}
 //
-//	dyn, err := tls.NewDynamicTLSConfig(2*time.Second, mtls)
+//	dyn, err := commontls.NewDynamicTLSConfig(2*time.Second, mtls)
 //	if err != nil {
 //	    return err
 //	}

@@ -335,43 +335,32 @@ func TestWithEventChainAsHandlerDropsWhenFull(t *testing.T) {
 	}
 }
 
+// TestWithSimpleHandler writes a file: with no burst allowed, the events it
+// causes (Create and Write on Linux, one Create on macOS) end in one call.
+// Calls with nothing pending are covered by an internal test.
 func TestWithSimpleHandler(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name  string
-		burst uint
-	}{
-		{name: "without burst"},
-		{name: "with a burst that delivers at once", burst: 1},
-	}
+	dir := t.TempDir()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+	var calls atomic.Int64
 
-			dir := t.TempDir()
+	n, err := notifier.Create(
+		notifier.OnPath(dir),
+		notifier.WithThrottleInterval(throttle),
+		notifier.WithBurstNumber(0),
+		notifier.WithSimpleHandler(func() { calls.Add(1) }),
+	)
+	require.NoError(t, err)
+	require.NoError(t, n.Start())
+	t.Cleanup(func() { _ = n.Close() })
 
-			var calls atomic.Int64
+	writeFile(t, filepath.Join(dir, "file.txt"), "hello")
 
-			n, err := notifier.Create(
-				notifier.OnPath(dir),
-				notifier.WithThrottleInterval(throttle),
-				notifier.WithBurstNumber(tt.burst),
-				notifier.WithSimpleHandler(func() { calls.Add(1) }),
-			)
-			require.NoError(t, err)
-			require.NoError(t, n.Start())
-			t.Cleanup(func() { _ = n.Close() })
+	require.Eventually(t, func() bool { return calls.Load() > 0 }, waitFor, tick)
+	time.Sleep(quiet)
 
-			writeFile(t, filepath.Join(dir, "file.txt"), "hello")
-
-			require.Eventually(t, func() bool { return calls.Load() > 0 }, waitFor, tick)
-			time.Sleep(quiet)
-
-			assert.Equal(t, int64(1), calls.Load(), "one change must cause one call")
-		})
-	}
+	assert.Equal(t, int64(1), calls.Load(), "one write must cause one call")
 }
 
 // TestNotifierDeliversEventsWhileFlushTimerRuns writes to a watched directory

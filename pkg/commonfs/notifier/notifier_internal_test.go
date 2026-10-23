@@ -59,6 +59,51 @@ func TestOnEventAcceptsCombinedOperations(t *testing.T) {
 	}
 }
 
+// TestHandlersAreNotCalledWithoutEvents sends one event with a burst that
+// delivers it at once. The throttle timer still fires afterwards, with
+// nothing pending, and must not call the handler again.
+func TestHandlersAreNotCalledWithoutEvents(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		handler func(calls *atomic.Int64) Option
+	}{
+		{
+			name: "simple handler",
+			handler: func(calls *atomic.Int64) Option {
+				return WithSimpleHandler(func() { calls.Add(1) })
+			},
+		},
+		{
+			name: "event handler",
+			handler: func(calls *atomic.Int64) Option {
+				return WithEventHandler(func(string, []fsnotify.Event) { calls.Add(1) })
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+
+			var calls atomic.Int64
+
+			n, err := Create(OnPath(dir), WithThrottleInterval(10*time.Millisecond), WithBurstNumber(1), tt.handler(&calls))
+			require.NoError(t, err)
+
+			n.onEvent(fsnotify.Event{Name: filepath.Join(dir, "file"), Op: fsnotify.Write})
+			assert.Equal(t, int64(1), calls.Load(), "the burst must deliver the event at once")
+
+			time.Sleep(100 * time.Millisecond) // the throttle timer has fired by now
+
+			assert.Equal(t, int64(1), calls.Load(), "the timer must not call the handler with nothing pending")
+		})
+	}
+}
+
 // No option sets the error handler, so these tests set it directly.
 
 func TestErrorsAreBatchedAndDelivered(t *testing.T) {

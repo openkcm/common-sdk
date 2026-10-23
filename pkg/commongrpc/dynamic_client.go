@@ -36,7 +36,7 @@ import (
 //
 // When cfg.SecretRef is of type commoncfg.MTLSSecretType, the transport
 // credentials are backed by a
-// [github.com/openkcm/common-sdk/pkg/tls.DynamicTLSConfig]: the client
+// [github.com/openkcm/common-sdk/pkg/commontls.DynamicTLSConfig]: the client
 // certificate (with its intermediates) and the certificate authorities that
 // verify the server are reloaded when their files change, and every new TLS
 // handshake uses the reloaded ones. See that type for which sources are
