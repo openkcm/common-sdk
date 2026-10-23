@@ -3,9 +3,12 @@ package loader_test
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/openkcm/common-sdk/pkg/commonfs/loader"
@@ -13,331 +16,577 @@ import (
 )
 
 const (
-	Key1        = "key1"
-	Key2        = "key2"
-	Key3        = "key3"
-	PemKey1     = Key1 + ".pem"
-	PemKey2     = Key2 + ".pem"
-	PemKey3     = Key3 + ".pem"
-	PemKey1Data = "pemdata1"
-	PemKey2Data = "pemdata2"
-	PemKey3Data = "pemdata3"
+	waitFor = 5 * time.Second
+	tick    = 10 * time.Millisecond
+	// quiet is how long a test waits to conclude that nothing changes.
+	quiet = 300 * time.Millisecond
 )
 
 // --- Helpers ---
 
-func newTestLoader(t *testing.T, dir string) (*loader.Loader, *keyvalue.MemoryStorage[string, []byte]) {
+type memoryStorage = keyvalue.MemoryStorage[string, []byte]
+
+// startLoader creates and starts a loader on dir with the given options,
+// writing to a new in-memory storage.
+func startLoader(t *testing.T, dir string, opts ...loader.Option) (*loader.Loader, *memoryStorage) {
 	t.Helper()
 
 	st := keyvalue.NewMemoryStorage[string, []byte]()
-	l, err := loader.Create(
-		loader.OnPath(dir),
-		loader.WithStorage(st),
-		loader.WithExtension("pem"),
-		loader.WithKeyIDType(loader.FileNameWithoutExtension),
-	)
+
+	l, err := loader.Create(append([]loader.Option{loader.OnPath(dir), loader.WithStorage(st)}, opts...)...)
 	require.NoError(t, err)
+	require.NoError(t, l.Start())
+	t.Cleanup(func() { _ = l.Close() })
 
 	return l, st
 }
 
-func startLoader(t *testing.T, l *loader.Loader) {
-	t.Helper()
-	require.NoError(t, l.Start())
-}
-
-func stopLoader(t *testing.T, l *loader.Loader) {
-	t.Helper()
-	require.NoError(t, l.Close())
-}
-
-func createTestPemFiles(t *testing.T, dir string, files map[string]string) {
-	t.Helper()
-
-	for name, content := range files {
-		pemPath := filepath.Join(dir, name+".pem")
-		require.NoError(t, os.WriteFile(pemPath, []byte(content), 0600))
+// pemLoaderOptions load the .pem files of a directory under their name
+// without the extension, the way cmk loads its signing keys.
+func pemLoaderOptions() []loader.Option {
+	return []loader.Option{
+		loader.WithExtension("pem"),
+		loader.WithKeyIDType(loader.FileNameWithoutExtension),
 	}
 }
 
-// --- Tests ---
-func TestLoaderKeyIDTypes(t *testing.T) {
+func writeFile(t *testing.T, path, content string) {
+	t.Helper()
+
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+}
+
+func requireValueEventually(t *testing.T, st *memoryStorage, key, want string) {
+	t.Helper()
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		got, ok := st.Get(key)
+		assert.True(c, ok, "key %q not loaded", key)
+		assert.Equal(c, want, string(got))
+	}, waitFor, tick)
+}
+
+func requireAbsentEventually(t *testing.T, st *memoryStorage, key string) {
+	t.Helper()
+
+	require.Eventually(t, func() bool {
+		_, ok := st.Get(key)
+		return !ok
+	}, waitFor, tick, "key %q not removed", key)
+}
+
+func requireValue(t *testing.T, st *memoryStorage, key, want string) {
+	t.Helper()
+
+	got, ok := st.Get(key)
+	require.True(t, ok, "key %q not loaded", key)
+	require.Equal(t, want, string(got))
+}
+
+// --- Construction ---
+
+func TestCreateOptions(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
-	subDir := filepath.Join(dir, "subdir")
-	require.NoError(t, os.Mkdir(subDir, 0700))
 
-	// Create files directly under dir for first two key types
-	filesRoot := map[string]string{
-		PemKey1: "data1",
-		PemKey2: "data2",
-	}
-	for name, content := range filesRoot {
-		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0600))
-	}
+	t.Run("valid options", func(t *testing.T) {
+		t.Parallel()
 
-	// Create files in subdir for full path tests
-	filesSub := map[string]string{
-		PemKey1: "data1",
-		PemKey2: "data2",
-	}
-	for name, content := range filesSub {
-		require.NoError(t, os.WriteFile(filepath.Join(subDir, name), []byte(content), 0600))
-	}
+		l, err := loader.Create(
+			loader.OnPath(dir),
+			loader.WithStorage(keyvalue.NewMemoryStorage[string, []byte]()),
+			loader.WithExtension(".pem"),
+			loader.WithKeyIDType(loader.FileNameWithExtension),
+			loader.WatchSubfolders(true),
+			loader.ForOperations(fsnotify.Create),
+			nil,
+		)
+		require.NoError(t, err)
+		assert.NotNil(t, l)
+		assert.False(t, l.IsStarted())
+	})
+
+	t.Run("nil storage", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := loader.Create(loader.OnPath(dir), loader.WithStorage(nil))
+		require.ErrorIs(t, err, loader.ErrStorageNotSpecified)
+	})
+
+	t.Run("nonexistent location", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := loader.Create(loader.OnPaths(dir, filepath.Join(dir, "does-not-exist")))
+		require.ErrorContains(t, err, "path does not exist")
+	})
+}
+
+// --- Key IDs ---
+
+func TestKeyIDTypes(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "sub")
+	require.NoError(t, os.Mkdir(sub, 0o700))
+	writeFile(t, filepath.Join(dir, "top.pem"), "top")
+	writeFile(t, filepath.Join(dir, "notes.txt"), "notes")
+	writeFile(t, filepath.Join(sub, "nested.pem"), "nested")
 
 	tests := []struct {
-		name      string
-		keyIDType loader.KeyIDType
-		expected  []string
-		location  string
+		name string
+		opts []loader.Option
+		want map[string]string
 	}{
 		{
-			name:      "FileNameWithoutExtension",
-			location:  subDir,
-			keyIDType: loader.FileNameWithoutExtension,
-			expected:  []string{Key1, Key2},
+			name: "FileNameWithoutExtension loads only files with the extension",
+			opts: []loader.Option{loader.WithKeyIDType(loader.FileNameWithoutExtension), loader.WithExtension("pem")},
+			want: map[string]string{"top": "top"},
 		},
 		{
-			name:      "FileNameWithExtension",
-			location:  subDir,
-			keyIDType: loader.FileNameWithExtension,
-			expected:  []string{PemKey1, PemKey2},
+			name: "FileNameWithoutExtension without an extension loads everything",
+			opts: []loader.Option{loader.WithKeyIDType(loader.FileNameWithoutExtension), loader.WithExtension("")},
+			want: map[string]string{"top.pem": "top", "notes.txt": "notes"},
 		},
 		{
-			name:      "FileFullPathRelativeToLocation",
-			location:  dir,
-			keyIDType: loader.FileFullPathRelativeToLocation,
-			expected:  []string{"/subdir/key1.pem", "/subdir/key2.pem"},
+			name: "FileNameWithExtension ignores the extension option",
+			opts: []loader.Option{loader.WithKeyIDType(loader.FileNameWithExtension), loader.WithExtension("pem")},
+			want: map[string]string{"top.pem": "top", "notes.txt": "notes"},
 		},
 		{
-			name:      "FileFullPath",
-			location:  subDir,
-			keyIDType: loader.FileFullPath,
-			expected: []string{
-				filepath.Join(subDir, PemKey1),
-				filepath.Join(subDir, PemKey2),
+			name: "FileFullPathRelativeToLocation with subfolders",
+			opts: []loader.Option{loader.WithKeyIDType(loader.FileFullPathRelativeToLocation), loader.WatchSubfolders(true)},
+			want: map[string]string{"top.pem": "top", "notes.txt": "notes", "/sub/nested.pem": "nested"},
+		},
+		{
+			name: "FileFullPath is the default",
+			want: map[string]string{
+				filepath.Join(dir, "top.pem"):   "top",
+				filepath.Join(dir, "notes.txt"): "notes",
+			},
+		},
+		{
+			name: "FileFullPath with subfolders",
+			opts: []loader.Option{loader.WithKeyIDType(loader.FileFullPath), loader.WatchSubfolders(true)},
+			want: map[string]string{
+				filepath.Join(dir, "top.pem"):    "top",
+				filepath.Join(dir, "notes.txt"):  "notes",
+				filepath.Join(sub, "nested.pem"): "nested",
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			st := keyvalue.NewMemoryStorage[string, []byte]()
-			l, err := loader.Create(
-				loader.OnPath(tt.location),
-				loader.WithStorage(st),
-				loader.WithExtension("pem"),
-				loader.WatchSubfolders(true),
-				loader.WithKeyIDType(tt.keyIDType),
-			)
-			require.NoError(t, err)
+			t.Parallel()
 
-			startLoader(t, l)
-			defer stopLoader(t, l)
+			_, st := startLoader(t, dir, tt.opts...)
 
-			time.Sleep(500 * time.Millisecond)
+			assert.ElementsMatch(t, keys(tt.want), st.List())
 
-			for _, key := range tt.expected {
-				val, ok := st.Get(key)
-				require.True(t, ok, "expected key %s to exist", key)
-				require.Contains(t, []string{"data1", "data2"}, string(val))
+			for key, want := range tt.want {
+				requireValue(t, st, key, want)
 			}
 		})
 	}
 }
 
-func TestNewLoaderWithOptions(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	t.Run("valid loader with storage + extension", func(t *testing.T) {
-		st := keyvalue.NewMemoryStorage[string, []byte]()
-		l, err := loader.Create(
-			loader.OnPath(tmpDir),
-			loader.WithStorage(st),
-			loader.WithExtension(".pem"),
-			loader.WithKeyIDType(loader.FileNameWithExtension),
-		)
-		require.NoError(t, err)
-		require.NotNil(t, l)
-	})
-
-	t.Run("nil storage", func(t *testing.T) {
-		_, err := loader.Create(
-			loader.OnPath(tmpDir),
-			loader.WithStorage(nil),
-		)
-		require.ErrorIs(t, err, loader.ErrStorageNotSpecified)
-	})
-}
-
-func TestLoadAllloadersPositive(t *testing.T) {
-	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "key.pem"), []byte("secret"), 0644))
-
-	l, st := newTestLoader(t, dir)
-
-	startLoader(t, l)
-	defer stopLoader(t, l)
-
-	val, ok := st.Get("key")
-	require.True(t, ok)
-	require.Equal(t, []byte("secret"), val)
-}
-
-func TestStartStopWatching(t *testing.T) {
-	dir := t.TempDir()
-	l, st := newTestLoader(t, dir)
-
-	startLoader(t, l)
-	defer stopLoader(t, l)
-
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "watched.pem"), []byte("supersecret"), 0644))
-
-	require.Eventually(t, func() bool {
-		_, ok := st.Get("watched")
-		return ok
-	}, time.Second, 50*time.Millisecond)
-}
-
-func TestFileRemovalUpdatesStorage(t *testing.T) {
-	dir := t.TempDir()
-	l, st := newTestLoader(t, dir)
-
-	startLoader(t, l)
-	defer stopLoader(t, l)
-
-	file := filepath.Join(dir, "remove.pem")
-	require.NoError(t, os.WriteFile(file, []byte("bye"), 0600))
-
-	require.Eventually(t, func() bool {
-		_, ok := st.Get("remove")
-		return ok
-	}, time.Second, 50*time.Millisecond)
-
-	require.NoError(t, os.Remove(file))
-
-	require.Eventually(t, func() bool {
-		_, ok := st.Get("remove")
-		return !ok
-	}, time.Second, 50*time.Millisecond)
-}
-
-func TestLoadSigningKeysLoadsPemFiles(t *testing.T) {
-	dir := t.TempDir()
-	files := map[string]string{Key1: PemKey1Data, Key2: PemKey2Data}
-	createTestPemFiles(t, dir, files)
-
-	// Add a non-pem file and a directory
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "not_a_key.txt"), []byte("ignoreme"), 0600))
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "subdir"), 0755))
-
-	l, st := newTestLoader(t, dir)
-
-	startLoader(t, l)
-	defer stopLoader(t, l)
-
-	for k, v := range files {
-		val, ok := st.Get(k)
-		require.True(t, ok)
-		require.Equal(t, []byte(v), val)
+func keys(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
 	}
 
-	_, ok := st.Get("missing")
-	require.False(t, ok)
+	return out
 }
 
-func TestLoadSigningKeysErrorOnReadDir(t *testing.T) {
-	_, err := loader.Create(
-		loader.OnPath("/non/existent/path"),
-		loader.WithExtension("pem"),
-		loader.WithKeyIDType(loader.FileNameWithoutExtension),
+// --- Initial load ---
+
+func TestStartLoadsFiles(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "key1.pem"), "pemdata1")
+	writeFile(t, filepath.Join(dir, "key2.pem"), "pemdata2")
+	writeFile(t, filepath.Join(dir, "not_a_key.txt"), "ignored")
+	writeFile(t, filepath.Join(dir, "empty.pem"), "")
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "subdir.pem"), 0o700))
+
+	_, st := startLoader(t, dir, pemLoaderOptions()...)
+
+	assert.ElementsMatch(t, []string{"key1", "key2"}, st.List())
+	requireValue(t, st, "key1", "pemdata1")
+	requireValue(t, st, "key2", "pemdata2")
+}
+
+func TestStartSkipsUnreadableFiles(t *testing.T) {
+	t.Parallel()
+
+	if os.Geteuid() == 0 {
+		t.Skip("root can read files without permissions")
+	}
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "badkey.pem"), []byte("data"), 0o000))
+	writeFile(t, filepath.Join(dir, "goodkey.pem"), "data")
+
+	_, st := startLoader(t, dir, pemLoaderOptions()...)
+
+	assert.Equal(t, []string{"goodkey"}, st.List())
+}
+
+func TestStartFailsWhenLocationIsGone(t *testing.T) {
+	t.Parallel()
+
+	dir := filepath.Join(t.TempDir(), "keys")
+	require.NoError(t, os.Mkdir(dir, 0o700))
+
+	l, err := loader.Create(loader.OnPath(dir))
+	require.NoError(t, err)
+
+	require.NoError(t, os.Remove(dir))
+	require.Error(t, l.Start())
+	assert.False(t, l.IsStarted())
+}
+
+// --- Following changes ---
+
+func TestFollowsFileChanges(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "key1.pem"), "pemdata1")
+	writeFile(t, filepath.Join(dir, "key2.pem"), "pemdata2")
+
+	_, st := startLoader(t, dir, pemLoaderOptions()...)
+
+	writeFile(t, filepath.Join(dir, "key3.pem"), "pemdata3")
+	requireValueEventually(t, st, "key3", "pemdata3")
+
+	writeFile(t, filepath.Join(dir, "key1.pem"), "pemdata1-modified")
+	requireValueEventually(t, st, "key1", "pemdata1-modified")
+
+	require.NoError(t, os.Remove(filepath.Join(dir, "key2.pem")))
+	requireAbsentEventually(t, st, "key2")
+
+	require.NoError(t, os.Rename(filepath.Join(dir, "key3.pem"), filepath.Join(dir, "key4.pem")))
+	requireAbsentEventually(t, st, "key3")
+	requireValueEventually(t, st, "key4", "pemdata3")
+
+	requireValue(t, st, "key1", "pemdata1-modified")
+}
+
+func TestTouchKeepsContents(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "key1.pem")
+	writeFile(t, file, "pemdata1")
+
+	_, st := startLoader(t, dir, pemLoaderOptions()...)
+
+	require.NoError(t, os.Chtimes(file, time.Now(), time.Now()))
+	time.Sleep(quiet)
+
+	requireValue(t, st, "key1", "pemdata1")
+}
+
+func TestEmptyFileKeepsPreviousContents(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "key1.pem")
+	writeFile(t, file, "pemdata1")
+
+	_, st := startLoader(t, dir, pemLoaderOptions()...)
+
+	// Truncating is what a writer does first; the contents come with the
+	// next write.
+	require.NoError(t, os.Truncate(file, 0))
+	time.Sleep(quiet)
+	requireValue(t, st, "key1", "pemdata1")
+
+	writeFile(t, file, "pemdata2")
+	requireValueEventually(t, st, "key1", "pemdata2")
+}
+
+// TestEditorBackupFilesAreIgnored covers the backup an editor such as vim
+// writes next to a file it saves, and deletes afterwards. Neither may change
+// the key of the file itself.
+func TestEditorBackupFilesAreIgnored(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "keyId")
+	writeFile(t, file, "key-1")
+
+	_, st := startLoader(t, dir, loader.WithKeyIDType(loader.FileNameWithExtension))
+
+	backup := file + "~"
+	writeFile(t, backup, "backup")
+	writeFile(t, file, "key-2")
+	requireValueEventually(t, st, "keyId", "key-2")
+
+	require.NoError(t, os.Remove(backup))
+	time.Sleep(quiet)
+
+	requireValue(t, st, "keyId", "key-2")
+	assert.Equal(t, []string{"keyId"}, st.List())
+}
+
+func TestForOperations(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	_, st := startLoader(t, dir, append(pemLoaderOptions(), loader.ForOperations(fsnotify.Create))...)
+
+	file := filepath.Join(dir, "key1.pem")
+	writeFile(t, file, "pemdata1")
+	requireValueEventually(t, st, "key1", "pemdata1")
+
+	// Writes and removals are not followed.
+	writeFile(t, file, "pemdata2")
+	require.NoError(t, os.Remove(file))
+	time.Sleep(quiet)
+
+	requireValue(t, st, "key1", "pemdata1")
+}
+
+// --- Subfolders ---
+
+func TestSubfoldersAreNotLoadedByDefault(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "sub")
+	require.NoError(t, os.Mkdir(sub, 0o700))
+	writeFile(t, filepath.Join(sub, "nested.pem"), "nested")
+
+	_, st := startLoader(t, dir, loader.WithKeyIDType(loader.FileFullPathRelativeToLocation))
+
+	writeFile(t, filepath.Join(sub, "late.pem"), "late")
+	writeFile(t, filepath.Join(dir, "top.pem"), "top")
+	requireValueEventually(t, st, "top.pem", "top")
+
+	time.Sleep(quiet)
+	assert.Equal(t, []string{"top.pem"}, st.List())
+}
+
+func TestSubfoldersCreatedWhileRunning(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	_, st := startLoader(t, dir,
+		loader.WithKeyIDType(loader.FileFullPathRelativeToLocation),
+		loader.WatchSubfolders(true),
 	)
-	require.Error(t, err)
+
+	deep := filepath.Join(dir, "a", "b")
+	require.NoError(t, os.MkdirAll(deep, 0o700))
+	writeFile(t, filepath.Join(deep, "deep.pem"), "deep")
+
+	requireValueEventually(t, st, "/a/b/deep.pem", "deep")
 }
 
-func TestLoadSigningKeysErrorOnReadFile(t *testing.T) {
+// TestSubfolderMovedInAndOut moves a directory that already holds files into
+// the location and out again. Its files produce no events of their own, so
+// the loader must find them through the directory's events.
+func TestSubfolderMovedInAndOut(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
-	pemPath := filepath.Join(dir, "badkey.pem")
-	require.NoError(t, os.WriteFile(pemPath, []byte("data"), 0000)) // no permissions
+	_, st := startLoader(t, dir,
+		loader.WithKeyIDType(loader.FileFullPathRelativeToLocation),
+		loader.WatchSubfolders(true),
+	)
 
-	l, st := newTestLoader(t, dir)
+	outside := filepath.Join(t.TempDir(), "batch")
+	require.NoError(t, os.MkdirAll(filepath.Join(outside, "inner"), 0o700))
+	writeFile(t, filepath.Join(outside, "a.pem"), "a")
+	writeFile(t, filepath.Join(outside, "inner", "b.pem"), "b")
 
-	startLoader(t, l)
-	defer stopLoader(t, l)
+	inside := filepath.Join(dir, "batch")
+	require.NoError(t, os.Rename(outside, inside))
 
-	_, ok := st.Get("badkey")
-	require.False(t, ok)
+	requireValueEventually(t, st, "/batch/a.pem", "a")
+	requireValueEventually(t, st, "/batch/inner/b.pem", "b")
+
+	require.NoError(t, os.Rename(inside, filepath.Join(t.TempDir(), "gone")))
+
+	requireAbsentEventually(t, st, "/batch/a.pem")
+	requireAbsentEventually(t, st, "/batch/inner/b.pem")
 }
 
-func TestStartSigningKeysWatcherReloadsOnChange(t *testing.T) {
-	dir := t.TempDir()
-	files := map[string]string{Key1: PemKey1Data, Key2: PemKey2Data}
-	createTestPemFiles(t, dir, files)
+// --- Kubernetes volumes ---
 
-	l, st := newTestLoader(t, dir)
-
-	startLoader(t, l)
-	defer stopLoader(t, l)
-
-	time.Sleep(300 * time.Millisecond) // watcher startup
-
-	// Add new key
-	require.NoError(t, os.WriteFile(filepath.Join(dir, PemKey3), []byte(PemKey3Data), 0600))
-	time.Sleep(300 * time.Millisecond)
-
-	val, ok := st.Get(Key3)
-	require.True(t, ok)
-	require.Equal(t, []byte(PemKey3Data), val)
-
-	// Modify key
-	require.NoError(t, os.WriteFile(filepath.Join(dir, PemKey1), []byte("pemdata1_modified"), 0600))
-	time.Sleep(300 * time.Millisecond)
-
-	val, ok = st.Get(Key1)
-	require.True(t, ok)
-	require.Equal(t, []byte("pemdata1_modified"), val)
-
-	// Remove key
-	require.NoError(t, os.Remove(filepath.Join(dir, PemKey2)))
-	time.Sleep(300 * time.Millisecond)
-
-	_, ok = st.Get(Key2)
-	require.False(t, ok)
+// kubernetesVolume lays out a directory the way the kubelet does for a
+// secret or config map: the files are symbolic links through ..data, which
+// points to a timestamped directory and is swapped atomically on update.
+type kubernetesVolume struct {
+	t       *testing.T
+	dir     string
+	version int
+	current string
+	visible map[string]bool
 }
 
-func TestStartSigningKeysWatcherNoReloadOnNoChange(t *testing.T) {
-	dir := t.TempDir()
-	files := map[string]string{Key1: PemKey1Data}
-	createTestPemFiles(t, dir, files)
+func newKubernetesVolume(t *testing.T, files map[string]string) *kubernetesVolume {
+	t.Helper()
 
-	l, st := newTestLoader(t, dir)
+	v := &kubernetesVolume{t: t, dir: t.TempDir(), visible: map[string]bool{}}
+	v.update(files)
 
-	startLoader(t, l)
-	defer stopLoader(t, l)
-
-	time.Sleep(300 * time.Millisecond)
-
-	val, ok := st.Get(Key1)
-	require.True(t, ok)
-	require.Equal(t, []byte(PemKey1Data), val)
+	return v
 }
 
-func TestStartSigningKeysWatcherReloadOnTouch(t *testing.T) {
+// update writes a new version of the files in the kubelet's order: a new
+// timestamped directory, the swap of ..data, the visible links of added and
+// removed files, and the removal of the previous directory.
+func (v *kubernetesVolume) update(files map[string]string) {
+	v.t.Helper()
+
+	v.version++
+	versionDir := filepath.Join(v.dir, "..2026_v"+string(rune('0'+v.version)))
+	require.NoError(v.t, os.Mkdir(versionDir, 0o700))
+
+	for name, content := range files {
+		writeFile(v.t, filepath.Join(versionDir, name), content)
+	}
+
+	tmpLink := filepath.Join(v.dir, "..data_tmp")
+	require.NoError(v.t, os.Symlink(filepath.Base(versionDir), tmpLink))
+	require.NoError(v.t, os.Rename(tmpLink, filepath.Join(v.dir, "..data")))
+
+	for name := range files {
+		if !v.visible[name] {
+			require.NoError(v.t, os.Symlink(filepath.Join("..data", name), filepath.Join(v.dir, name)))
+			v.visible[name] = true
+		}
+	}
+
+	for name := range v.visible {
+		if _, ok := files[name]; !ok {
+			require.NoError(v.t, os.Remove(filepath.Join(v.dir, name)))
+			delete(v.visible, name)
+		}
+	}
+
+	if v.current != "" {
+		require.NoError(v.t, os.RemoveAll(v.current))
+	}
+
+	v.current = versionDir
+}
+
+// TestKubernetesVolumeUpdates follows a mounted secret through updates that
+// change a file in place, add a file and remove one, the way extauthz and
+// cmk read their signing keys. A key written to the shared storage by
+// someone else must survive.
+func TestKubernetesVolumeUpdates(t *testing.T) {
+	t.Parallel()
+
+	vol := newKubernetesVolume(t, map[string]string{"keyId": "key-1", "key-1.pem": "pem-1"})
+
+	st := keyvalue.NewMemoryStorage[string, []byte]()
+	st.Store("foreign", []byte("not from the loader"))
+
+	l, err := loader.Create(
+		loader.OnPath(vol.dir),
+		loader.WithKeyIDType(loader.FileNameWithExtension),
+		loader.WithStorage(st),
+	)
+	require.NoError(t, err)
+	require.NoError(t, l.Start())
+	t.Cleanup(func() { _ = l.Close() })
+
+	assert.ElementsMatch(t, []string{"keyId", "key-1.pem", "foreign"}, st.List())
+	requireValue(t, st, "keyId", "key-1")
+
+	vol.update(map[string]string{"keyId": "key-2", "key-1.pem": "pem-1", "key-2.pem": "pem-2"})
+	requireValueEventually(t, st, "keyId", "key-2")
+	requireValueEventually(t, st, "key-2.pem", "pem-2")
+
+	vol.update(map[string]string{"keyId": "key-3", "key-2.pem": "pem-2"})
+	requireValueEventually(t, st, "keyId", "key-3")
+	requireAbsentEventually(t, st, "key-1.pem")
+
+	assert.ElementsMatch(t, []string{"keyId", "key-2.pem", "foreign"}, st.List())
+}
+
+// --- Lifecycle ---
+
+func TestCloseAndRestart(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
-	files := map[string]string{Key1: PemKey1Data}
-	createTestPemFiles(t, dir, files)
+	writeFile(t, filepath.Join(dir, "key1.pem"), "pemdata1")
+	writeFile(t, filepath.Join(dir, "key2.pem"), "pemdata2")
 
-	l, st := newTestLoader(t, dir)
+	l, st := startLoader(t, dir, pemLoaderOptions()...)
 
-	startLoader(t, l)
-	defer stopLoader(t, l)
+	require.NoError(t, l.Close())
+	require.NoError(t, l.Close(), "Close must be safe to call twice")
+	assert.False(t, l.IsStarted())
 
-	time.Sleep(300 * time.Millisecond)
+	// While closed, the storage keeps its contents and does not follow.
+	writeFile(t, filepath.Join(dir, "key1.pem"), "pemdata1-modified")
+	require.NoError(t, os.Remove(filepath.Join(dir, "key2.pem")))
+	writeFile(t, filepath.Join(dir, "key3.pem"), "pemdata3")
+	time.Sleep(quiet)
 
-	// Touch file
-	require.NoError(t, os.Chtimes(filepath.Join(dir, PemKey1), time.Now(), time.Now()))
-	time.Sleep(300 * time.Millisecond)
+	assert.ElementsMatch(t, []string{"key1", "key2"}, st.List())
+	requireValue(t, st, "key1", "pemdata1")
 
-	val, ok := st.Get(Key1)
-	require.True(t, ok)
-	require.Equal(t, []byte(PemKey1Data), val)
+	// Starting again brings the storage in line, and follows changes again.
+	require.NoError(t, l.Start())
+	require.NoError(t, l.Start(), "Start on a started loader must do nothing")
+	assert.True(t, l.IsStarted())
+
+	assert.ElementsMatch(t, []string{"key1", "key3"}, st.List())
+	requireValue(t, st, "key1", "pemdata1-modified")
+
+	writeFile(t, filepath.Join(dir, "key4.pem"), "pemdata4")
+	requireValueEventually(t, st, "key4", "pemdata4")
+}
+
+// TestConcurrentLifecycle starts, closes and inspects one loader from several
+// goroutines while its files change. Run with -race.
+func TestConcurrentLifecycle(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "key1.pem"), "pemdata1")
+
+	st := keyvalue.NewMemoryStorage[string, []byte]()
+
+	l, err := loader.Create(append(pemLoaderOptions(), loader.OnPath(dir), loader.WithStorage(st))...)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = l.Close() })
+
+	var wg sync.WaitGroup
+
+	for i := range 8 {
+		wg.Go(func() {
+			for j := range 20 {
+				switch i % 4 {
+				case 0:
+					assert.NoError(t, l.Start())
+				case 1:
+					assert.NoError(t, l.Close())
+				case 2:
+					writeFile(t, filepath.Join(dir, "key1.pem"), string(rune('a'+j)))
+				default:
+					_ = l.IsStarted()
+					_, _ = l.Storage().Get("key1")
+				}
+			}
+		})
+	}
+
+	wg.Wait()
+
+	require.NoError(t, l.Start())
+	writeFile(t, filepath.Join(dir, "key1.pem"), "final")
+	requireValueEventually(t, st, "key1", "final")
 }

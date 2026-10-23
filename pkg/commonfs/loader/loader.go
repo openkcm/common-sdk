@@ -1,52 +1,66 @@
-// Package loader provides a file-system based resource loader with live updates.
+// Package loader keeps an in-memory key–value storage in sync with the files
+// in one or more directories.
 //
-// The loader watches one or more filesystem locations for resource files (for
-// example: cryptographic keys, configuration blobs, certificates) and keeps an
-// in-memory key->bytes storage synchronized with the file system. It supports
-// configurable KeyID extraction strategies, optional extension filtering,
-// recursive (subfolder) watching and event filtering.
+// The loader is meant for resources stored as files that must be reflected in
+// memory as soon as they change on disk, for example signing keys or
+// certificates in a mounted Kubernetes secret. It loads every matching file
+// when it starts, then watches the directories and loads, reloads or removes
+// entries as files are created, written, renamed or deleted.
 //
 // Key concepts
-//   - Location (path): a directory that the loader has been instructed to watch.
-//   - KeyID: the identifier under which a file's contents are stored in the
-//     storage backend. The KeyID is derived from the file path using a
-//     configurable strategy (see KeyIDType).
-//   - Storage: a pluggable key->[]byte storage implementing
-//     keyvalue.StringToBytesStorage. By default, an in-memory storage is used.
-//   - Watcher: a filesystem watcher (fsnotify based) that forwards events to
-//     the loader so it can add/update/remove resources in storage.
+//   - Location: a directory the loader has been told to watch (OnPath,
+//     OnPaths). With WatchSubfolders, its subdirectories are included.
+//   - Key ID: the key under which the contents of a file are stored, derived
+//     from the file path as configured with WithKeyIDType.
+//   - Storage: where the contents are stored, a keyvalue.StringToBytesStorage;
+//     by default an in-memory one. Read it through Loader.Storage.
 //
-// Behavior
-//   - On Start the loader performs an initial scan of all configured locations
-//     and loads every file that matches the configured rules into storage.
-//   - Subsequent file system events (create/write/remove/rename by default) are
-//     processed and the storage is updated accordingly.
-//   - Files that are directories, unreadable, empty or that do not match the
-//     KeyID extraction rules are skipped.
-//   - Temporary editors that create files with suffix "~" are handled: the
-//     trailing "~" is ignored for both the file path and the computed KeyID.
+// How the storage follows the files
+//   - Start loads every file in the locations that resolves to a Key ID.
+//   - When a file changes, the loader looks at the file as it is now: if it
+//     exists it is (re)loaded, if it is gone its key is removed. Files that
+//     are empty or cannot be read are skipped and keep their previous
+//     contents, so a file caught halfway through being written is picked up
+//     by the event of its next write.
+//   - When anything else in a location changes, such as a directory or a
+//     symbolic link to one, the loader scans the locations again, loads
+//     every file and removes the keys of files that are gone. This is how it
+//     follows a Kubernetes secret or config map: the kubelet updates those by
+//     swapping the ..data symbolic link, without touching the visible files.
+//   - Only keys the loader stored itself are ever removed, so a storage shared
+//     with other writers keeps their entries.
+//   - Files whose name ends with "~" (editor backups) are ignored, and so are
+//     entries whose name starts with ".." (the internals of a Kubernetes
+//     volume, whose files are reached through the visible symbolic links).
 //
 // Typical usage
 //
-//	ldr, err := Create(
-//	    OnPath("/etc/keys"),
-//	    WithExtension(".pem"),
-//	    WithKeyIDType(FileNameWithoutExtension),
+//	ldr, err := loader.Create(
+//	    loader.OnPath("/etc/keys"),
+//	    loader.WithExtension(".pem"),
+//	    loader.WithKeyIDType(loader.FileNameWithoutExtension),
 //	)
-//	if err != nil { ... }
-//	if err := ldr.Start(); err != nil { ... }
+//	if err != nil {
+//	    return err
+//	}
+//
+//	err = ldr.Start()
+//	if err != nil {
+//	    return err
+//	}
 //	defer ldr.Close()
 //
-// The package is suitable for hot-reloading workloads where files on disk
-// represent resources that should be immediately reflected in memory.
+//	key, ok := ldr.Storage().Get("signing")
 package loader
 
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 
@@ -63,8 +77,9 @@ import (
 type KeyIDType uint32
 
 const (
-	// FileNameWithoutExtension uses the base file name without its extension
-	// as the Key ID.
+	// FileNameWithoutExtension uses the base file name without the extension
+	// set with WithExtension as the Key ID. Files without that extension are
+	// ignored.
 	//
 	// Example:
 	//   Path:       /tmp/keys/signing.pem
@@ -73,7 +88,7 @@ const (
 	FileNameWithoutExtension KeyIDType = 1 << iota
 
 	// FileNameWithExtension uses the base file name including its extension
-	// as the Key ID.
+	// as the Key ID. All files are loaded, whatever their extension.
 	//
 	// Example:
 	//   Path:   /tmp/keys/signing.pem
@@ -81,12 +96,14 @@ const (
 	FileNameWithExtension
 
 	// FileFullPathRelativeToLocation uses the file path relative to the
-	// configured root location as the Key ID.
+	// location as the Key ID. Files directly in the location get their name;
+	// files in subdirectories get their relative path with a leading path
+	// separator.
 	//
 	// Example:
 	//   Location:  /tmp/keys
-	//   Path:      /tmp/keys/sub/key.pem
-	//   KeyID:     /sub/key.pem
+	//   Path:      /tmp/keys/key.pem      KeyID: key.pem
+	//   Path:      /tmp/keys/sub/key.pem  KeyID: /sub/key.pem
 	FileFullPathRelativeToLocation
 
 	// FileFullPath uses the absolute file path as the Key ID.
@@ -102,11 +119,15 @@ var (
 	ErrStorageNotSpecified = errors.New("storage not specified")
 )
 
-// Loader watches a directory for resource files and maintains a key–value store
-// of file contents, indexed by Key IDs.
+// Loader watches directories for resource files and keeps a key–value
+// storage of their contents, indexed by Key IDs. See the package
+// documentation for how the storage follows the files.
+//
+// Its methods are safe for concurrent use. The storage is written from the
+// loader's own goroutine while it runs, so a storage given with WithStorage
+// must be safe for concurrent use as well; the default one is.
 type Loader struct {
 	paths          []string
-	pathsToWatch   map[string]struct{}
 	extension      string
 	keyIDType      KeyIDType
 	recursiveWatch bool
@@ -115,23 +136,34 @@ type Loader struct {
 	startMu sync.Mutex
 	watcher *watcher.Watcher
 	storage keyvalue.StringToBytesStorage
+
+	// syncMu serializes the updates of the storage, from events and from
+	// scans, and guards the fields below.
+	syncMu sync.Mutex
+	// locations are the paths of the last Start.
+	locations   []string
+	locationSet map[string]struct{}
+	// owned maps the Key IDs this loader stored to the file each came from.
+	owned map[string]string
 }
 
 // Option represents a configuration option for Loader.
 type Option func(*Loader) error
 
-// OnPath configures the notifier to observe a single path.
+// OnPath configures the loader to load and watch a single location. See
+// Loader.AddPath.
 func OnPath(path string) Option {
-	return func(w *Loader) error {
-		return w.AddPath(path)
+	return func(l *Loader) error {
+		return l.AddPath(path)
 	}
 }
 
-// OnPaths configures the notifier to observe multiple paths at once.
+// OnPaths configures the loader to load and watch several locations at once.
+// See Loader.AddPath.
 func OnPaths(paths ...string) Option {
-	return func(w *Loader) error {
+	return func(l *Loader) error {
 		for _, path := range paths {
-			err := w.AddPath(path)
+			err := l.AddPath(path)
 			if err != nil {
 				return err
 			}
@@ -141,36 +173,32 @@ func OnPaths(paths ...string) Option {
 	}
 }
 
-// WithExtension configures the file extension that identifies relevant files.
-//
-// If the extension is missing a leading ".", it will be added automatically.
-// The extension must not be empty, otherwise ErrExtensionIsEmpty is returned.
-//
-// This option is only used when KeyIDType is FileNameWithoutExtension.
+// WithExtension sets the file extension used by FileNameWithoutExtension:
+// only files with this extension are loaded, and the extension is cut from
+// their name to form the Key ID. A leading "." is added if missing. An empty
+// value means no extension, which is also the default. Other Key ID types
+// ignore the extension.
 func WithExtension(value string) Option {
-	return func(w *Loader) error {
-		if !strings.HasPrefix(value, ".") {
-			w.extension = "." + value
-		} else {
-			w.extension = value
+	return func(l *Loader) error {
+		switch {
+		case value == "":
+			l.extension = ""
+		case !strings.HasPrefix(value, "."):
+			l.extension = "." + value
+		default:
+			l.extension = value
 		}
 
 		return nil
 	}
 }
 
-// WatchSubfolders enables or disables recursive monitoring of subfolders.
-//
-// By default, fsnotify does not watch subfolders of a directory automatically.
-// When enabled, this option ensures that all nested directories are included
-// in the watch scope, so events such as file creation, modification, renaming,
-// or deletion inside subdirectories will also be detected.
-// Parameters:
-//   - enabled: set to true to include subfolders in the watch, false to
-//     restrict watching only to the top-level directory.
+// WatchSubfolders enables or disables loading and watching the
+// subdirectories of the locations, including subdirectories created while
+// the loader runs. Symbolic links to directories are not followed.
 func WatchSubfolders(enabled bool) Option {
-	return func(w *Loader) error {
-		w.recursiveWatch = enabled
+	return func(l *Loader) error {
+		l.recursiveWatch = enabled
 		return nil
 	}
 }
@@ -178,76 +206,65 @@ func WatchSubfolders(enabled bool) Option {
 // WithKeyIDType configures the KeyID extraction strategy.
 // The default KeyIDType is FileFullPath.
 func WithKeyIDType(value KeyIDType) Option {
-	return func(w *Loader) error {
-		w.keyIDType = value
+	return func(l *Loader) error {
+		l.keyIDType = value
 		return nil
 	}
 }
 
-// WithStorage configures the storage backend used by Loader.
+// WithStorage configures the storage the loader writes to. It must be safe
+// for concurrent use. By default, an in-memory storage is used.
 //
 // If storage is nil, ErrStorageNotSpecified is returned.
-// By default, an in-memory storage is used.
 func WithStorage(storage keyvalue.StringToBytesStorage) Option {
-	return func(w *Loader) error {
+	return func(l *Loader) error {
 		if storage == nil {
 			return ErrStorageNotSpecified
 		}
 
-		w.storage = storage
+		l.storage = storage
 
 		return nil
 	}
 }
 
-// ForOperations returns an Option that configures a Loader to
-// only consider specific filesystem operations for triggering events.
+// ForOperations restricts the file system operations the loader reacts to.
+// An event is handled if it includes at least one of ops; events can carry
+// several operations at once, such as Write|Chmod. The default is Create,
+// Write, Rename and Remove.
 //
-// The provided operations (ops) are combined into a set. Only events
-// matching one of these operations will be processed by the Loader.
 // Supported operations are defined in fsnotify.Op:
 //
 //	fsnotify.Create, fsnotify.Write, fsnotify.Remove, fsnotify.Rename, fsnotify.Chmod
-//
-// This Option can be passed to a Loader during creation to filter
-// events according to your requirements.
 func ForOperations(ops ...fsnotify.Op) Option {
-	return func(w *Loader) error {
+	return func(l *Loader) error {
 		operations := make(map[fsnotify.Op]struct{})
 		for _, op := range ops {
 			operations[op] = struct{}{}
 		}
 
-		w.operations = operations
+		l.operations = operations
 
 		return nil
 	}
 }
 
-// Create initializes a Loader that watches the given location for files.
-//
-// Options may be provided to customize KeyID extraction, file extension
-// handling, and storage backend.
+// Create initializes a Loader with the given options. It does not load or
+// watch anything yet; call Start for that.
 //
 // Example:
 //
 //	ldr, err := loader.Create(
-//	    "/etc/keys",
+//	    loader.OnPath("/etc/keys"),
 //	    loader.WithExtension(".pem"),
 //	    loader.WithKeyIDType(loader.FileNameWithoutExtension),
 //	)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-//
-//	if err := ldr.Start(); err != nil {
-//	    log.Fatal(err)
-//	}
-//	defer ldr.Close()
 func Create(opts ...Option) (*Loader, error) {
 	l := &Loader{
-		paths:        make([]string, 0),
-		pathsToWatch: make(map[string]struct{}),
+		paths: make([]string, 0),
 		operations: map[fsnotify.Op]struct{}{
 			fsnotify.Create: {},
 			fsnotify.Write:  {},
@@ -259,6 +276,8 @@ func Create(opts ...Option) (*Loader, error) {
 
 		startMu: sync.Mutex{},
 		storage: keyvalue.NewMemoryStorage[string, []byte](),
+
+		owned: make(map[string]string),
 	}
 
 	// Apply options
@@ -276,36 +295,26 @@ func Create(opts ...Option) (*Loader, error) {
 	return l, nil
 }
 
-// onEvent is the fsnotify event handler.
-func (l *Loader) onEvent(event fsnotify.Event) {
-	_, exists := l.operations[event.Op]
-	if !exists {
-		return
-	}
-
-	l.loadResource(event)
-}
-
-// onError is the fsnotify error handler.
-func (l *Loader) onError(err error) {
-	slog.Warn("failed to load a resource", slog.String("error", err.Error()))
-}
-
-// Start starts the file system watcher and performs an initial
-// load of all resources.
+// Start watches the locations and loads every file in them into the storage.
+// Watching starts before loading, so a change made while loading is not
+// missed.
 //
-// Returns an error if the watcher cannot be started or if resources
-// cannot be loaded.
+// It returns an error if a location cannot be watched or read, for example
+// because it no longer exists; nothing is left running in that case. Calling
+// Start on a started Loader does nothing. A Loader can be started again after
+// Close; the storage is then brought in line with the files again.
 func (l *Loader) Start() error {
 	l.startMu.Lock()
 	defer l.startMu.Unlock()
 
-	if l.IsStarted() {
+	if l.isStarted() {
 		return nil
 	}
 
+	l.setLocations()
+
 	w, err := watcher.Create(
-		watcher.OnPaths(l.paths...),
+		watcher.OnPaths(l.locations...),
 		watcher.WatchSubfolders(l.recursiveWatch),
 		watcher.WithEventHandler(l.onEvent),
 		watcher.WithErrorEventHandler(l.onError),
@@ -314,25 +323,29 @@ func (l *Loader) Start() error {
 		return err
 	}
 
-	l.watcher = w
-
-	for _, path := range l.paths {
-		err := l.loadAllResources(path)
-		if err != nil {
-			return fmt.Errorf("failed to load resources: %w", err)
-		}
+	err = w.Start()
+	if err != nil {
+		return err
 	}
 
-	return l.watcher.Start()
+	err = l.resync()
+	if err != nil {
+		_ = w.Close()
+		return fmt.Errorf("failed to load resources: %w", err)
+	}
+
+	l.watcher = w
+
+	return nil
 }
 
-// Close stops the watcher and releases resources.
-// Safe to call multiple times.
+// Close stops watching the locations. The storage keeps its contents.
+// Calling Close more than once, or on a Loader that is not started, is safe.
 func (l *Loader) Close() error {
 	l.startMu.Lock()
 	defer l.startMu.Unlock()
 
-	if !l.IsStarted() {
+	if !l.isStarted() {
 		return nil
 	}
 
@@ -350,12 +363,23 @@ func (l *Loader) Storage() keyvalue.ReadOnlyStringToBytesStorage {
 	return l.storage
 }
 
+// IsStarted reports whether the Loader is started.
 func (l *Loader) IsStarted() bool {
+	l.startMu.Lock()
+	defer l.startMu.Unlock()
+
+	return l.isStarted()
+}
+
+func (l *Loader) isStarted() bool {
 	return l.watcher != nil && l.watcher.IsStarted()
 }
 
-// AddPath adds a new path to the notifier. It must be called before Start.
-// The path must exist on the filesystem, otherwise an error is returned.
+// AddPath adds a location: a directory to load and watch. The path is made
+// absolute and must exist, otherwise an error is returned.
+//
+// A location added while the loader is started is loaded and watched from
+// the next Start, after Close.
 func (l *Loader) AddPath(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -371,28 +395,155 @@ func (l *Loader) AddPath(path string) error {
 		return fmt.Errorf("path does not exist: %s", absPath)
 	}
 
+	l.startMu.Lock()
+	defer l.startMu.Unlock()
+
 	l.paths = append(l.paths, absPath)
-	l.pathsToWatch[absPath] = struct{}{}
 
 	return nil
 }
 
-// loadAllResources recursively loads all files from the given path
-// into the storage, applying the configured KeyID extraction rules.
-func (l *Loader) loadAllResources(path string) error {
-	_, err := os.Stat(path)
+// setLocations makes the configured paths the locations to load and watch.
+// The caller must hold startMu.
+func (l *Loader) setLocations() {
+	l.syncMu.Lock()
+	defer l.syncMu.Unlock()
+
+	l.locations = slices.Clone(l.paths)
+	l.locationSet = make(map[string]struct{}, len(l.paths))
+
+	for _, path := range l.paths {
+		l.locationSet[path] = struct{}{}
+	}
+}
+
+// onEvent is the watcher's event handler.
+func (l *Loader) onEvent(event fsnotify.Event) {
+	if !l.handlesAnyOf(event.Op) || isEditorBackup(filepath.Base(event.Name)) {
+		return
+	}
+
+	l.syncMu.Lock()
+	handled := l.refreshFile(event.Name)
+	l.syncMu.Unlock()
+
+	if handled {
+		return
+	}
+
+	err := l.resync()
+	if err != nil {
+		slog.Warn("failed to reload resources, keeping the previous ones", "path", event.Name, "error", err)
+	}
+}
+
+// onError is the watcher's error handler.
+func (l *Loader) onError(err error) {
+	slog.Warn("file system watcher error", slog.String("error", err.Error()))
+}
+
+// handlesAnyOf reports whether op includes at least one of the configured
+// operations.
+func (l *Loader) handlesAnyOf(op fsnotify.Op) bool {
+	for handled := range l.operations {
+		if op.Has(handled) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// refreshFile brings the storage in line with the file at path, as it is now.
+// It returns false if path is not a single file it can account for, such as
+// a directory, a symbolic link to one or an unknown entry that is gone; the
+// locations must then be scanned again. The caller must hold syncMu.
+func (l *Loader) refreshFile(path string) bool {
+	if isVolumeInternal(filepath.Base(path)) {
+		return false
+	}
+
+	info, err := os.Stat(path)
+
+	switch {
+	case err == nil && info.Mode().IsRegular():
+		keyID, ok := l.resolveKeyID(path)
+		if ok {
+			l.load(keyID, path)
+		}
+
+		return true
+
+	case err == nil:
+		return false
+
+	case errors.Is(err, fs.ErrNotExist):
+		keyID, ok := l.resolveKeyID(path)
+		if ok && l.owned[keyID] == path {
+			l.remove(keyID)
+			return true
+		}
+
+		return false
+
+	default:
+		slog.Warn("failed to read a resource", "path", path, "error", err)
+		return true
+	}
+}
+
+// resync scans all locations, loads every file that resolves to a Key ID and
+// removes the keys this loader stored for files that are gone. If a location
+// cannot be read, it returns the error without changing the storage.
+func (l *Loader) resync() error {
+	l.syncMu.Lock()
+	defer l.syncMu.Unlock()
+
+	files := make(map[string]string)
+
+	for _, location := range l.locations {
+		err := l.collect(location, files)
+		if err != nil {
+			return err
+		}
+	}
+
+	for keyID, path := range files {
+		l.load(keyID, path)
+	}
+
+	for keyID := range l.owned {
+		_, ok := files[keyID]
+		if !ok {
+			l.remove(keyID)
+		}
+	}
+
+	return nil
+}
+
+// collect adds the files of dir, and with WatchSubfolders of its
+// subdirectories, to files, by Key ID.
+func (l *Loader) collect(dir string, files map[string]string) error {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
 	}
 
-	keys, err := os.ReadDir(path)
-	if err != nil {
-		return err
-	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if isEditorBackup(name) || isVolumeInternal(name) {
+			continue
+		}
 
-	for _, keyFile := range keys {
-		if l.recursiveWatch && keyFile.IsDir() {
-			err = l.loadAllResources(filepath.Join(path, keyFile.Name()))
+		path := filepath.Join(dir, name)
+
+		if entry.IsDir() {
+			if !l.recursiveWatch {
+				continue
+			}
+
+			err := l.collect(path, files)
 			if err != nil {
 				return err
 			}
@@ -400,54 +551,56 @@ func (l *Loader) loadAllResources(path string) error {
 			continue
 		}
 
-		l.loadResource(fsnotify.Event{
-			Name: filepath.Join(path, keyFile.Name()),
-			Op:   fsnotify.Write,
-		})
+		keyID, ok := l.resolveKeyID(path)
+		if ok {
+			files[keyID] = path
+		}
 	}
 
 	return nil
 }
 
-// loadResource loads or removes a single file in response to a file system event.
-//
-// Supported operations:
-//   - Create/Write: load or update file contents
-//   - Rename/Remove: remove file from storage
-//
-// Files that are directories, unreadable, or empty are skipped.
-func (l *Loader) loadResource(event fsnotify.Event) {
-	filePath := event.Name
+// load stores the contents of the file at path under keyID. A file that is
+// gone removes the key if it came from that file; a file that is not a
+// regular file, is empty or cannot be read is skipped. The caller must hold
+// syncMu.
+func (l *Loader) load(keyID, path string) {
+	info, err := os.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		if l.owned[keyID] == path {
+			l.remove(keyID)
+		}
 
-	keyID, ok := l.resolveKeyID(filePath)
-	if !ok {
 		return
 	}
 
-	keyID, _ = strings.CutSuffix(keyID, "~")
-	if event.Op&(fsnotify.Rename|fsnotify.Remove) != 0 {
-		l.storage.Remove(keyID)
+	if err != nil || !info.Mode().IsRegular() {
 		return
 	}
 
-	filePath, _ = strings.CutSuffix(filePath, "~")
-
-	info, err := os.Stat(filePath)
-	if err != nil || info.IsDir() {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		slog.Warn("failed to read a resource", "path", path, "error", err)
 		return
 	}
 
-	keyData, err := os.ReadFile(filePath)
-	if err != nil || len(keyData) == 0 {
-		// Skip unreadable files
+	if len(data) == 0 {
 		return
 	}
 
-	l.storage.Store(keyID, keyData)
+	l.storage.Store(keyID, data)
+	l.owned[keyID] = path
 }
 
-// resolveKeyID determines the storage key based on Loader.keyIDType
-// Returns (key, true) if the key is valid, or ("", false) if it should be skipped.
+// remove removes keyID from the storage. The caller must hold syncMu.
+func (l *Loader) remove(keyID string) {
+	l.storage.Remove(keyID)
+	delete(l.owned, keyID)
+}
+
+// resolveKeyID determines the storage key based on Loader.keyIDType.
+// Returns (key, true) if the key is valid, or ("", false) if the file should
+// be skipped. The caller must hold syncMu.
 func (l *Loader) resolveKeyID(filePath string) (string, bool) {
 	switch l.keyIDType {
 	case FileNameWithExtension:
@@ -467,7 +620,7 @@ func (l *Loader) resolveKeyID(filePath string) (string, bool) {
 	case FileFullPathRelativeToLocation:
 		dir := filepath.Dir(filePath)
 		for dir != "/" && len(dir) > 1 {
-			_, ok := l.pathsToWatch[dir]
+			_, ok := l.locationSet[dir]
 			if !ok {
 				dir = filepath.Dir(dir)
 				continue
@@ -492,4 +645,15 @@ func (l *Loader) resolveKeyID(filePath string) (string, bool) {
 	}
 
 	return "", false
+}
+
+// isEditorBackup reports whether name is a backup file of an editor.
+func isEditorBackup(name string) bool {
+	return strings.HasSuffix(name, "~")
+}
+
+// isVolumeInternal reports whether name is one of the internal entries of a
+// Kubernetes volume, such as ..data or a timestamped ..2026_... directory.
+func isVolumeInternal(name string) bool {
+	return strings.HasPrefix(name, "..")
 }
