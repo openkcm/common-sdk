@@ -589,7 +589,7 @@ func TestAuthoritiesNeverFallBackToSystemPool(t *testing.T) {
 
 	dyn := newControlled(t, f, newTestClock())
 
-	roots := dyn.ActiveRootsForTest()
+	roots := dyn.X509CertPool()
 	require.NotNil(t, roots, "a nil pool would trust the system authorities")
 	assert.True(t, roots.Equal(x509.NewCertPool()), "the pool must be empty")
 	assert.False(t, trusts(t, dyn, f.serverCA))
@@ -1122,4 +1122,81 @@ func TestEveryCredentialFileIsFollowedInAnyLayout(t *testing.T) {
 			requireClientCertEventually(t, client, srv.URL, "client-v3")
 		})
 	}
+}
+
+// --- x509CertPool ---
+
+func TestX509CertPool(t *testing.T) {
+	t.Parallel()
+
+	poolOf := func(cas ...*testCA) *x509.CertPool {
+		pool := x509.NewCertPool()
+		for _, ca := range cas {
+			pool.AddCert(ca.cert)
+		}
+
+		return pool
+	}
+
+	t.Run("authorities from files follow rotations", func(t *testing.T) {
+		t.Parallel()
+
+		f := newFixture(t)
+		dyn := newControlled(t, f, newTestClock())
+
+		before := dyn.X509CertPool()
+		require.True(t, before.Equal(poolOf(f.serverCA)))
+
+		newServerCA := newCA(t, "server-ca-v2", nil, elliptic.P256())
+		f.writeServerCA(t, newServerCA)
+		dyn.Refresh()
+
+		assert.True(t, dyn.X509CertPool().Equal(poolOf(newServerCA)), "a new call returns the rotated authorities")
+		assert.True(t, before.Equal(poolOf(f.serverCA)), "an earlier copy is a snapshot")
+	})
+
+	t.Run("changing the copy does not change what is trusted", func(t *testing.T) {
+		t.Parallel()
+
+		f := newFixture(t)
+		dyn := newControlled(t, f, newTestClock())
+
+		attacker := newCA(t, "attacker-ca", nil, elliptic.P256())
+		dyn.X509CertPool().AddCert(attacker.cert)
+
+		assert.False(t, trusts(t, dyn, attacker))
+		assert.True(t, dyn.X509CertPool().Equal(poolOf(f.serverCA)))
+	})
+
+	t.Run("embedded authorities are returned as read at creation", func(t *testing.T) {
+		t.Parallel()
+
+		f := newFixture(t)
+		mtls := f.mtls(withServerName())
+		embedded := commoncfg.SourceRef{Source: commoncfg.EmbeddedSourceValue, Value: string(certPEM(f.serverCA.cert))}
+		mtls.ServerCA = &embedded
+
+		dyn, err := commontls.NewDynamicTLSConfig(throttle, mtls)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = dyn.Close() })
+
+		roots := dyn.X509CertPool()
+		require.NotNil(t, roots)
+		assert.True(t, roots.Equal(poolOf(f.serverCA)))
+		assert.NotSame(t, dyn.RootCAs, roots, "the field itself is not handed out")
+	})
+
+	t.Run("no authorities configured means the system authorities", func(t *testing.T) {
+		t.Parallel()
+
+		f := newFixture(t)
+		mtls := f.mtls(withServerName())
+		mtls.ServerCA = nil
+
+		dyn, err := commontls.NewDynamicTLSConfig(throttle, mtls)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = dyn.Close() })
+
+		assert.Nil(t, dyn.X509CertPool())
+	})
 }

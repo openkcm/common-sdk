@@ -21,13 +21,7 @@ func (d *DynamicTLSConfig) Refresh() {
 	d.refresh()
 }
 
-// ActiveRootsForTest returns the pool of the active certificate authorities,
-// or nil when they are not reloaded.
-func (d *DynamicTLSConfig) ActiveRootsForTest() *x509.CertPool {
-	a := d.active.Load().authorities
-	if a == nil {
-		return nil
-	}
-
-	return a.pool
+// X509CertPool calls x509CertPool.
+func (d *DynamicTLSConfig) X509CertPool() *x509.CertPool {
+	return d.x509CertPool()
 }

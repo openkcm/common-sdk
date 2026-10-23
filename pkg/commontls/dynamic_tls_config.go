@@ -342,6 +342,30 @@ func (d *DynamicTLSConfig) start(throttleInterval time.Duration) error {
 	return nil
 }
 
+// x509CertPool returns a copy of the certificate authorities that verify
+// the server now:
+//   - When they come from files, the set most recently activated, which
+//     follows rotations; it is empty, not nil, if the files hold no usable
+//     authority, since such a client trusts no server.
+//   - Otherwise, the authorities read at creation, or nil if none are
+//     configured, which means the system authorities, as for RootCAs.
+//
+// The copy is a snapshot: call x509CertPool again after a rotation. Changing
+// it does not change what the DynamicTLSConfig trusts. A configuration built
+// from it would not follow rotations; servers are verified through the
+// embedded configuration.
+func (d *DynamicTLSConfig) x509CertPool() *x509.CertPool {
+	if d.reloadAuthorities {
+		return d.active.Load().authorities.pool.Clone()
+	}
+
+	if d.RootCAs == nil {
+		return nil
+	}
+
+	return d.RootCAs.Clone()
+}
+
 // Close stops watching the credential files and the periodic check, and waits
 // for a reload in progress to finish: once Close returns, the credentials no
 // longer change. The embedded configuration, and clones of it, keep working
