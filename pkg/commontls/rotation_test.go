@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -228,6 +229,19 @@ func TestIdentityRotationIsValidated(t *testing.T) {
 			wantActive: "client-v1",
 		},
 		{
+			name: "chain with an intermediate that cannot be parsed",
+			write: func(t *testing.T, f *fixture) {
+				t.Helper()
+
+				cert, key := clientCert(t, f.clientCA, "client-v2", elliptic.P256(), nil)
+				f.writeIdentity(t, cert, key)
+
+				broken := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("not DER")})
+				writeFile(t, f.path(certFile), append(certPEM(cert), broken...))
+			},
+			wantActive: "client-v1",
+		},
+		{
 			name: "chain with intermediates in reverse order",
 			write: func(t *testing.T, f *fixture) {
 				t.Helper()
@@ -397,6 +411,31 @@ func TestIdentityRotationNeverRegresses(t *testing.T) {
 
 		assert.Equal(t, "client-v2", activeClientCN(t, dyn))
 	})
+}
+
+// TestUnreadableFilesKeepTheActiveCredentials removes the key and the CA file,
+// as a broken volume would: the active credentials stay in use, and the next
+// readable files are activated.
+func TestUnreadableFilesKeepTheActiveCredentials(t *testing.T) {
+	t.Parallel()
+
+	f := newFixture(t)
+	dyn := newControlled(t, f, newTestClock())
+
+	require.NoError(t, os.Remove(f.path(keyFile)))
+	require.NoError(t, os.Remove(f.path(caFile)))
+	dyn.Refresh()
+
+	assert.Equal(t, "client-v1", activeClientCN(t, dyn))
+	assert.True(t, trusts(t, dyn, f.serverCA))
+
+	newServerCA := newCA(t, "server-ca-v2", nil, elliptic.P256())
+	f.writeClientCert(t, "client-v2")
+	f.writeServerCA(t, newServerCA)
+	dyn.Refresh()
+
+	assert.Equal(t, "client-v2", activeClientCN(t, dyn))
+	assert.True(t, trusts(t, dyn, newServerCA))
 }
 
 func TestUnchangedFilesKeepTheActiveIdentity(t *testing.T) {
