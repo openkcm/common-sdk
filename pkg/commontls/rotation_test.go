@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -805,81 +806,320 @@ func captureLogs(t *testing.T) *syncBuffer {
 	return logs
 }
 
-// TestEveryCredentialFileIsFollowed uses one file per role, each in its own
-// directory: the client chain and key, the server CA and two root CA files.
-// Each file is rotated on its own, then all at once, with the real watcher,
-// and every rotation must reach a client built once at the start.
-func TestEveryCredentialFileIsFollowed(t *testing.T) {
-	t.Parallel()
+// --- Every file, in any layout ---
 
-	f := newFixture(t) // client certificate and key, in f.dir
-	serverCAPath := filepath.Join(t.TempDir(), "ca.crt")
-	root1Path := filepath.Join(t.TempDir(), "root1.crt")
-	root2Path := filepath.Join(t.TempDir(), "root2.crt")
+// role is one of the credential files.
+type role string
 
-	caA, caB, caC := newCA(t, "ca-a", nil, elliptic.P256()), newCA(t, "ca-b", nil, elliptic.P256()), newCA(t, "ca-c", nil, elliptic.P256())
-	writeFile(t, serverCAPath, certPEM(caA.cert))
-	writeFile(t, root1Path, certPEM(caB.cert))
-	writeFile(t, root2Path, certPEM(caC.cert))
+const (
+	roleCert     role = "tls.crt"
+	roleKey      role = "tls.key"
+	roleServerCA role = "ca.crt"
+	roleRoot1    role = "root1.crt"
+	roleRoot2    role = "root2.crt"
+)
 
-	mtls := f.mtls(withServerName())
-	serverCA := fileRef(serverCAPath)
-	mtls.ServerCA = &serverCA
-	mtls.RootCAs = []commoncfg.SourceRef{fileRef(root1Path), fileRef(root2Path)}
+// credentialFiles places the credential files in a layout and changes them
+// the way that layout is updated in practice.
+type credentialFiles interface {
+	path(r role) string
+	// write changes the given files. Files that are updated together in
+	// practice, such as all the files of a Kubernetes volume, change at once.
+	write(t *testing.T, contents map[role][]byte)
+}
 
-	dyn, err := commontls.NewDynamicTLSConfig(throttle, mtls)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = dyn.Close() })
+// plainFiles are regular files, at paths chosen by the layout.
+type plainFiles map[role]string
 
-	requireTrustEventually := func(trusted []*testCA, untrusted ...*testCA) {
-		t.Helper()
+func (p plainFiles) path(r role) string {
+	return p[r]
+}
 
-		require.EventuallyWithT(t, func(c *assert.CollectT) {
-			for _, ca := range trusted {
-				assert.True(c, trusts(t, dyn, ca), "must trust %s", ca.cert.Subject.CommonName)
-			}
+func (p plainFiles) write(t *testing.T, contents map[role][]byte) {
+	t.Helper()
 
-			for _, ca := range untrusted {
-				assert.False(c, trusts(t, dyn, ca), "must not trust %s", ca.cert.Subject.CommonName)
-			}
-		}, waitFor, tick)
+	for r, data := range contents {
+		writeFile(t, p[r], data)
+	}
+}
+
+// kubernetesFiles keep the client chain and key in one Kubernetes volume, a
+// secret, and the certificate authorities in another, a config map. The
+// kubelet updates a volume by writing its files into a new timestamped
+// directory and swapping the ..data link to it.
+type kubernetesFiles struct {
+	identity, authorities *kubernetesVolume
+}
+
+func (k kubernetesFiles) volume(r role) *kubernetesVolume {
+	if r == roleCert || r == roleKey {
+		return k.identity
 	}
 
-	requireTrustEventually([]*testCA{caA, caB, caC})
+	return k.authorities
+}
 
-	// Each file on its own.
-	caD := newCA(t, "ca-d", nil, elliptic.P256())
-	writeFile(t, root2Path, certPEM(caD.cert))
-	requireTrustEventually([]*testCA{caA, caB, caD}, caC)
+func (k kubernetesFiles) path(r role) string {
+	return filepath.Join(k.volume(r).dir, string(r))
+}
 
-	caE := newCA(t, "ca-e", nil, elliptic.P256())
-	writeFile(t, serverCAPath, certPEM(caE.cert))
-	requireTrustEventually([]*testCA{caE, caB, caD}, caA)
+func (k kubernetesFiles) write(t *testing.T, contents map[role][]byte) {
+	t.Helper()
 
-	caF := newCA(t, "ca-f", nil, elliptic.P256())
-	writeFile(t, root1Path, certPEM(caF.cert))
-	requireTrustEventually([]*testCA{caE, caF, caD}, caB)
+	for _, v := range []*kubernetesVolume{k.identity, k.authorities} {
+		changes := map[role][]byte{}
 
-	issuing := newCA(t, "client-issuing", f.clientCA, elliptic.P256())
-	f.writeClientChain(t, "client-v2", issuing)
-	require.Eventually(t, func() bool { return activeClientCN(t, dyn) == "client-v2" }, waitFor, tick)
+		for r, data := range contents {
+			if k.volume(r) == v {
+				changes[r] = data
+			}
+		}
 
-	// Everything at once, checked end to end through a client built at the
-	// start: the server presents a certificate from the new server CA and
-	// requires the new client certificate.
-	srv := startServer(t, f.serverCertificate(t, caE), f.clientCA.cert)
-	client := newClient(dyn.Config, "")
-	requireClientCertEventually(t, client, srv.URL, "client-v2")
+		if len(changes) > 0 {
+			v.update(t, changes)
+		}
+	}
+}
 
-	caG, caH, caI := newCA(t, "ca-g", nil, elliptic.P256()), newCA(t, "ca-h", nil, elliptic.P256()), newCA(t, "ca-i", nil, elliptic.P256())
-	newServerCert := f.serverCertificate(t, caG)
+// kubernetesVolume is a directory laid out the way the kubelet lays out a
+// secret or config map volume.
+type kubernetesVolume struct {
+	dir     string
+	version int
+	current string
+	files   map[role][]byte
+}
 
-	writeFile(t, serverCAPath, certPEM(caG.cert))
-	writeFile(t, root1Path, certPEM(caH.cert))
-	writeFile(t, root2Path, certPEM(caI.cert))
-	f.writeClientChain(t, "client-v3", newCA(t, "client-issuing-2", f.clientCA, elliptic.P256()))
-	srv.cert.Store(&newServerCert)
+func newKubernetesVolume(t *testing.T, files map[role][]byte) *kubernetesVolume {
+	t.Helper()
 
-	requireTrustEventually([]*testCA{caG, caH, caI}, caE, caF, caD)
-	requireClientCertEventually(t, client, srv.URL, "client-v3")
+	v := &kubernetesVolume{dir: t.TempDir(), files: map[role][]byte{}}
+	v.update(t, files)
+
+	for r := range files {
+		require.NoError(t, os.Symlink(filepath.Join("..data", string(r)), filepath.Join(v.dir, string(r))))
+	}
+
+	return v
+}
+
+// update writes a new version of the volume with changes applied, swaps
+// ..data to it and removes the previous version, in the kubelet's order.
+func (v *kubernetesVolume) update(t *testing.T, changes map[role][]byte) {
+	t.Helper()
+
+	maps.Copy(v.files, changes)
+
+	v.version++
+	versionDir := filepath.Join(v.dir, fmt.Sprintf("..2026_%02d", v.version))
+	require.NoError(t, os.Mkdir(versionDir, 0o700))
+
+	for r, data := range v.files {
+		writeFile(t, filepath.Join(versionDir, string(r)), data)
+	}
+
+	tmpLink := filepath.Join(v.dir, "..data_tmp")
+	require.NoError(t, os.Symlink(filepath.Base(versionDir), tmpLink))
+	require.NoError(t, os.Rename(tmpLink, filepath.Join(v.dir, "..data")))
+
+	if v.current != "" {
+		require.NoError(t, os.RemoveAll(v.current))
+	}
+
+	v.current = versionDir
+}
+
+// layouts are the ways the credential files can be spread over directories.
+func layouts() []struct {
+	name  string
+	place func(t *testing.T, initial map[role][]byte) credentialFiles
+} {
+	plain := func(dirOf func(t *testing.T, r role) string) func(*testing.T, map[role][]byte) credentialFiles {
+		return func(t *testing.T, initial map[role][]byte) credentialFiles {
+			t.Helper()
+
+			files := plainFiles{}
+			for r := range initial {
+				files[r] = filepath.Join(dirOf(t, r), string(r))
+			}
+
+			files.write(t, initial)
+
+			return files
+		}
+	}
+
+	return []struct {
+		name  string
+		place func(t *testing.T, initial map[role][]byte) credentialFiles
+	}{
+		{
+			name: "every file in its own directory",
+			place: plain(func(t *testing.T, _ role) string {
+				t.Helper()
+				return t.TempDir()
+			}),
+		},
+		{
+			name: "client files in one directory, all authorities in another",
+			place: func() func(*testing.T, map[role][]byte) credentialFiles {
+				return func(t *testing.T, initial map[role][]byte) credentialFiles {
+					t.Helper()
+
+					identityDir, authoritiesDir := t.TempDir(), t.TempDir()
+
+					return plain(func(_ *testing.T, r role) string {
+						if r == roleCert || r == roleKey {
+							return identityDir
+						}
+
+						return authoritiesDir
+					})(t, initial)
+				}
+			}(),
+		},
+		{
+			name: "every file in the same directory",
+			place: func(t *testing.T, initial map[role][]byte) credentialFiles {
+				t.Helper()
+
+				dir := t.TempDir()
+
+				return plain(func(*testing.T, role) string { return dir })(t, initial)
+			},
+		},
+		{
+			name: "Kubernetes secret for the client files, config map for the authorities",
+			place: func(t *testing.T, initial map[role][]byte) credentialFiles {
+				t.Helper()
+
+				identity, authorities := map[role][]byte{}, map[role][]byte{}
+
+				for r, data := range initial {
+					if r == roleCert || r == roleKey {
+						identity[r] = data
+					} else {
+						authorities[r] = data
+					}
+				}
+
+				return kubernetesFiles{
+					identity:    newKubernetesVolume(t, identity),
+					authorities: newKubernetesVolume(t, authorities),
+				}
+			},
+		},
+	}
+}
+
+// clientChainFiles returns a client certificate for commonName issued by a
+// new intermediate under clientCA, followed by that intermediate, and its
+// key.
+func clientChainFiles(t *testing.T, clientCA *testCA, commonName string) ([]byte, []byte) {
+	t.Helper()
+
+	intermediate := newCA(t, commonName+"-intermediate", clientCA, elliptic.P256())
+	cert, key := clientCert(t, intermediate, commonName, elliptic.P256(), nil)
+
+	return append(certPEM(cert), certPEM(intermediate.cert)...), keyPEM(t, key)
+}
+
+// TestEveryCredentialFileIsFollowedInAnyLayout gives each role its own file:
+// the client chain (with an intermediate), its key, the server CA and two
+// root CA files. In every layout, each file is rotated on its own, then all of
+// them at once, with the real watcher, and every rotation must reach a client
+// built once at the start.
+func TestEveryCredentialFileIsFollowedInAnyLayout(t *testing.T) {
+	t.Parallel()
+
+	for _, layout := range layouts() {
+		t.Run(layout.name, func(t *testing.T) {
+			t.Parallel()
+
+			f := newFixture(t) // for its client CA
+			caA, caB, caC := newCA(t, "ca-a", nil, elliptic.P256()), newCA(t, "ca-b", nil, elliptic.P256()),
+				newCA(t, "ca-c", nil, elliptic.P256())
+			chain, key := clientChainFiles(t, f.clientCA, "client-v1")
+
+			files := layout.place(t, map[role][]byte{
+				roleCert:     chain,
+				roleKey:      key,
+				roleServerCA: certPEM(caA.cert),
+				roleRoot1:    certPEM(caB.cert),
+				roleRoot2:    certPEM(caC.cert),
+			})
+
+			serverCA := fileRef(files.path(roleServerCA))
+			mtls := &commoncfg.MTLS{
+				Cert:       fileRef(files.path(roleCert)),
+				CertKey:    fileRef(files.path(roleKey)),
+				ServerCA:   &serverCA,
+				RootCAs:    []commoncfg.SourceRef{fileRef(files.path(roleRoot1)), fileRef(files.path(roleRoot2))},
+				Attributes: withServerName(),
+			}
+
+			dyn, err := commontls.NewDynamicTLSConfig(throttle, mtls)
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = dyn.Close() })
+
+			requireTrust := func(trusted []*testCA, untrusted ...*testCA) {
+				t.Helper()
+
+				require.EventuallyWithT(t, func(c *assert.CollectT) {
+					for _, ca := range trusted {
+						assert.True(c, trusts(t, dyn, ca), "must trust %s", ca.cert.Subject.CommonName)
+					}
+
+					for _, ca := range untrusted {
+						assert.False(c, trusts(t, dyn, ca), "must not trust %s", ca.cert.Subject.CommonName)
+					}
+				}, waitFor, tick)
+			}
+
+			requireTrust([]*testCA{caA, caB, caC})
+			require.Equal(t, "client-v1", activeClientCN(t, dyn))
+
+			// Each file on its own.
+			caD := newCA(t, "ca-d", nil, elliptic.P256())
+			files.write(t, map[role][]byte{roleRoot2: certPEM(caD.cert)})
+			requireTrust([]*testCA{caA, caB, caD}, caC)
+
+			caE := newCA(t, "ca-e", nil, elliptic.P256())
+			files.write(t, map[role][]byte{roleServerCA: certPEM(caE.cert)})
+			requireTrust([]*testCA{caE, caB, caD}, caA)
+
+			caF := newCA(t, "ca-f", nil, elliptic.P256())
+			files.write(t, map[role][]byte{roleRoot1: certPEM(caF.cert)})
+			requireTrust([]*testCA{caE, caF, caD}, caB)
+
+			chain, key = clientChainFiles(t, f.clientCA, "client-v2")
+			files.write(t, map[role][]byte{roleCert: chain, roleKey: key})
+			require.Eventually(t, func() bool { return activeClientCN(t, dyn) == "client-v2" }, waitFor, tick)
+
+			// Everything at once, checked end to end through a client built
+			// here: the server presents a certificate from the current server
+			// CA and requires a client certificate from the client CA.
+			srv := startServer(t, f.serverCertificate(t, caE), f.clientCA.cert)
+			client := newClient(dyn.Config, "")
+			requireClientCertEventually(t, client, srv.URL, "client-v2")
+
+			caG, caH, caI := newCA(t, "ca-g", nil, elliptic.P256()), newCA(t, "ca-h", nil, elliptic.P256()),
+				newCA(t, "ca-i", nil, elliptic.P256())
+			chain, key = clientChainFiles(t, f.clientCA, "client-v3")
+
+			files.write(t, map[role][]byte{
+				roleCert:     chain,
+				roleKey:      key,
+				roleServerCA: certPEM(caG.cert),
+				roleRoot1:    certPEM(caH.cert),
+				roleRoot2:    certPEM(caI.cert),
+			})
+
+			newServerCert := f.serverCertificate(t, caG)
+			srv.cert.Store(&newServerCert)
+
+			requireTrust([]*testCA{caG, caH, caI}, caE, caF, caD)
+			requireClientCertEventually(t, client, srv.URL, "client-v3")
+		})
+	}
 }
