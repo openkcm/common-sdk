@@ -189,3 +189,40 @@ func TestHandlerPanicsAreRecovered(t *testing.T) {
 		require.Eventually(t, func() bool { return errorCalls.Load() == want }, time.Second, time.Millisecond)
 	}
 }
+
+// TestCachedEventsAreBounded sends far more events than a batch keeps while
+// the throttle interval never passes, as when a file in a watched directory
+// changes continuously: the cache stays at its limit, and the batch is still
+// delivered once the events stop.
+func TestCachedEventsAreBounded(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	var delivered atomic.Int64
+
+	n, err := Create(
+		OnPath(dir),
+		WithThrottleInterval(100*time.Millisecond),
+		WithEventHandler(func(_ string, events []fsnotify.Event) { delivered.Store(int64(len(events))) }),
+	)
+	require.NoError(t, err)
+
+	file := filepath.Join(dir, "heartbeat")
+	for range 10 * maxCachedEvents {
+		n.onEvent(fsnotify.Event{Name: file, Op: fsnotify.Write})
+	}
+
+	n.cacheMu.Lock()
+	cached := len(n.cacheEvents[dir])
+	n.cacheMu.Unlock()
+
+	assert.Equal(t, maxCachedEvents, cached)
+
+	require.Eventually(t, func() bool { return delivered.Load() == maxCachedEvents }, time.Second, time.Millisecond)
+
+	n.cacheMu.Lock()
+	defer n.cacheMu.Unlock()
+
+	assert.Empty(t, n.cacheEvents[dir], "a delivered batch must leave the cache")
+}

@@ -49,8 +49,17 @@ import (
 	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
+// maxCachedEvents is how many events a batch keeps for one watched path.
+// Events keep accumulating as long as they arrive more often than the
+// throttle interval, so without a limit a file changing continuously in a
+// watched directory would make the cache grow without bound.
+const maxCachedEvents = 20048
+
 // Notifier accumulates filesystem events and errors and triggers
 // user-defined callbacks in a rate-limited and batched manner.
+//
+// A batch keeps at most the first 1024 events of each watched path; later
+// events of the same batch are dropped, but the batch is still delivered.
 //
 // It is safe for concurrent use.
 type Notifier struct {
@@ -334,9 +343,12 @@ func (n *Notifier) onEvent(event fsnotify.Event) {
 	// when a single file is watched, otherwise the closest watched directory
 	// above it.
 	for path := event.Name; path != "/" && len(path) > 1; path = filepath.Dir(path) {
-		_, ok := n.cacheEvents[path]
+		events, ok := n.cacheEvents[path]
 		if ok {
-			n.cacheEvents[path] = append(n.cacheEvents[path], event)
+			if len(events) < maxCachedEvents {
+				n.cacheEvents[path] = append(events, event)
+			}
+
 			break
 		}
 	}
