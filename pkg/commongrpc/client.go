@@ -155,6 +155,13 @@ func NewClient(cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOption) (*grpc
 		return nil, err
 	}
 
+	return newClient(cfg, creds, dialOptions...)
+}
+
+// newClient creates a gRPC client connection to cfg.Address with the given
+// transport credentials, keepalive parameters, telemetry stats handler and
+// custom dial options.
+func newClient(cfg *commoncfg.GRPCClient, creds credentials.TransportCredentials, dialOptions ...grpc.DialOption) (*grpc.ClientConn, error) {
 	opts := make([]grpc.DialOption, 0, 3+len(dialOptions))
 	opts = append(opts,
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
