@@ -147,7 +147,7 @@ type LoggerOTel struct {
 type LoggerFields struct {
 	Time    string              `yaml:"time" json:"time" mapstructure:"time" default:"time"`
 	Error   string              `yaml:"error" json:"error" mapstructure:"error" default:"error"`
-	Level   string              `yaml:"level" json:"level" mapstructure:"level" default:"info"`
+	Level   string              `yaml:"level" json:"level" mapstructure:"level" default:"level"`
 	Message string              `yaml:"message" json:"message" mapstructure:"message" default:"msg"`
 	OTel    LoggerOTel          `yaml:"otel" json:"otel" mapstructure:"otel"`
 	Masking LoggerFieldsMasking `yaml:"masking" json:"masking" mapstructure:"masking"`
