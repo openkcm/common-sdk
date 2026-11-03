@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.21.1](https://github.com/openkcm/common-sdk/compare/v1.21.0...v1.21.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/thomaspoignant/go-feature-flag from 1.57.0 to 1.57.1 in the gomod-group group ([#344](https://github.com/openkcm/common-sdk/issues/344)) ([fbd6128](https://github.com/openkcm/common-sdk/commit/fbd6128e7551e98375e5531697abf72e1e4ddcba))
+* **deps:** bump the gomod-group group with 5 updates ([#347](https://github.com/openkcm/common-sdk/issues/347)) ([24bf392](https://github.com/openkcm/common-sdk/commit/24bf39226f36c9e92e2e1171307c3185a76db4e9))
+* **logger:** correct default field name for log level attribute ([#346](https://github.com/openkcm/common-sdk/issues/346)) ([426e3e3](https://github.com/openkcm/common-sdk/commit/426e3e33e3e3ae0072bd75633aa46dc888815f63))
+
 ## [1.21.0](https://github.com/openkcm/common-sdk/compare/v1.20.0...v1.21.0) (2026-10-23)
 
 
