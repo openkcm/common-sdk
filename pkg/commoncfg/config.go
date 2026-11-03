@@ -3,7 +3,9 @@
 package commoncfg
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"runtime/debug"
 	"time"
 )
@@ -380,6 +382,34 @@ type GRPCClientAttributes struct {
 	KeepaliveTime time.Duration `yaml:"keepaliveTime" json:"keepaliveTime" mapstructure:"keepaliveTime" default:"80s"`
 	//  GRPC KeepaliveTimeout option
 	KeepaliveTimeout time.Duration `yaml:"keepaliveTimeout" json:"keepaliveTimeout" mapstructure:"keepaliveTimeout" default:"40s"`
+	// GRPC Methods Retry Options
+	Retry GRPCRetry `yaml:"retry" json:"retry" mapstructure:"retry"`
+}
+
+type GRPCRetry struct {
+	MaxAttempts          int           `yaml:"maxAttempts" json:"maxAttempts" mapstructure:"maxAttempts" default:"3"`
+	InitialBackoff       time.Duration `yaml:"initialBackoff" json:"initialBackoff" mapstructure:"initialBackoff" default:"100ms"`
+	MaxBackoff           time.Duration `yaml:"maxBackoff" json:"maxBackoff" mapstructure:"maxBackoff" default:"1s"`
+	BackoffMultiplier    int           `yaml:"backoffMultiplier" json:"backoffMultiplier" mapstructure:"backoffMultiplier" default:"2"`
+	RetryableStatusCodes []string      `yaml:"retryableStatusCodes" json:"retryableStatusCodes" mapstructure:"retryableStatusCodes" default:"[\"UNAVAILABLE\",\"RESOURCE_EXHAUSTED\"]"`
+}
+
+func (r GRPCRetry) MarshalJSON() ([]byte, error) {
+	type wire struct {
+		MaxAttempts          int      `json:"maxAttempts"`
+		InitialBackoff       string   `json:"initialBackoff"`
+		MaxBackoff           string   `json:"maxBackoff"`
+		BackoffMultiplier    int      `json:"backoffMultiplier"`
+		RetryableStatusCodes []string `json:"retryableStatusCodes"`
+	}
+
+	return json.Marshal(wire{
+		MaxAttempts:          r.MaxAttempts,
+		InitialBackoff:       fmt.Sprintf("%.3fs", r.InitialBackoff.Seconds()),
+		MaxBackoff:           fmt.Sprintf("%.3fs", r.MaxBackoff.Seconds()),
+		BackoffMultiplier:    r.BackoffMultiplier,
+		RetryableStatusCodes: r.RetryableStatusCodes,
+	})
 }
 
 type HTTPClient struct {

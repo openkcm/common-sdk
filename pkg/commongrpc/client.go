@@ -38,6 +38,7 @@
 package commongrpc
 
 import (
+	"encoding/json"
 	"errors"
 
 	"google.golang.org/grpc"
@@ -69,7 +70,7 @@ type PooledClient interface {
 
 // NewPooledClient initializes a pooled gRPC client based on the provided
 // configuration. It applies transport security, keepalive parameters,
-// OpenTelemetry stats handlers, and any custom dial options.
+// OpenTelemetry stats handlers, retry mechanism and any custom dial options.
 //
 // The client must implement the PooledClient interface to accept the
 // created pool. The function returns an error if the configuration is invalid
@@ -81,28 +82,10 @@ type PooledClient interface {
 //	    grpc.WithBlock(),
 //	)
 func NewPooledClient(client PooledClient, cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOption) error {
-	if cfg.Address == "" {
-		return ErrEmptyAddress
-	}
-
-	creds, err := computeTransportCredentials(cfg)
-	if err != nil {
-		return err
-	}
-
-	opts := make([]grpc.DialOption, 0, 3+len(dialOptions))
-	opts = append(opts,
-		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			Time:    cfg.Attributes.KeepaliveTime,
-			Timeout: cfg.Attributes.KeepaliveTimeout,
-		}),
-		grpc.WithStatsHandler(otlp.NewClientHandler()),
-		grpc.WithTransportCredentials(creds),
-	)
-	opts = append(opts, dialOptions...)
-
 	clientPool, err := grpcpool.New(
-		createFactory(cfg.Address, opts...),
+		func() (*grpc.ClientConn, error) {
+			return NewClient(cfg, dialOptions...)
+		},
 		grpcpool.WithInitialCapacity(cfg.Pool.InitialCapacity),
 		grpcpool.WithMaxCapacity(cfg.Pool.MaxCapacity),
 		grpcpool.WithIdleTimeout(cfg.Pool.IdleTimeout),
@@ -117,24 +100,9 @@ func NewPooledClient(client PooledClient, cfg *commoncfg.GRPCClient, dialOptions
 	return nil
 }
 
-// createFactory returns a grpcpool.ClientFactory function that dials
-// a new gRPC ClientConn using the given address and dial options.
-//
-// Parameters:
-//   - address: the gRPC server address to connect to
-//   - dialOptions: additional grpc.DialOption values to use when dialing
-//
-// Returns:
-//   - grpcpool.ClientFactory: a function that creates new gRPC ClientConn instances
-func createFactory(address string, dialOptions ...grpc.DialOption) grpcpool.ClientFactory {
-	return func() (*grpc.ClientConn, error) {
-		return grpc.NewClient(address, dialOptions...)
-	}
-}
-
 // NewClient creates a single gRPC client connection without pooling.
 // It configures transport credentials, keepalive parameters, telemetry
-// stats handlers, and applies any custom dial options.
+// stats handlers, retry mechanism and applies any custom dial options.
 //
 // Returns an error if the configuration is invalid or the connection fails.
 //
@@ -166,7 +134,41 @@ func NewClient(cfg *commoncfg.GRPCClient, dialOptions ...grpc.DialOption) (*grpc
 	)
 	opts = append(opts, dialOptions...)
 
+	sc, err := buildServiceConfig(cfg.Attributes)
+	if err != nil {
+		return nil, err
+	} else if sc != "" {
+		opts = append(opts, grpc.WithDefaultServiceConfig(sc))
+	}
+
 	return grpc.NewClient(cfg.Address, opts...)
+}
+
+func buildServiceConfig(r commoncfg.GRPCClientAttributes) (string, error) {
+	if r.Retry.MaxAttempts <= 0 {
+		return "", nil
+	}
+
+	type methodConfig struct {
+		Name        []struct{}          `json:"name"`
+		RetryPolicy commoncfg.GRPCRetry `json:"retryPolicy"`
+	}
+
+	type serviceConfig struct {
+		MethodConfig []methodConfig `json:"methodConfig"`
+	}
+
+	b, err := json.Marshal(serviceConfig{
+		MethodConfig: []methodConfig{{
+			Name:        []struct{}{{}}, // wildcard: applies to all methods
+			RetryPolicy: r.Retry,
+		}},
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return string(b), nil
 }
 
 // computeTransportCredentials determines the appropriate gRPC
