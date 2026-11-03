@@ -7,5 +7,13 @@ import (
 var domain = "audit-logger:otlp"
 var errEventCreation = errors.New("event creation failed")
 var errNoLogRecord = errors.New("no log record present in the plog.Logs struct")
-var errQueueFull = errors.New("audit event queue is full")
-var errLoggerClosed = errors.New("queued audit logger is closed")
+var ErrQueueFull = errors.New("audit event queue is full")
+var ErrLoggerClosed = errors.New("queued audit logger is closed")
+
+type httpStatusError struct {
+	statusCode int
+}
+
+func (e *httpStatusError) Error() string {
+	return "response status not OK"
+}
