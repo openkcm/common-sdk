@@ -390,6 +390,14 @@ type HTTPClient struct {
 	OAuth2Auth          *OAuth2                  `yaml:"oauth2Auth" json:"oauth2Auth" mapstructure:"oauth2Auth"`
 	MTLS                *MTLS                    `yaml:"mtls" json:"mtls" mapstructure:"mtls"`
 	TransportAttributes *HTTPTransportAttributes `yaml:"transportAttributes" json:"transportAttributes" mapstructure:"transportAttributes"`
+	Retry               HTTPRetry                `yaml:"retry" json:"retry" mapstructure:"retry"`
+}
+
+type HTTPRetry struct {
+	MaxAttemps           int           `yaml:"maxAttemps" json:"maxAttempts" mapstructure:"maxAttemps" default:"3"`
+	InitialBackoff       time.Duration `yaml:"initialBackoff" json:"initialBackoff" mapstructure:"initialBackoff" default:"100ms"`
+	MaxBackoff           time.Duration `yaml:"maxBackoff" json:"maxBackoff" mapstructure:"maxBackoff" default:"1s"`
+	RetryableStatusCodes []int         `yaml:"retryableStatusCodes" json:"retryableStatusCodes" mapstructure:"retryableStatusCodes" default:"[429,500,502,503,504]"`
 }
 
 type HTTPTransportAttributes struct {
