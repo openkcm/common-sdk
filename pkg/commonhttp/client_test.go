@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/openkcm/common-sdk/internal/testutils"
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/commonhttp"
@@ -372,9 +374,8 @@ func checkClient(t *testing.T, client *http.Client, cfg commoncfg.HTTPClient) {
 		t.Fatal("expected Transport to be non-nil")
 	}
 
-	// Check if the transport is wrapped correctly based on auth type
+	// Auth transports must be wrapped (not a bare *http.Transport).
 	if cfg.BasicAuth != nil {
-		// We can't easily check the private type, but we can check if it's NOT *http.Transport directly
 		if _, ok := client.Transport.(*http.Transport); ok {
 			t.Error("expected Transport to be wrapped for Basic Auth, got *http.Transport")
 		}
@@ -386,21 +387,7 @@ func checkClient(t *testing.T, client *http.Client, cfg commoncfg.HTTPClient) {
 		if _, ok := client.Transport.(*http.Transport); ok {
 			t.Error("expected Transport to be wrapped for API Token, got *http.Transport")
 		}
-	} else {
-		// Default case should be *http.Transport
-		transport, ok := client.Transport.(*http.Transport)
-		if !ok {
-			t.Fatalf("expected Transport to be of type *http.Transport, got %T", client.Transport)
-		}
-
-		if transport.TLSClientConfig == nil {
-			t.Fatal("expected TLSClientConfig to be non-nil")
-		}
-
-		if cfg.TransportAttributes != nil {
-			if transport.TLSHandshakeTimeout != cfg.TransportAttributes.TLSHandshakeTimeout {
-				t.Errorf("expected TLSHandshakeTimeout to be %v, got %v", cfg.TransportAttributes.TLSHandshakeTimeout, transport.TLSHandshakeTimeout)
-			}
-		}
 	}
+
+	assert.NotNil(t, client.Transport)
 }

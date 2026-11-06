@@ -20,6 +20,7 @@ import (
 //   - TLS configuration (optional mTLS)
 //   - Transport attributes (timeouts, connection pooling)
 //   - Global client timeout
+//   - Automatic retry with exponential backoff (when Retry.MaxAttempts > 0 and RetryableStatusCodes is set)
 //
 // Important behaviour:
 //   - If an authentication method is used, the factory returns a client
@@ -27,6 +28,8 @@ import (
 //   - This function **preserves** that RoundTripper and wraps it with
 //     a proper `http.Transport` when TLS or transport attributes must be applied.
 //   - This avoids overwriting authentication transport logic.
+//   - The retry layer is applied outermost, so every attempt goes through the full
+//     auth and transport chain (e.g. OAuth2 token refresh is applied on each retry).
 func NewHTTPClient(cfg *commoncfg.HTTPClient) (*http.Client, error) {
 	if cfg == nil {
 		return nil, errors.New("HTTPClient config is nil")
@@ -85,30 +88,35 @@ func NewHTTPClient(cfg *commoncfg.HTTPClient) (*http.Client, error) {
 	// Authentication-aware clients already set their own custom RoundTrippers.
 	//    We must wrap the existing one with our transport (do NOT overwrite it).
 	switch t := client.Transport.(type) {
-	// OAuth2 wrapper: set its Next transport
 	case *clientOAuth2RoundTripper:
 		t.Next = baseTransport
-
-	// API Token wrapper
 	case *clientAPITokenRoundTripper:
 		t.Next = baseTransport
-
-	// Basic Auth wrapper
 	case *clientBasicRoundTripper:
 		t.Next = baseTransport
-
-	// Custom transports: do a safe replacement
 	case *http.Transport:
-		// No custom wrapper → replace directly
 		client.Transport = baseTransport
-
 	default:
-		// Fallback: wrap unknown transport type
 		client.Transport = baseTransport
 	}
 
 	// Set global timeout
 	client.Timeout = cfg.Timeout
+
+	mc, err := newMetricsClient(client.Transport)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialise HTTP client metrics: %w", err)
+	}
+
+	client.Transport = mc
+
+	// Wrap with retry outermost so it applies regardless of auth transport.
+	if cfg.Retry.MaxAttempts > 0 && len(cfg.Retry.RetryableStatusCodes) > 0 {
+		client.Transport = &retryableClient{
+			Next:  client.Transport,
+			Retry: cfg.Retry,
+		}
+	}
 
 	return client, nil
 }
