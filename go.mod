@@ -8,7 +8,7 @@ require (
 	github.com/creasty/defaults v1.11.0
 	github.com/envoyproxy/go-control-plane/envoy v1.40.0
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/go-jose/go-jose/v4 v4.1.6
+	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -20,8 +20,8 @@ require (
 	github.com/samber/slog-multi v1.9.0
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
-	github.com/thomaspoignant/go-feature-flag v1.57.2
-	github.com/thomaspoignant/go-feature-flag/modules/core v0.7.2
+	github.com/thomaspoignant/go-feature-flag v1.58.0
+	github.com/thomaspoignant/go-feature-flag/modules/core v0.8.0
 	github.com/veqryn/slog-context v0.9.0
 	github.com/veqryn/slog-context/otel v0.9.0
 	go.opentelemetry.io/collector/pdata v1.70.0
@@ -99,7 +99,7 @@ require (
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260928230214-8a89bd6388cc // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20261005182115-fad411399dd8 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
