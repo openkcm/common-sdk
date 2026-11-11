@@ -110,7 +110,11 @@ func NewHTTPClient(cfg *commoncfg.HTTPClient) (*http.Client, error) {
 
 	client.Transport = mc
 
-	// Wrap with retry outermost so it applies regardless of auth transport.
+	if cfg.Log {
+		client.Transport = &loggingClient{Next: client.Transport}
+	}
+
+	// Retry is outermost so logging fires on every attempt.
 	if cfg.Retry.MaxAttempts > 0 && len(cfg.Retry.RetryableStatusCodes) > 0 {
 		client.Transport = &retryableClient{
 			Next:  client.Transport,

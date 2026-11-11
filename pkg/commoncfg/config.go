@@ -383,6 +383,7 @@ type GRPCClientAttributes struct {
 }
 
 type HTTPClient struct {
+	Log     bool          `yaml:"log" json:"log" mapstructure:"log"`
 	Timeout time.Duration `yaml:"timeout" json:"timeout" mapstructure:"timeout" default:"10s"`
 
 	APIToken            *SourceRef               `yaml:"apiToken" json:"apiToken" mapstructure:"apiToken"`
