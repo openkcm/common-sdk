@@ -35,6 +35,8 @@ github.com/apache/arrow/go/arrow v0.0.0-20200730104253-651201b0f516 h1:byKBBF2CK
 github.com/apache/arrow/go/arrow v0.0.0-20200730104253-651201b0f516/go.mod h1:QNYViu/X0HXDHw7m3KXzWSVXIbfUvJqBFe6Gj8/pYA0=
 github.com/apache/thrift v0.24.0 h1:zy31L1a49QTNB2bG1BBfMXol3yJrTH975G3pPubQVLQ=
 github.com/apache/thrift v0.24.0/go.mod h1:zPt6WxgvTOM6hF92y8C+MkEM5LMxZuk4JcQOiU4Esvs=
+github.com/avast/retry-go/v5 v5.1.1 h1:xinK2CJs8zMswWeFFSYeqBbqx9RskWDDdzybrFrz4Q8=
+github.com/avast/retry-go/v5 v5.1.1/go.mod h1:kb/MOVQOBAxjo+kIre6StLXJro2ZPAQh5IO/6wICTjI=
 github.com/aws/aws-sdk-go-v2 v1.47.4 h1:bTvk6UdSSSvaQsfLVj1JRDEEqj/PDRwGf1KanaRzau0=
 github.com/aws/aws-sdk-go-v2 v1.47.4/go.mod h1:XkrjAZvr705Nytv6PkPUhoSB2W9+vVHBp5oAWpkh8Ak=
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.24 h1:t7FxqJ5KHDeKceyD4HtGaG6z7hMSeVGjs5/4c+L5ArM=

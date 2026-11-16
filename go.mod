@@ -5,6 +5,7 @@ go 1.27.3
 require (
 	github.com/Dynatrace/OneAgent-SDK-for-Go v1.1.0
 	github.com/XSAM/otelsql v0.44.0
+	github.com/avast/retry-go/v5 v5.1.1
 	github.com/creasty/defaults v1.11.0
 	github.com/envoyproxy/go-control-plane/envoy v1.40.0
 	github.com/fsnotify/fsnotify v1.10.1
@@ -37,6 +38,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.47.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.47.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.69.0
+	go.opentelemetry.io/otel/metric v1.47.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.opentelemetry.io/otel/sdk/log v1.47.0
 	go.opentelemetry.io/otel/sdk/metric v1.47.0
@@ -88,7 +90,6 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/collector/featuregate v1.70.0 // indirect
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
-	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.11.1 // indirect
 	go.uber.org/mock v0.6.0 // indirect
