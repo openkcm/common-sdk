@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.22.0 (2026-11-16)
+
+## What's Changed
+* fix(deps): bump the gomod-group group with 3 updates by @dependabot[bot] in https://github.com/openkcm/common-sdk/pull/351
+* feat: add retry and metrics to http client by @jmpTeixeira02 in https://github.com/openkcm/common-sdk/pull/350
+* feat: retry mechanism on grpc methods by @jmpTeixeira02 in https://github.com/openkcm/common-sdk/pull/349
+
+
+**Full Changelog**: https://github.com/openkcm/common-sdk/compare/v1.21.1...v1.22.0
+
 ## [1.21.1](https://github.com/openkcm/common-sdk/compare/v1.21.0...v1.21.1) (2026-11-03)
 
 
