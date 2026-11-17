@@ -253,7 +253,14 @@ type TLSAttributes struct {
 type Audit struct {
 	Endpoint string `yaml:"endpoint" json:"endpoint" mapstructure:"endpoint"`
 
+	// Protocol specifies the transport protocol: "http" (default) or "grpc".
+	Protocol Protocol `yaml:"protocol" json:"protocol" mapstructure:"protocol"`
+
+	// HTTPClient is used when Protocol is "http" or empty.
 	HTTPClient HTTPClient `yaml:"httpClient" json:"httpClient" mapstructure:"httpClient"`
+
+	// GRPCClient is used when Protocol is "grpc".
+	GRPCClient *GRPCClient `yaml:"grpcClient" json:"grpcClient" mapstructure:"grpcClient"`
 
 	// Optional set of additional properties to be added to OTLP log object. Must be added as a literal string to maintain casing.
 	AdditionalProperties string `yaml:"additionalProperties" json:"additionalProperties" mapstructure:"additionalProperties"`
