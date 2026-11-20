@@ -76,44 +76,85 @@ auditLogger.SendEvent(ctx, event)
 #### Non-blocking / queued delivery
 
 `SendEvent` above blocks the caller until the HTTP request to the collector
-completes and returns an error if the collector is unavailable. When a service
-should emit audit events fire-and-forget and let the SDK handle eventual
-delivery, wrap the logger in a `QueuedAuditLogger` via `NewQueuedLogger`. It
-buffers events in an in-memory queue and delivers them from background workers,
-retrying transient failures with exponential backoff.
+completes. Use `QueuedAuditLogger` when request handlers should enqueue audit
+events without waiting for the collector. Create one wrapper for the service
+lifetime:
 
-```
-auditLogger, _ := otlpaudit.NewLogger(&cfg.Audit)
+```go
+auditLogger, err := otlpaudit.NewLogger(&cfg.Audit)
+if err != nil {
+    return err
+}
+
 queued := otlpaudit.NewQueuedLogger(auditLogger, otlpaudit.QueuedOptions{
     OnError: func(err error) { slog.Error("audit delivery failed", "error", err) },
 })
-defer queued.Close(ctx) // drains the queue on shutdown
 
-event, _ := otlpaudit.NewCmkCreateEvent(eventMetadata, "cmkID")
+event, err := otlpaudit.NewCmkCreateEvent(eventMetadata, "cmkID")
+if err != nil {
+    return err
+}
+
 if err := queued.SendEvent(event); err != nil {
-    // queue is full (otlpaudit errQueueFull) or the logger is closed
+    // ErrQueueFull or ErrLoggerClosed: the event was not accepted.
+    return err
 }
 ```
 
-`QueuedAuditLogger.SendEvent` never blocks and takes no context — delivery (and
-its context) is owned by the background workers. It returns an error only when
-the event could not be enqueued: the queue is full, or the logger has been
-closed. Behavior is configured via `QueuedOptions` (all fields optional):
+`SendEvent` copies initialized `plog.Logs` before returning, so the caller can
+reuse or modify the event afterward. It does not wait for queue space or network
+delivery and takes no context; delivery is owned by the background workers.
+Each call occupies one queue slot, even if its `plog.Logs` contains multiple
+records. The queue capacity excludes events currently being delivered.
+`ErrQueueFull` and `ErrLoggerClosed` can be checked with `errors.Is`.
+
+All numeric options use their defaults for values less than or equal to zero.
+The constructor panics if the supplied logger is nil or
+uninitialized. Behavior is configured via `QueuedOptions`:
 
 | Field        | Default | Description                                                              |
 |--------------|---------|--------------------------------------------------------------------------|
 | `QueueSize`  | 1024    | Capacity of the buffered queue. When full, `SendEvent` drops and errors. |
-| `Workers`    | 1       | Number of background delivery goroutines.                                |
+| `Workers`    | 1       | Background delivery goroutines; values greater than 1 allow reordering.  |
 | `MaxRetries` | 5       | Retry attempts after the first failure before the event is dropped.      |
 | `BaseDelay`  | 100ms   | First exponential-backoff step (doubles each retry, with jitter).        |
 | `MaxDelay`   | 30s     | Upper bound on the backoff step.                                         |
-| `OnError`    | nil     | Receives errors for events dropped after exhausting all retries.         |
+| `OnError`    | `slog.Error` | Receives each failed attempt and each shutdown discard.              |
 
-Events dropped because the queue was full are reported to the caller via the
-`SendEvent` return value; events dropped after exhausting all retries are routed
-to `OnError`. Always call `Close(ctx)` on shutdown to drain buffered events; if
-`ctx` expires before the queue is drained, in-flight sends are aborted and the
-context's error is returned.
+A single worker preserves enqueue order. Workers retry network failures and
+OTLP's retryable HTTP statuses: **429, 502, 503, and 504**. Other failures,
+including invalid events and non-retryable HTTP responses, discard the event
+immediately. Retry delays grow exponentially with equal jitter and reset for
+each event. The underlying HTTP client's timeout applies to each attempt.
+`MaxRetries` limits retries after the first attempt; the default allows
+six total attempts before dropping an event.
+
+`OnError` runs on the delivery workers, must return promptly, and must not call
+`Close` on the same wrapper. It must support concurrent calls when `Workers` is
+greater than one. Queue-full and closed errors are returned by `SendEvent` and
+do not invoke `OnError`.
+
+During service shutdown, drain accepted events with a fresh context:
+
+```go
+shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+if err := queued.Close(shutdownCtx); err != nil {
+    slog.Error("Audit shutdown interrupted", "error", err)
+}
+```
+
+`Close` stops accepting events and waits for delivery, including retries. If its
+context is canceled, it cancels current HTTP requests and retry waits, returns
+the context error, and lets workers report discarded events as they exit.
+Concurrent or repeated calls wait for completion or cancellation; cancellation
+by any caller stops delivery for all callers, and subsequent calls return the
+original shutdown error. A successful `Close` means processing finished;
+delivery failures are reported through `OnError`.
+
+The queue is held in memory and is lost on a process crash. A retry may duplicate
+an event if the collector accepted a request but its response was lost.
 
 #### Additional Properties
 

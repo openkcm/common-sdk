@@ -33,7 +33,7 @@ func (o *otlpClient) send(ctx context.Context, payload string) error {
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return oops.In(domain).
-			With("status_code", resp.StatusCode).New("response status not OK")
+			With("status_code", resp.StatusCode).Wrap(&httpStatusError{statusCode: resp.StatusCode})
 	}
 
 	return err
