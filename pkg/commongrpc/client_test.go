@@ -1,6 +1,7 @@
 package commongrpc_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -53,6 +54,11 @@ func TestNewPooledClient(t *testing.T) {
 func TestNewPooledClientErrors(t *testing.T) {
 	t.Parallel()
 
+	// The pool settings the config loader applies by default. NewPooledClient
+	// validates them before the rest of the configuration, which is checked
+	// when the pool creates its first connection.
+	defaultPool := commoncfg.GRPCPool{InitialCapacity: 1, MaxCapacity: 1}
+
 	tests := []struct {
 		name    string
 		cfg     func(f *fixture) *commoncfg.GRPCClient
@@ -61,7 +67,7 @@ func TestNewPooledClientErrors(t *testing.T) {
 		{
 			name: "empty address",
 			cfg: func(*fixture) *commoncfg.GRPCClient {
-				return &commoncfg.GRPCClient{}
+				return &commoncfg.GRPCClient{Pool: defaultPool}
 			},
 			wantErr: commongrpc.ErrEmptyAddress,
 		},
@@ -71,6 +77,7 @@ func TestNewPooledClientErrors(t *testing.T) {
 				return &commoncfg.GRPCClient{
 					Address:   "localhost:12345",
 					SecretRef: &commoncfg.SecretRef{Type: "unknown"},
+					Pool:      defaultPool,
 				}
 			},
 			wantErr: commongrpc.ErrUnsupportedSecretType,
@@ -80,8 +87,16 @@ func TestNewPooledClientErrors(t *testing.T) {
 			cfg: func(f *fixture) *commoncfg.GRPCClient {
 				cfg := f.clientConfig("localhost:12345", nil)
 				cfg.SecretRef.MTLS.CertKey = fileRef(f.path("missing.key"))
+				cfg.Pool = defaultPool
 
 				return cfg
+			},
+			wantErr: os.ErrNotExist,
+		},
+		{
+			name: "pool capacity not set",
+			cfg: func(*fixture) *commoncfg.GRPCClient {
+				return &commoncfg.GRPCClient{Address: "localhost:12345"}
 			},
 		},
 		{
