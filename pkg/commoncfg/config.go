@@ -3,7 +3,9 @@
 package commoncfg
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"runtime/debug"
 	"time"
 )
@@ -147,7 +149,7 @@ type LoggerOTel struct {
 type LoggerFields struct {
 	Time    string              `yaml:"time" json:"time" mapstructure:"time" default:"time"`
 	Error   string              `yaml:"error" json:"error" mapstructure:"error" default:"error"`
-	Level   string              `yaml:"level" json:"level" mapstructure:"level" default:"info"`
+	Level   string              `yaml:"level" json:"level" mapstructure:"level" default:"level"`
 	Message string              `yaml:"message" json:"message" mapstructure:"message" default:"msg"`
 	OTel    LoggerOTel          `yaml:"otel" json:"otel" mapstructure:"otel"`
 	Masking LoggerFieldsMasking `yaml:"masking" json:"masking" mapstructure:"masking"`
@@ -380,9 +382,38 @@ type GRPCClientAttributes struct {
 	KeepaliveTime time.Duration `yaml:"keepaliveTime" json:"keepaliveTime" mapstructure:"keepaliveTime" default:"80s"`
 	//  GRPC KeepaliveTimeout option
 	KeepaliveTimeout time.Duration `yaml:"keepaliveTimeout" json:"keepaliveTimeout" mapstructure:"keepaliveTimeout" default:"40s"`
+	// GRPC Methods Retry Options
+	Retry GRPCRetry `yaml:"retry" json:"retry" mapstructure:"retry"`
+}
+
+type GRPCRetry struct {
+	MaxAttempts          int           `yaml:"maxAttempts" json:"maxAttempts" mapstructure:"maxAttempts" default:"3"`
+	InitialBackoff       time.Duration `yaml:"initialBackoff" json:"initialBackoff" mapstructure:"initialBackoff" default:"100ms"`
+	MaxBackoff           time.Duration `yaml:"maxBackoff" json:"maxBackoff" mapstructure:"maxBackoff" default:"1s"`
+	BackoffMultiplier    int           `yaml:"backoffMultiplier" json:"backoffMultiplier" mapstructure:"backoffMultiplier" default:"2"`
+	RetryableStatusCodes []string      `yaml:"retryableStatusCodes" json:"retryableStatusCodes" mapstructure:"retryableStatusCodes" default:"[\"UNAVAILABLE\",\"RESOURCE_EXHAUSTED\"]"`
+}
+
+func (r GRPCRetry) MarshalJSON() ([]byte, error) {
+	type wire struct {
+		MaxAttempts          int      `json:"maxAttempts"`
+		InitialBackoff       string   `json:"initialBackoff"`
+		MaxBackoff           string   `json:"maxBackoff"`
+		BackoffMultiplier    int      `json:"backoffMultiplier"`
+		RetryableStatusCodes []string `json:"retryableStatusCodes"`
+	}
+
+	return json.Marshal(wire{
+		MaxAttempts:          r.MaxAttempts,
+		InitialBackoff:       fmt.Sprintf("%.3fs", r.InitialBackoff.Seconds()),
+		MaxBackoff:           fmt.Sprintf("%.3fs", r.MaxBackoff.Seconds()),
+		BackoffMultiplier:    r.BackoffMultiplier,
+		RetryableStatusCodes: r.RetryableStatusCodes,
+	})
 }
 
 type HTTPClient struct {
+	Log     bool          `yaml:"log" json:"log" mapstructure:"log"`
 	Timeout time.Duration `yaml:"timeout" json:"timeout" mapstructure:"timeout" default:"10s"`
 
 	APIToken            *SourceRef               `yaml:"apiToken" json:"apiToken" mapstructure:"apiToken"`
@@ -390,6 +421,14 @@ type HTTPClient struct {
 	OAuth2Auth          *OAuth2                  `yaml:"oauth2Auth" json:"oauth2Auth" mapstructure:"oauth2Auth"`
 	MTLS                *MTLS                    `yaml:"mtls" json:"mtls" mapstructure:"mtls"`
 	TransportAttributes *HTTPTransportAttributes `yaml:"transportAttributes" json:"transportAttributes" mapstructure:"transportAttributes"`
+	Retry               HTTPRetry                `yaml:"retry" json:"retry" mapstructure:"retry"`
+}
+
+type HTTPRetry struct {
+	MaxAttempts          int           `yaml:"maxAttempts" json:"maxAttempts" mapstructure:"maxAttempts" default:"3"`
+	InitialBackoff       time.Duration `yaml:"initialBackoff" json:"initialBackoff" mapstructure:"initialBackoff" default:"100ms"`
+	MaxBackoff           time.Duration `yaml:"maxBackoff" json:"maxBackoff" mapstructure:"maxBackoff" default:"1s"`
+	RetryableStatusCodes []int         `yaml:"retryableStatusCodes" json:"retryableStatusCodes" mapstructure:"retryableStatusCodes" default:"[429,500,502,503,504]"`
 }
 
 type HTTPTransportAttributes struct {

@@ -1,6 +1,7 @@
 package status_test
 
 import (
+	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -19,7 +20,6 @@ func TestStartDisabled(t *testing.T) {
 
 	// Act
 	err := status.Start(t.Context(), cfg)
-
 	// Assert
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -46,10 +46,18 @@ func TestStartWithInvalidAddress(t *testing.T) {
 
 func TestStart(t *testing.T) {
 	// Arrange
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatalf("failed to get free port: %v", err)
+	}
+
+	addr := ln.Addr().String()
+	ln.Close()
+
 	cfg := &commoncfg.BaseConfig{
 		Status: commoncfg.Status{
 			Enabled:   true,
-			Address:   ":8080",
+			Address:   addr,
 			Profiling: true,
 		},
 		Telemetry: commoncfg.Telemetry{
@@ -96,7 +104,7 @@ func TestStart(t *testing.T) {
 			t.Fatalf("status server did not start within the timeout")
 		}
 
-		resp, err := http.Get("http://localhost:8080/probe/startup")
+		resp, err := http.Get("http://" + addr + "/probe/startup")
 		if err != nil {
 			continue
 		}
@@ -119,7 +127,7 @@ func TestStart(t *testing.T) {
 		"/probe/readiness",
 		"/version",
 	} {
-		resp, err := http.Get("http://localhost:8080" + endpoint)
+		resp, err := http.Get("http://" + addr + endpoint)
 		if err != nil {
 			t.Errorf("failed to get %s: %v", endpoint, err)
 			continue
