@@ -72,8 +72,8 @@ func versionHandlerFunc(cfg *commoncfg.Application) func(w http.ResponseWriter, 
 	type Version struct {
 		commoncfg.BuildInfo `json:",inline"`
 
-		RuntimeBuildInfo *debug.BuildInfo `json:"go_build_settings"`
-		Fips140          *Fips140         `json:"go_fips140"`
+		RuntimeBuildInfo *debug.BuildInfo `json:"go_build_info"`
+		Fips140          *Fips140         `json:"go_fips140_info"`
 	}
 
 	fips140 := &Fips140{
@@ -85,7 +85,7 @@ func versionHandlerFunc(cfg *commoncfg.Application) func(w http.ResponseWriter, 
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		version := Version{
+		version := &Version{
 			cfg.BuildInfo,
 			cfg.RuntimeBuildInfo,
 			fips140,
