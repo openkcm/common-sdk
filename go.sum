@@ -237,8 +237,6 @@ github.com/thomaspoignant/go-feature-flag/modules/core v0.8.0 h1:8ZYWAFaiVfyBLcD
 github.com/thomaspoignant/go-feature-flag/modules/core v0.8.0/go.mod h1:b2a0fpXczt04g+FaK2jSwEKter6Fn5HQvoul3PWtP90=
 github.com/veqryn/slog-context v0.9.0 h1:VNXHBWufRGfKiumi7cYoh7p2iElquZ4v8AnAumFOhEI=
 github.com/veqryn/slog-context v0.9.0/go.mod h1:l953waOLsWW6hArZeJDGGKZYLrsOIPBeJ/QQnOA8RU0=
-github.com/veqryn/slog-context/otel v0.9.0 h1:jGUEZ7dbgFv1ZmngPyOJEYxfeZHWe1YpcL5xoEaMUds=
-github.com/veqryn/slog-context/otel v0.9.0/go.mod h1:eLmCq9MQ0FOEGJEKa2Sz4fiT1xdmr8Z0ZrU2WSnbRBs=
 github.com/vmihailenco/msgpack/v5 v5.4.1 h1:cQriyiUvjTwOHg8QZaPihLWeRAAVoCpE00IUPn0Bjt8=
 github.com/vmihailenco/msgpack/v5 v5.4.1/go.mod h1:GaZTsDaehaPpQVyxrf5mtQlH+pc21PIudVV/E3rRQok=
 github.com/vmihailenco/tagparser/v2 v2.0.0 h1:y09buUbR+b5aycVFQs/g70pqKVZNBmxwAhO7/IwNM9g=

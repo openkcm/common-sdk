@@ -8,6 +8,11 @@ import (
 	"net/http"
 	"slices"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
 	retry "github.com/avast/retry-go/v5"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
@@ -18,14 +23,36 @@ type retryableClient struct {
 	Retry commoncfg.HTTPRetry
 }
 
+// RoundTrip traces the retry operation through the final response headers. The
+// inner HTTP transport owns each attempt's span, metrics and response body.
 func (c *retryableClient) RoundTrip(r *http.Request) (*http.Response, error) {
+	ctx, span := otel.Tracer(instrumentationName).Start(r.Context(), "http.retry", trace.WithSpanKind(trace.SpanKindInternal))
+	defer span.End()
+
+	response, attempts, err := c.roundTrip(r.Clone(ctx))
+	span.SetAttributes(attribute.Int("retry.attempts", attempts))
+
+	if response != nil {
+		span.SetAttributes(attribute.Int("http.response.status_code", response.StatusCode))
+	}
+
+	if err != nil || (response != nil && response.StatusCode >= http.StatusBadRequest) {
+		// Keep arbitrary transport/authentication error text out of this span.
+		span.SetStatus(codes.Error, "HTTP request failed")
+	}
+
+	return response, err
+}
+
+func (c *retryableClient) roundTrip(r *http.Request) (*http.Response, int, error) {
+	attempts := 0
 	// Buffer body upfront so it can be replayed on each attempt.
 	if r.Body != nil && r.Body != http.NoBody && r.GetBody == nil {
 		buf, err := io.ReadAll(r.Body)
 		r.Body.Close()
 
 		if err != nil {
-			return nil, fmt.Errorf("retry: failed to buffer request body: %w", err)
+			return nil, attempts, fmt.Errorf("retry: failed to buffer request body: %w", err)
 		}
 
 		r.GetBody = func() (io.ReadCloser, error) {
@@ -53,6 +80,8 @@ func (c *retryableClient) RoundTrip(r *http.Request) (*http.Response, error) {
 			}
 		}
 
+		attempts++
+
 		resp, err := c.Next.RoundTrip(r)
 		if err != nil {
 			if resp != nil {
@@ -62,14 +91,16 @@ func (c *retryableClient) RoundTrip(r *http.Request) (*http.Response, error) {
 			return err
 		}
 
-		// Close the previous retryable response body before replacing it.
-		if lastResp != nil {
-			lastResp.Body.Close()
-		}
-
 		lastResp = resp
 
 		if slices.Contains(c.Retry.RetryableStatusCodes, resp.StatusCode) {
+			if attempts < c.Retry.MaxAttempts {
+				// End this attempt before backoff. Only the final response is
+				// kept open for the caller, including when retries are exhausted.
+				_ = resp.Body.Close()
+				lastResp = nil
+			}
+
 			return retryableStatusError(resp.StatusCode)
 		}
 
@@ -81,17 +112,17 @@ func (c *retryableClient) RoundTrip(r *http.Request) (*http.Response, error) {
 		// cancelled) surface the error regardless.
 		var statusErr retryableStatusError
 		if lastResp != nil && errors.As(err, &statusErr) {
-			return lastResp, nil
+			return lastResp, attempts, nil
 		}
 
 		if lastResp != nil {
 			lastResp.Body.Close()
 		}
 
-		return nil, err
+		return nil, attempts, err
 	}
 
-	return lastResp, nil
+	return lastResp, attempts, nil
 }
 
 // retryableStatusError signals retry-go to retry for a given HTTP status code.
