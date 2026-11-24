@@ -64,7 +64,7 @@ func TestHTTPClientRetrySpanHierarchyAndMetrics(t *testing.T) {
 		statuses   []int
 		retry      bool
 		wantStatus codes.Code
-		wantErrors int64
+		wantErrors uint64
 	}{
 		{name: "success after retries", statuses: []int{503, 503, 200}, retry: true, wantErrors: 2},
 		{name: "exhausted retries", statuses: []int{503, 503, 503}, retry: true, wantStatus: codes.Error, wantErrors: 3},
@@ -181,53 +181,53 @@ func TestHTTPClientRetrySpanHierarchyAndMetrics(t *testing.T) {
 			var metrics metricdata.ResourceMetrics
 			require.NoError(t, reader.Collect(t.Context(), &metrics))
 
-			var (
-				observations uint64
-				errors       int64
-			)
+			var failedIDs [][]byte
+
+			for _, attempt := range attempts {
+				if attempt.Status.Code == codes.Error {
+					spanID := attempt.SpanContext.SpanID()
+					failedIDs = append(failedIDs, spanID[:])
+				}
+			}
+
+			var observations, failures uint64
 
 			for _, scope := range metrics.ScopeMetrics {
 				for _, m := range scope.Metrics {
-					if m.Name == "http.client.request.errors" {
-						assert.Equal(t, "github.com/openkcm/common-sdk/pkg/commonhttp", scope.Scope.Name)
+					assert.NotEqual(t, "http.client.request.errors", m.Name, "failures are counted from the duration histogram")
 
-						sum, ok := m.Data.(metricdata.Sum[int64])
-						require.True(t, ok)
-
-						for _, point := range sum.DataPoints {
-							errors += point.Value
-							require.NotEmpty(t, point.Exemplars)
-
-							for _, exemplar := range point.Exemplars {
-								var attemptIDs [][]byte
-
-								for _, attempt := range attempts {
-									if attempt.Status.Code == codes.Error {
-										spanID := attempt.SpanContext.SpanID()
-										attemptIDs = append(attemptIDs, spanID[:])
-									}
-								}
-
-								assert.Contains(t, attemptIDs, exemplar.SpanID, "counter exemplars must identify a failed CLIENT span")
-							}
-						}
+					if m.Name != "http.client.request.duration" {
+						continue
 					}
 
-					if m.Name == "http.client.request.duration" {
-						assert.Equal(t, "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp", scope.Scope.Name)
+					assert.Equal(t, "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp", scope.Scope.Name)
 
-						hist, ok := m.Data.(metricdata.Histogram[float64])
+					hist, ok := m.Data.(metricdata.Histogram[float64])
+					require.True(t, ok)
+
+					for _, point := range hist.DataPoints {
+						observations += point.Count
+
+						status, ok := point.Attributes.Value("http.response.status_code")
 						require.True(t, ok)
 
-						for _, point := range hist.DataPoints {
-							observations += point.Count
+						if status.AsInt64() < http.StatusBadRequest {
+							continue
+						}
+
+						failures += point.Count
+
+						require.NotEmpty(t, point.Exemplars)
+
+						for _, exemplar := range point.Exemplars {
+							assert.Contains(t, failedIDs, exemplar.SpanID, "exemplars of failed attempts must identify a failed CLIENT span")
 						}
 					}
 				}
 			}
 
 			assert.EqualValues(t, len(tc.statuses), observations, "HTTP metrics count attempts, not the enclosing operation")
-			assert.Equal(t, tc.wantErrors, errors)
+			assert.Equal(t, tc.wantErrors, failures, "failed attempts are counted by their status code")
 		})
 	}
 }
@@ -257,7 +257,7 @@ func TestHTTPClientRetryClosesResponseBeforeBackoff(t *testing.T) {
 	body := &cancelOnCloseBody{Reader: strings.NewReader("retry response"), cancel: cancel}
 	calls := 0
 	transport := &retryableClient{
-		Next: newTestTelemetryTransport(t, roundTripFunc(func(*http.Request) (*http.Response, error) {
+		Next: newTelemetryTransport(roundTripFunc(func(*http.Request) (*http.Response, error) {
 			calls++
 			return &http.Response{StatusCode: http.StatusServiceUnavailable, Header: http.Header{}, Body: body}, nil
 		})),
@@ -287,7 +287,7 @@ func TestHTTPClientRetryDoesNotReturnDiscardedResponseOnNetworkFailure(t *testin
 	networkErr := errors.New("connection failed")
 	calls := 0
 	transport := &retryableClient{
-		Next: newTestTelemetryTransport(t, roundTripFunc(func(*http.Request) (*http.Response, error) {
+		Next: newTelemetryTransport(roundTripFunc(func(*http.Request) (*http.Response, error) {
 			calls++
 			if calls == 1 {
 				return &http.Response{StatusCode: http.StatusServiceUnavailable, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("discarded"))}, nil

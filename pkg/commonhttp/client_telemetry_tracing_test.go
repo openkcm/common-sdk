@@ -9,6 +9,7 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -60,7 +61,7 @@ func TestHTTPClientPropagationAndSpanLifetime(t *testing.T) {
 
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("sensitive-response-body")), Header: http.Header{}}, nil
 	})}
-	client := &http.Client{Transport: newTestTelemetryTransport(t, base.Transport)}
+	client := &http.Client{Transport: newTelemetryTransport(base.Transport)}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://example.test/introspect?provider=example", strings.NewReader("sensitive-request-body"))
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer sensitive-token")
@@ -87,15 +88,6 @@ func TestHTTPClientPropagationAndSpanLifetime(t *testing.T) {
 	assert.Equal(t, req.URL.String(), attributes["url.full"])
 	assert.Equal(t, http.MethodPost, attributes["http.request.method"])
 	assert.EqualValues(t, http.StatusOK, attributes["http.response.status_code"])
-}
-
-func newTestTelemetryTransport(t *testing.T, next http.RoundTripper) *telemetryTransport {
-	t.Helper()
-
-	transport, err := newTelemetryTransport(next)
-	require.NoError(t, err)
-
-	return transport
 }
 
 // Missing trace hooks would hide network phases; replacing caller hooks would
@@ -199,4 +191,119 @@ func TestHTTPClientTracePhasesAndConnectionReuse(t *testing.T) {
 
 	assert.EqualValues(t, 2, callerWrites.Load())
 	assert.EqualValues(t, 2, callerFirstBytes.Load())
+}
+
+// Unsampled requests get none of our hooks but keep the caller's. httptrace
+// copies the caller's hooks into the trace otelhttp gets, so a trace shared
+// between requests would race here.
+func TestHTTPClientTraceSkipsUnsampledRequests(t *testing.T) {
+	assert.Equal(t, httptrace.ClientTrace{}, *newClientTrace(t.Context()), "no hooks without a recording span")
+	first, second := newClientTrace(t.Context()), newClientTrace(t.Context())
+	assert.NotSame(t, first, second, "each request needs its own trace")
+
+	previous := otel.GetTracerProvider()
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter), sdktrace.WithSampler(sdktrace.NeverSample()))
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() {
+		require.NoError(t, tp.Shutdown(context.Background()))
+		otel.SetTracerProvider(previous)
+	})
+
+	var written atomic.Int32
+
+	ctx := httptrace.WithClientTrace(t.Context(), &httptrace.ClientTrace{
+		WroteRequest: func(httptrace.WroteRequestInfo) { written.Add(1) },
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client, err := NewHTTPClient(&commoncfg.HTTPClient{Timeout: time.Second})
+	require.NoError(t, err)
+
+	const requests = 4
+
+	var wg sync.WaitGroup
+	for range requests {
+		wg.Go(func() {
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+			if !assert.NoError(t, err) {
+				return
+			}
+
+			resp, err := client.Do(req)
+			if !assert.NoError(t, err) {
+				return
+			}
+
+			_, _ = io.Copy(io.Discard, resp.Body)
+			assert.NoError(t, resp.Body.Close())
+		})
+	}
+
+	wg.Wait()
+
+	assert.EqualValues(t, requests, written.Load(), "the caller's hooks must still run")
+	assert.Empty(t, exporter.GetSpans())
+}
+
+// A failed phase must say so on its event, by error type only: the error text
+// may hold addresses or certificate details.
+func TestHTTPClientTracePhaseErrors(t *testing.T) {
+	tlsServer := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	defer tlsServer.Close()
+
+	closedServer := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	closedURL := closedServer.URL
+	closedServer.Close()
+
+	for _, tc := range []struct {
+		name, url, event, wantType, hidden string
+	}{
+		// The default transport does not trust the test server's certificate.
+		{name: "TLS handshake", url: tlsServer.URL, event: "http.tls.done", wantType: "*tls.CertificateVerificationError", hidden: "x509"},
+		{name: "connect", url: closedURL, event: "http.connect.done", wantType: "*net.OpError", hidden: "refused"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, exporter, _ := setupRetryTracing(t)
+
+			client, err := NewHTTPClient(&commoncfg.HTTPClient{Timeout: 5 * time.Second})
+			require.NoError(t, err)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, tc.url, nil)
+			require.NoError(t, err)
+
+			resp, err := client.Do(req)
+			if resp != nil {
+				_ = resp.Body.Close()
+			}
+
+			require.Error(t, err)
+
+			spans := exporter.GetSpans()
+			require.Len(t, spans, 1)
+
+			found := false
+
+			for _, event := range spans[0].Events {
+				for _, attr := range event.Attributes {
+					assert.NotContains(t, attr.Value.String(), tc.hidden, "events must not carry error text")
+				}
+
+				if event.Name != tc.event {
+					continue
+				}
+
+				found = true
+				attrs := attribute.NewSet(event.Attributes...)
+				errorType, ok := attrs.Value("error.type")
+				require.True(t, ok, "%s must carry error.type", tc.event)
+				assert.Equal(t, tc.wantType, errorType.AsString())
+			}
+
+			assert.True(t, found, "expected event %q", tc.event)
+		})
+	}
 }

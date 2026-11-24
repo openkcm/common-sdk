@@ -71,10 +71,37 @@ standard HTTP metrics. The retry operation creates one INTERNAL span named
 status on transport/cancellation failures or a final HTTP status of 400 or higher.
 Its status description is fixed text. It does not inject headers or record HTTP
 metrics. A single telemetry transport delegates tracing and standard metric recording
-to otelhttp, configured with the SDK's global tracer and meter providers. It adds
-the existing **url.path** metric label through a fresh Labeler for each attempt,
-copying caller-supplied labels without mutating the caller's labeler. Query strings
-are not included in this metric label.
+to otelhttp, with the global tracer and meter providers taken when the client is
+built. A client built before telemetry starts still reports to it, through the
+global providers' delegation to the first provider set.
+
+HTTP client metrics carry no URL path. Paths often hold identifiers, and every
+distinct path would add a series to **http.client.request.duration** and
+**http.client.request.body.size** until the SDK's limit of 2000 series per
+instrument sends further measurements to a single overflow series. With the
+Prometheus reader, that state lasts until the process restarts. To break metrics
+down further, add bounded labels, such as **url.template** or an operation name,
+to an **otelhttp.Labeler** in the request context. The client reads that Labeler
+and never modifies it.
+
+The client records no error counter of its own. Failed attempts are counted from
+**http.client.request.duration**, which otelhttp records for every attempt: a
+4xx/5xx response carries **http.response.status_code**, and a transport error
+carries **error.type** instead. For example, the failure rate per server in
+Prometheus:
+
+    sum by (server_address) (
+        rate(http_client_request_duration_seconds_count{http_response_status_code=~"[45].."}[5m])
+      or
+        rate(http_client_request_duration_seconds_count{error_type!=""}[5m])
+    )
+
+**http.client.request.duration** covers each attempt from the telemetry transport
+down: writing the log line (when logging is enabled) and adding credentials are
+included, not only the network exchange. The attempt span's network events
+(**http.dns.start/done**, **http.connect.start/done**, **http.tls.start/done**,
+**http.got_conn**, **http.got_first_response_byte**) separate the two. A failed DNS,
+connect or TLS phase carries **error.type** on its end event, never the error text.
 
 The operation span ends when the retry loop returns the final response headers
 or an error, including time spent in backoff. Attempt spans end at response-body

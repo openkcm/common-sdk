@@ -114,10 +114,7 @@ func NewHTTPClient(cfg *commoncfg.HTTPClient) (*http.Client, error) {
 	}
 
 	// Instrument attempts, including the context used by logging and metrics.
-	client.Transport, err = newTelemetryTransport(client.Transport)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialise HTTP client telemetry: %w", err)
-	}
+	client.Transport = newTelemetryTransport(client.Transport)
 
 	// The retry transport owns the operation span without recording HTTP metrics.
 	if cfg.Retry.MaxAttempts > 0 && len(cfg.Retry.RetryableStatusCodes) > 0 {

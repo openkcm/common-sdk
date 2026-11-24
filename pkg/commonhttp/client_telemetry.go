@@ -9,7 +9,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
@@ -17,85 +16,44 @@ import (
 
 const instrumentationName = "github.com/openkcm/common-sdk/pkg/commonhttp"
 
-// telemetryTransport supplies request-local metric labels and the custom error
-// counter. otelhttp owns standard metrics and attempt spans, ending at body EOF/Close.
-type telemetryTransport struct {
-	transport *otelhttp.Transport
-}
-
-// telemetryRoundTripFunc allows error recording inside otelhttp's attempt span
-// without introducing a second duration or tracing recorder.
-type telemetryRoundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f telemetryRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
-}
-
-func newTelemetryTransport(next http.RoundTripper) (*telemetryTransport, error) {
-	provider := otel.GetMeterProvider()
-
-	errors, err := provider.Meter(instrumentationName).Int64Counter(
-		"http.client.request.errors",
-		metric.WithDescription("Outgoing HTTP requests that resulted in a network error or 4xx/5xx status"),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	if next == nil {
-		next = http.DefaultTransport
-	}
-
-	attempt := telemetryRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-		resp, err := next.RoundTrip(req)
-		if err != nil || (resp != nil && resp.StatusCode >= http.StatusBadRequest) {
-			// Preserve the counter's original labels, including the port in
-			// server.address. Record with the CLIENT span context for exemplars.
-			var host, path string
-			if req.URL != nil {
-				host, path = req.URL.Host, req.URL.Path
-			}
-
-			errors.Add(req.Context(), 1, metric.WithAttributes(
-				semconv.HTTPRequestMethodKey.String(req.Method),
-				semconv.ServerAddress(host),
-				semconv.URLPath(path),
-			))
-		}
-
-		return resp, err
-	})
-
-	return &telemetryTransport{transport: otelhttp.NewTransport(attempt,
+// newTelemetryTransport traces each attempt and records otelhttp's standard HTTP
+// client metrics with the global meter provider. Attempt spans end at
+// response-body EOF or Close.
+//
+// Failed attempts are counted from http.client.request.duration: its
+// http.response.status_code label holds 4xx/5xx responses, and its error.type
+// label transport errors.
+//
+// Metrics carry no URL path: paths often hold identifiers, which would exhaust
+// the SDK's per-instrument series limit. Callers can add bounded labels, such as
+// url.template or an operation name, with an otelhttp.Labeler in the request
+// context. The Labeler is read, never modified.
+func newTelemetryTransport(next http.RoundTripper) *otelhttp.Transport {
+	return otelhttp.NewTransport(next,
+		// Required: without it, otelhttp takes the tracer from the parent span,
+		// and a parent known only from incoming headers has a no-op one, so no
+		// CLIENT span would be recorded.
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()),
-		otelhttp.WithMeterProvider(provider),
 		otelhttp.WithClientTrace(newClientTrace),
-	)}, nil
-}
-
-func (t *telemetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// An incoming server request or another outgoing call may share the caller's
-	// labeler. Copy its labels before adding this attempt's path.
-	labeler := &otelhttp.Labeler{}
-	if inherited, ok := otelhttp.LabelerFromContext(req.Context()); ok {
-		labeler.Add(inherited.Get()...)
-	}
-
-	if req.URL != nil {
-		labeler.Add(semconv.URLPath(req.URL.Path))
-	}
-
-	ctx := otelhttp.ContextWithLabeler(req.Context(), labeler)
-
-	return t.transport.RoundTrip(req.WithContext(ctx))
+		otelhttp.WithMeterProvider(otel.GetMeterProvider()),
+	)
 }
 
 // newClientTrace records network milestones on the attempt span. Their timestamps
 // distinguish network phases from authentication and logging overhead. No headers,
-// bodies or error text are added.
-// Hooks may run concurrently, so only the concurrency-safe span is shared.
+// bodies or error text are added; a failed DNS, connect or TLS phase carries its
+// error.type.
+//
+// Hooks may run concurrently, so only the concurrency-safe span is shared. A dial
+// the transport started for this request may finish after the request took an
+// idle connection; http.connection.reused on http.got_conn tells which applied.
 func newClientTrace(ctx context.Context) *httptrace.ClientTrace {
 	span := trace.SpanFromContext(ctx)
+	if !span.IsRecording() {
+		// No hooks for unsampled requests. otelhttp needs a trace anyway, and
+		// httptrace copies the caller's hooks into it, so it must not be shared.
+		return &httptrace.ClientTrace{}
+	}
 
 	return &httptrace.ClientTrace{
 		GetConn: func(string) {
@@ -109,20 +67,20 @@ func newClientTrace(ctx context.Context) *httptrace.ClientTrace {
 		DNSStart: func(httptrace.DNSStartInfo) {
 			span.AddEvent("http.dns.start")
 		},
-		DNSDone: func(httptrace.DNSDoneInfo) {
-			span.AddEvent("http.dns.done")
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			addPhaseEvent(span, "http.dns.done", info.Err)
 		},
 		ConnectStart: func(string, string) {
 			span.AddEvent("http.connect.start")
 		},
-		ConnectDone: func(string, string, error) {
-			span.AddEvent("http.connect.done")
+		ConnectDone: func(_, _ string, err error) {
+			addPhaseEvent(span, "http.connect.done", err)
 		},
 		TLSHandshakeStart: func() {
 			span.AddEvent("http.tls.start")
 		},
-		TLSHandshakeDone: func(tls.ConnectionState, error) {
-			span.AddEvent("http.tls.done")
+		TLSHandshakeDone: func(_ tls.ConnectionState, err error) {
+			addPhaseEvent(span, "http.tls.done", err)
 		},
 		WroteHeaders: func() {
 			span.AddEvent("http.wrote_headers")
@@ -134,4 +92,16 @@ func newClientTrace(ctx context.Context) *httptrace.ClientTrace {
 			span.AddEvent("http.got_first_response_byte")
 		},
 	}
+}
+
+// addPhaseEvent adds a phase's end event, with the error's type when it failed,
+// as the span's own error.type does.
+func addPhaseEvent(span trace.Span, name string, err error) {
+	if err == nil {
+		span.AddEvent(name)
+
+		return
+	}
+
+	span.AddEvent(name, trace.WithAttributes(semconv.ErrorType(err)))
 }
