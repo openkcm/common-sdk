@@ -2266,3 +2266,247 @@ func TestRequestEvents(t *testing.T) {
 		})
 	}
 }
+
+func TestNewDppDataCreateEvent(t *testing.T) {
+	type args struct {
+		metadata        EventMetadata
+		objectID        string
+		objectType      string
+		dataSubjectID   string
+		dataSubjectType string
+		value           any
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "T3200_DppDataCreate_EmptyObjectID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "",
+				objectType:      "GROUP",
+				dataSubjectID:   "subjectID",
+				dataSubjectType: "USER",
+				value:           "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3201_DppDataCreate_EmptyObjectType_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "validObjectID",
+				objectType:      "",
+				dataSubjectID:   "subjectID",
+				dataSubjectType: "USER",
+				value:           "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3202_DppDataCreate_EmptyDataSubjectID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "validObjectID",
+				objectType:      "GROUP",
+				dataSubjectID:   "",
+				dataSubjectType: "USER",
+				value:           "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3203_DppDataCreate_EmptyDataSubjectType_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "validObjectID",
+				objectType:      "GROUP",
+				dataSubjectID:   "subjectID",
+				dataSubjectType: "",
+				value:           "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3204_DppDataCreate_ValidData_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "validObjectID",
+				objectType:      "GROUP",
+				dataSubjectID:   "subjectID",
+				dataSubjectType: "USER",
+				value:           "testValue",
+			},
+			wantErr: false,
+		},
+		{
+			name: "T3205_DppDataCreate_NilValue_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "validObjectID",
+				objectType:      "GROUP",
+				dataSubjectID:   "subjectID",
+				dataSubjectType: "USER",
+				value:           nil,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewDppDataCreateEvent(tt.args.metadata, tt.args.objectID, tt.args.objectType, tt.args.dataSubjectID, tt.args.dataSubjectType, tt.args.value)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewDppDataCreateEvent() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNewDppDataDeleteEvent(t *testing.T) {
+	type args struct {
+		metadata        EventMetadata
+		objectID        string
+		objectType      string
+		dataSubjectID   string
+		dataSubjectType string
+		value           any
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "T3300_DppDataDelete_EmptyObjectID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "",
+				objectType:      "GROUP",
+				dataSubjectID:   "subjectID",
+				dataSubjectType: "USER",
+				value:           "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3301_DppDataDelete_EmptyObjectType_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "validObjectID",
+				objectType:      "",
+				dataSubjectID:   "subjectID",
+				dataSubjectType: "USER",
+				value:           "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3302_DppDataDelete_EmptyDataSubjectID_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "validObjectID",
+				objectType:      "GROUP",
+				dataSubjectID:   "",
+				dataSubjectType: "USER",
+				value:           "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3303_DppDataDelete_EmptyDataSubjectType_Fail",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "validObjectID",
+				objectType:      "GROUP",
+				dataSubjectID:   "subjectID",
+				dataSubjectType: "",
+				value:           "someValue",
+			},
+			wantErr: true,
+		},
+		{
+			name: "T3304_DppDataDelete_ValidData_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "validObjectID",
+				objectType:      "GROUP",
+				dataSubjectID:   "subjectID",
+				dataSubjectType: "USER",
+				value:           "testValue",
+			},
+			wantErr: false,
+		},
+		{
+			name: "T3305_DppDataDelete_NilValue_Success",
+			args: args{
+				metadata: EventMetadata{
+					UserInitiatorIDKey:    "userInitiatorID",
+					TenantIDKey:           "tenantID",
+					EventCorrelationIDKey: "eventCorrelationID",
+				},
+				objectID:        "validObjectID",
+				objectType:      "GROUP",
+				dataSubjectID:   "subjectID",
+				dataSubjectType: "USER",
+				value:           nil,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewDppDataDeleteEvent(tt.args.metadata, tt.args.objectID, tt.args.objectType, tt.args.dataSubjectID, tt.args.dataSubjectType, tt.args.value)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewDppDataDeleteEvent() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

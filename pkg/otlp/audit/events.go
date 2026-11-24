@@ -462,6 +462,34 @@ func NewAccessGrantedEvent(metadata EventMetadata, resource, action string, valu
 	return createEvent(m)
 }
 
+func NewDppDataCreateEvent(metadata EventMetadata, objectID, objectType, dataSubjectID, dataSubjectType string, value any) (plog.Logs, error) {
+	if !hasValues(objectType, dataSubjectID, dataSubjectType) {
+		return plog.Logs{}, errEventCreation
+	}
+
+	m := newEventProperties(objectID, DppDataCreateEvent, metadata)
+	m[ObjectTypeKey] = objectType
+	m[DataSubjectIDKey] = dataSubjectID
+	m[DataSubjectTypeKey] = dataSubjectType
+	m[ValueKey] = value
+
+	return createEvent(m)
+}
+
+func NewDppDataDeleteEvent(metadata EventMetadata, objectID, objectType, dataSubjectID, dataSubjectType string, value any) (plog.Logs, error) {
+	if !hasValues(objectType, dataSubjectID, dataSubjectType) {
+		return plog.Logs{}, errEventCreation
+	}
+
+	m := newEventProperties(objectID, DppDataDeleteEvent, metadata)
+	m[ObjectTypeKey] = objectType
+	m[DataSubjectIDKey] = dataSubjectID
+	m[DataSubjectTypeKey] = dataSubjectType
+	m[ValueKey] = value
+
+	return createEvent(m)
+}
+
 func NewUnauthenticatedRequestEvent(metadata EventMetadata) (plog.Logs, error) {
 	uid, ok := metadata[UserInitiatorIDKey]
 	if !ok {
@@ -532,6 +560,8 @@ func createEvent(properties eventProperties) (plog.Logs, error) {
 		ValueKey,
 		ResourceKey,
 		ActionKey,
+		DataSubjectIDKey,
+		DataSubjectTypeKey,
 	)
 
 	return logs, nil
