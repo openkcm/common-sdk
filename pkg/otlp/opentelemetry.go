@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"sync"
 	"time"
 
@@ -87,7 +86,9 @@ func WithShutdownComplete(shutdownComplete chan struct{}) Option {
 	}
 }
 
-// Init creates a registry, applies all options and startss the initialization.
+// Init configures W3C propagation and a tracer provider even when span export is
+// disabled. Enabled signals use their configured exporters. Call once at startup
+// and cancel ctx after request processing has drained to flush and stop providers.
 func Init(ctx context.Context,
 	appCfg *commoncfg.Application,
 	telCfg *commoncfg.Telemetry,
@@ -135,41 +136,29 @@ func (reg *registry) init(ctx context.Context) error {
 		return reg.abortInit(err)
 	}
 
-	// Metrics pushed over OTLP need the shutdown below to flush them, also when
-	// Prometheus exposes them too.
-	if reg.telCfg.Traces.Enabled || reg.telCfg.Logs.Enabled ||
-		(reg.telCfg.Metrics.Enabled && reg.telCfg.Metrics.Protocol != "") {
-		otel.SetTextMapPropagator(
-			propagation.NewCompositeTextMapPropagator(
-				propagation.TraceContext{},
-				propagation.Baggage{},
-			),
-		)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{}, propagation.Baggage{},
+	))
 
-		go func() {
-			<-ctx.Done()
+	go func() {
+		<-ctx.Done()
 
-			// revert the default logger from the fan out multi logger to a standard logger
-			slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+		// Stop sending SDK shutdown logs into the exporter being shut down.
+		if reg.loggerProvider != nil {
+			slog.SetDefault(reg.logger)
+		}
 
-			// flush and shutdown all telemetry providers within a timeout
-			shutdownCtx, shutdownRelease := context.WithTimeout(ctx, DefShutdownTimeout)
-			defer shutdownRelease()
+		// Cancellation initiates shutdown; it must not cancel the final export.
+		shutdownCtx, release := context.WithTimeout(context.WithoutCancel(ctx), DefShutdownTimeout)
+		defer release()
 
-			reg.forceFlush(shutdownCtx)
+		reg.forceFlush(shutdownCtx)
+		slogctx.Info(shutdownCtx, "Completed graceful shutdown of telemetries")
 
-			slogctx.Info(ctx, "Completed graceful shutdown of telemetries")
-
-			// signal that the shutdown is complete
-			if reg.shutdownComplete != nil {
-				close(reg.shutdownComplete)
-			}
-		}()
-	} else {
 		if reg.shutdownComplete != nil {
 			close(reg.shutdownComplete)
 		}
-	}
+	}()
 
 	return nil
 }
@@ -177,6 +166,11 @@ func (reg *registry) init(ctx context.Context) error {
 // abortInit is called when an error occurs during initialization.
 // It closes the shutdownComplete channel if it was set, and returns the error.
 func (reg *registry) abortInit(err error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), DefShutdownTimeout)
+	defer cancel()
+
+	reg.forceFlush(ctx)
+
 	if reg.shutdownComplete != nil {
 		close(reg.shutdownComplete)
 	}
@@ -262,39 +256,35 @@ func (reg *registry) initResource(ctx context.Context) error {
 
 // initTrace initializes the OpenTelemetry trace provider for the application.
 func (reg *registry) initTrace(ctx context.Context) error {
-	if !reg.telCfg.Traces.Enabled {
-		return nil
-	}
+	opts := []trace.TracerProviderOption{trace.WithResource(reg.res)}
+	if reg.telCfg.Traces.Enabled {
+		slogctx.Info(ctx, "Starting traces telemetry ...")
 
-	slogctx.Info(ctx, "Starting traces telemetry ...")
+		var (
+			exporter *otlptrace.Exporter
+			err      error
+		)
 
-	var option trace.TracerProviderOption
+		switch reg.telCfg.Traces.Protocol {
+		case commoncfg.GRPCProtocol:
+			exporter, err = initTraceGrpcExporter(ctx, reg.telCfg)
+		case commoncfg.HTTPProtocol:
+			exporter, err = initTraceHTTPExporter(ctx, reg.telCfg)
+		default:
+			return fmt.Errorf("unsupported trace protocol: %s", reg.telCfg.Traces.Protocol)
+		}
 
-	switch reg.telCfg.Traces.Protocol {
-	case commoncfg.GRPCProtocol:
-		exporter, err := initTraceGrpcExporter(ctx, reg.telCfg)
 		if err != nil {
 			return err
 		}
 
-		option = trace.WithBatcher(exporter, trace.WithBatchTimeout(DefBatchTimeout))
-	case commoncfg.HTTPProtocol:
-		exporter, err := initTraceHTTPExporter(ctx, reg.telCfg)
-		if err != nil {
-			return err
-		}
-
-		option = trace.WithBatcher(exporter, trace.WithBatchTimeout(DefBatchTimeout))
+		opts = append(opts, trace.WithBatcher(exporter, trace.WithBatchTimeout(DefBatchTimeout)))
 	}
 
-	reg.traceProvider = trace.NewTracerProvider(
-		option,
-		trace.WithResource(reg.res),
-		trace.WithSampler(trace.AlwaysSample()),
-	)
+	// Use the OTel default sampler: parent decisions are retained and new roots
+	// are sampled. A provider without an exporter still creates correlation IDs.
+	reg.traceProvider = trace.NewTracerProvider(opts...)
 	otel.SetTracerProvider(reg.traceProvider)
-
-	slogctx.Info(ctx, "Started successfully traces telemetry")
 
 	return nil
 }

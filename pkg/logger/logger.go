@@ -10,7 +10,6 @@ import (
 	slogformatter "github.com/samber/slog-formatter"
 	slogmulti "github.com/samber/slog-multi"
 	slogctx "github.com/veqryn/slog-context"
-	slogotel "github.com/veqryn/slog-context/otel"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 )
@@ -171,14 +170,6 @@ func InitHandlerWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app commoncf
 
 	formatters = append(formatters, slogformatter.ErrorFormatter(errorField))
 
-	if strings.TrimSpace(cfgLogger.Formatter.Fields.OTel.TraceID) != "" {
-		slogotel.DefaultKeyTraceID = strings.TrimSpace(cfgLogger.Formatter.Fields.OTel.TraceID)
-	}
-
-	if strings.TrimSpace(cfgLogger.Formatter.Fields.OTel.SpanID) != "" {
-		slogotel.DefaultKeySpanID = strings.TrimSpace(cfgLogger.Formatter.Fields.OTel.SpanID)
-	}
-
 	return slogctx.NewHandler(
 		slogmulti.
 			Pipe(slogformatter.NewFormatterHandler(formatters...)).Handler(handler),
@@ -186,7 +177,7 @@ func InitHandlerWithWriter(w io.Writer, cfgLogger commoncfg.Logger, app commoncf
 			// Prependers will first add the Open Telemetry Traces ID,
 			// then anything else Prepended to the ctx
 			Prependers: []slogctx.AttrExtractor{
-				slogotel.ExtractTraceSpanID,
+				traceSpanIDExtractor(cfgLogger.Formatter.Fields.OTel),
 				slogctx.ExtractPrepended,
 			},
 			// Appenders stays as default (leaving as nil would accomplish the same)
