@@ -499,16 +499,17 @@ type BuildInfo struct {
 }
 
 type Component struct {
-	Branch      string `yaml:"branch,omitempty" json:"branch,omitempty" mapstructure:"branch,omitempty"`
-	Org         string `yaml:"org,omitempty" json:"org,omitempty" mapstructure:"org,omitempty"`
-	Product     string `yaml:"product,omitempty" json:"product,omitempty" mapstructure:"product,omitempty"`
-	Repo        string `yaml:"repo,omitempty" json:"repo,omitempty" mapstructure:"repo,omitempty"`
-	SHA         string `yaml:"sha,omitempty" json:"sha,omitempty" mapstructure:"sha,omitempty"`
-	Version     string `yaml:"version,omitempty" json:"version,omitempty" mapstructure:"version,omitempty"`
-	BuildTime   string `yaml:"buildTime,omitempty" json:"buildTime,omitempty" mapstructure:"buildTime,omitempty"`
-	WrapperSha  string `yaml:"wrapperSha,omitempty" json:"wrapperSha,omitempty" mapstructure:"wrapperSha,omitempty"`
-	WrapperRepo string `yaml:"wrapperRepo,omitempty" json:"wrapperRepo,omitempty" mapstructure:"wrapperRepo,omitempty"`
-	WrapperOrg  string `yaml:"wrapperOrg,omitempty" json:"wrapperOrg,omitempty" mapstructure:"wrapperOrg,omitempty"`
+	Branch        string `yaml:"branch,omitempty" json:"branch,omitempty" mapstructure:"branch,omitempty"`
+	Org           string `yaml:"org,omitempty" json:"org,omitempty" mapstructure:"org,omitempty"`
+	Product       string `yaml:"product,omitempty" json:"product,omitempty" mapstructure:"product,omitempty"`
+	Repo          string `yaml:"repo,omitempty" json:"repo,omitempty" mapstructure:"repo,omitempty"`
+	SHA           string `yaml:"sha,omitempty" json:"sha,omitempty" mapstructure:"sha,omitempty"`
+	Version       string `yaml:"version,omitempty" json:"version,omitempty" mapstructure:"version,omitempty"`
+	BundleVersion string `yaml:"bundleVersion,omitempty" json:"bundleVersion,omitempty" mapstructure:"bundleVersion,omitempty"`
+	BuildTime     string `yaml:"buildTime,omitempty" json:"buildTime,omitempty" mapstructure:"buildTime,omitempty"`
+	WrapperSha    string `yaml:"wrapperSha,omitempty" json:"wrapperSha,omitempty" mapstructure:"wrapperSha,omitempty"`
+	WrapperRepo   string `yaml:"wrapperRepo,omitempty" json:"wrapperRepo,omitempty" mapstructure:"wrapperRepo,omitempty"`
+	WrapperOrg    string `yaml:"wrapperOrg,omitempty" json:"wrapperOrg,omitempty" mapstructure:"wrapperOrg,omitempty"`
 }
 
 // Fips140 holds metadata about the build
