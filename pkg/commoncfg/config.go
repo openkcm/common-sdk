@@ -514,15 +514,15 @@ type Component struct {
 
 // Fips140 holds metadata about the build
 type Fips140 struct {
-	Version  string `json:"version"`
-	Enabled  bool   `json:"enabled"`
-	Enforced bool   `json:"enforced"`
+	Version  string `yaml:"version" json:"version" mapstructure:"version"`
+	Enabled  bool   `yaml:"enabled" json:"enabled" mapstructure:"enabled"`
+	Enforced bool   `yaml:"enforced" json:"enforced" mapstructure:"enforced"`
 }
 
 // Version holds metadata about the build
 type Version struct {
-	BuildInfo `json:",inline"`
+	BuildInfo `yaml:",inline" json:",inline" mapstructure:",squash"`
 
-	RuntimeBuildInfo *debug.BuildInfo `json:"go_build_info"`
-	Fips140          *Fips140         `json:"go_fips140_info"`
+	RuntimeBuildInfo *debug.BuildInfo `yaml:"go_build_info,omitempty" json:"go_build_info,omitempty" mapstructure:"go_build_info,omitempty"`
+	Fips140          *Fips140         `yaml:"go_fips140_info,omitempty" json:"go_fips140_info,omitempty" mapstructure:"go_fips140_info,omitempty"`
 }
