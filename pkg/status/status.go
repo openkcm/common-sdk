@@ -66,9 +66,9 @@ func versionHandlerFunc(cfg *commoncfg.Application) func(w http.ResponseWriter, 
 		w.Header().Set("Content-Type", "application/json")
 
 		info, err := json.Marshal(&commoncfg.Version{
-			cfg.BuildInfo,
-			cfg.RuntimeBuildInfo,
-			&commoncfg.Fips140{
+			BuildInfo:        cfg.BuildInfo,
+			RuntimeBuildInfo: cfg.RuntimeBuildInfo,
+			Fips140: &commoncfg.Fips140{
 				Version:  strings.TrimSpace(fips140.Version()),
 				Enabled:  fips140.Enabled(),
 				Enforced: fips140.Enforced(),
