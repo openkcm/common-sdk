@@ -2,10 +2,12 @@ package status
 
 import (
 	"context"
+	"crypto/fips140"
 	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -63,7 +65,15 @@ func versionHandlerFunc(cfg *commoncfg.Application) func(w http.ResponseWriter, 
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		info, err := json.Marshal(cfg.BuildInfo)
+		info, err := json.Marshal(&commoncfg.Version{
+			BuildInfo:        cfg.BuildInfo,
+			RuntimeBuildInfo: cfg.RuntimeBuildInfo,
+			Fips140: &commoncfg.Fips140{
+				Version:  strings.TrimSpace(fips140.Version()),
+				Enabled:  fips140.Enabled(),
+				Enforced: fips140.Enforced(),
+			},
+		})
 		if err != nil {
 			slogctx.Error(req.Context(), "Failed to marshal application build info", "error", err)
 

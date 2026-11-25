@@ -493,20 +493,36 @@ type HTTPTransportAttributes struct {
 
 // BuildInfo holds metadata about the build
 type BuildInfo struct {
-	Component `yaml:",inline" mapstructure:",squash"`
+	Component `json:",inline" yaml:",inline" mapstructure:",squash"`
 
 	Components []Component `yaml:"components,omitempty" json:"components,omitempty" mapstructure:"components,omitempty"`
 }
 
 type Component struct {
-	Branch      string `yaml:"branch,omitempty" json:"branch,omitempty" mapstructure:"branch,omitempty"`
-	Org         string `yaml:"org,omitempty" json:"org,omitempty" mapstructure:"org,omitempty"`
-	Product     string `yaml:"product,omitempty" json:"product,omitempty" mapstructure:"product,omitempty"`
-	Repo        string `yaml:"repo,omitempty" json:"repo,omitempty" mapstructure:"repo,omitempty"`
-	SHA         string `yaml:"sha,omitempty" json:"sha,omitempty" mapstructure:"sha,omitempty"`
-	Version     string `yaml:"version,omitempty" json:"version,omitempty" mapstructure:"version,omitempty"`
-	BuildTime   string `yaml:"buildTime,omitempty" json:"buildTime,omitempty" mapstructure:"buildTime,omitempty"`
-	WrapperSha  string `yaml:"wrapperSha,omitempty" json:"wrapperSha,omitempty" mapstructure:"wrapperSha,omitempty"`
-	WrapperRepo string `yaml:"wrapperRepo,omitempty" json:"wrapperRepo,omitempty" mapstructure:"wrapperRepo,omitempty"`
-	WrapperOrg  string `yaml:"wrapperOrg,omitempty" json:"wrapperOrg,omitempty" mapstructure:"wrapperOrg,omitempty"`
+	Branch        string `yaml:"branch,omitempty" json:"branch,omitempty" mapstructure:"branch,omitempty"`
+	Org           string `yaml:"org,omitempty" json:"org,omitempty" mapstructure:"org,omitempty"`
+	Product       string `yaml:"product,omitempty" json:"product,omitempty" mapstructure:"product,omitempty"`
+	Repo          string `yaml:"repo,omitempty" json:"repo,omitempty" mapstructure:"repo,omitempty"`
+	SHA           string `yaml:"sha,omitempty" json:"sha,omitempty" mapstructure:"sha,omitempty"`
+	Version       string `yaml:"version,omitempty" json:"version,omitempty" mapstructure:"version,omitempty"`
+	BundleVersion string `yaml:"bundleVersion,omitempty" json:"bundleVersion,omitempty" mapstructure:"bundleVersion,omitempty"`
+	BuildTime     string `yaml:"buildTime,omitempty" json:"buildTime,omitempty" mapstructure:"buildTime,omitempty"`
+	WrapperSha    string `yaml:"wrapperSha,omitempty" json:"wrapperSha,omitempty" mapstructure:"wrapperSha,omitempty"`
+	WrapperRepo   string `yaml:"wrapperRepo,omitempty" json:"wrapperRepo,omitempty" mapstructure:"wrapperRepo,omitempty"`
+	WrapperOrg    string `yaml:"wrapperOrg,omitempty" json:"wrapperOrg,omitempty" mapstructure:"wrapperOrg,omitempty"`
+}
+
+// Fips140 holds metadata about the build
+type Fips140 struct {
+	Version  string `yaml:"version" json:"version" mapstructure:"version"`
+	Enabled  bool   `yaml:"enabled" json:"enabled" mapstructure:"enabled"`
+	Enforced bool   `yaml:"enforced" json:"enforced" mapstructure:"enforced"`
+}
+
+// Version holds metadata about the build
+type Version struct {
+	BuildInfo `yaml:",inline" json:",inline" mapstructure:",squash"`
+
+	RuntimeBuildInfo *debug.BuildInfo `yaml:"go_build_info,omitempty" json:"go_build_info,omitempty" mapstructure:"go_build_info,omitempty"`
+	Fips140          *Fips140         `yaml:"go_fips140_info,omitempty" json:"go_fips140_info,omitempty" mapstructure:"go_fips140_info,omitempty"`
 }
