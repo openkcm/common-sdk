@@ -510,3 +510,18 @@ type Component struct {
 	WrapperRepo string `yaml:"wrapperRepo,omitempty" json:"wrapperRepo,omitempty" mapstructure:"wrapperRepo,omitempty"`
 	WrapperOrg  string `yaml:"wrapperOrg,omitempty" json:"wrapperOrg,omitempty" mapstructure:"wrapperOrg,omitempty"`
 }
+
+// Fips140 holds metadata about the build
+type Fips140 struct {
+	Version  string `json:"version"`
+	Enabled  bool   `json:"enabled"`
+	Enforced bool   `json:"enforced"`
+}
+
+// Version holds metadata about the build
+type Version struct {
+	BuildInfo `json:",inline"`
+
+	RuntimeBuildInfo *debug.BuildInfo `json:"go_build_info"`
+	Fips140          *Fips140         `json:"go_fips140_info"`
+}

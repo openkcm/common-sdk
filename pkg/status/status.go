@@ -7,7 +7,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"runtime/debug"
 	"strings"
 	"time"
 
@@ -63,35 +62,18 @@ func WithCustom(name string, handler func(http.ResponseWriter, *http.Request)) P
 // versionHandlerFunc returns a handler function that writes the version information
 // to the response. This is used in the status server.
 func versionHandlerFunc(cfg *commoncfg.Application) func(w http.ResponseWriter, r *http.Request) {
-	type Fips140 struct {
-		Version  string `json:"version"`
-		Enabled  bool   `json:"enabled"`
-		Enforced bool   `json:"enforced"`
-	}
-
-	type Version struct {
-		commoncfg.BuildInfo `json:",inline"`
-
-		RuntimeBuildInfo *debug.BuildInfo `json:"go_build_info"`
-		Fips140          *Fips140         `json:"go_fips140_info"`
-	}
-
-	fips140 := &Fips140{
-		Version:  strings.TrimSpace(fips140.Version()),
-		Enabled:  fips140.Enabled(),
-		Enforced: fips140.Enforced(),
-	}
-
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		version := &Version{
+		info, err := json.Marshal(&commoncfg.Version{
 			cfg.BuildInfo,
 			cfg.RuntimeBuildInfo,
-			fips140,
-		}
-
-		info, err := json.Marshal(version)
+			&commoncfg.Fips140{
+				Version:  strings.TrimSpace(fips140.Version()),
+				Enabled:  fips140.Enabled(),
+				Enforced: fips140.Enforced(),
+			},
+		})
 		if err != nil {
 			slogctx.Error(req.Context(), "Failed to marshal application build info", "error", err)
 
