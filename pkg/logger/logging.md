@@ -128,10 +128,14 @@ telemetry:
 
 The logs are automatically enriched with:
 
-- `traceId` and `spanId` from OpenTelemetry context
+- `traceId` and `spanId` from any valid OpenTelemetry span context, including unsampled/non-recording contexts, independently of OTLP export
 - `service`, `name`, `environment`, and `labels` from application config
 
 ---
+
+Trace field names are configurable through formatter.fields.otel.traceId and
+formatter.fields.otel.spanId, independently for each handler. See the
+[tracing guide](../otlp/README.md) for initialization, propagation and shutdown.
 
 ## Adding Custom Attributes
 
