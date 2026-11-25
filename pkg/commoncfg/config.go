@@ -493,7 +493,7 @@ type HTTPTransportAttributes struct {
 
 // BuildInfo holds metadata about the build
 type BuildInfo struct {
-	Component `jon:",inline" yaml:",inline" mapstructure:",squash"`
+	Component `json:",inline" yaml:",inline" mapstructure:",squash"`
 
 	Components []Component `yaml:"components,omitempty" json:"components,omitempty" mapstructure:"components,omitempty"`
 }
