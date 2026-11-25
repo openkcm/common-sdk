@@ -48,6 +48,8 @@ const (
 	UnauthorizedRequestEvent    = "unauthorizedRequest"
 	AccessGrantedEvent          = "accessGranted"
 	UnauthenticatedRequestEvent = "unauthenticatedRequest"
+	DppDataCreateEvent          = "dppDataCreate"
+	DppDataDeleteEvent          = "dppDataDelete"
 )
 
 const (
@@ -76,6 +78,8 @@ const (
 	CmkIDNewKey           = "cmkIDNew"
 	ResourceKey           = "resource"
 	ActionKey             = "action"
+	DataSubjectIDKey      = "dataSubjectID"
+	DataSubjectTypeKey    = "dataSubjectType"
 )
 
 const (
