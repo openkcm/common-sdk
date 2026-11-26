@@ -77,22 +77,16 @@ func (b *Builder) FromEnvoyHTTPRequest(r *envoyauth.AttributeContext_HttpRequest
 
 func (b *Builder) fromHeaders(headerMap map[string]string) (string, error) {
 	h := sha256.New()
-	logVals := make([]slog.Attr, 0, len(headerMap)+1)
 
-	for key, val := range headerMap {
+	for _, val := range headerMap {
 		h.Write([]byte(val))
-		logVals = append(logVals, slog.Attr{
-			Key:   key,
-			Value: slog.StringValue(val),
-		})
 	}
 
 	fp := hex.EncodeToString(h.Sum(nil))
-	logVals = append(logVals, slog.Attr{
+	slog.LogAttrs(context.Background(), slog.LevelDebug, "Created fingerprint", slog.Attr{
 		Key:   "fingerprint",
 		Value: slog.StringValue(fp),
 	})
-	slog.LogAttrs(context.Background(), slog.LevelDebug, "Created fingerprint", logVals...)
 
 	return fp, nil
 }
