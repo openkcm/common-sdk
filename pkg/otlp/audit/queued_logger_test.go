@@ -68,7 +68,7 @@ func TestQueuedLogger_T401_RetryThenSuccess(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		if count.Add(1) <= failures {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 
@@ -99,8 +99,8 @@ func TestQueuedLogger_T401_RetryThenSuccess(t *testing.T) {
 		t.Fatalf("expected %d attempts, got %d", failures+1, got)
 	}
 
-	if got := onErrCount.Load(); got != 0 {
-		t.Fatalf("expected no OnError calls, got %d", got)
+	if got := onErrCount.Load(); got != failures {
+		t.Fatalf("expected %d OnError calls, got %d", failures, got)
 	}
 }
 
@@ -111,7 +111,7 @@ func TestQueuedLogger_T402_ExhaustionReportsError(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		count.Add(1)
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
 
@@ -149,12 +149,53 @@ func TestQueuedLogger_T402_ExhaustionReportsError(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if len(gotErrs) != 1 {
-		t.Fatalf("expected 1 OnError call, got %d", len(gotErrs))
+	if len(gotErrs) != maxRetries+1 {
+		t.Fatalf("expected %d OnError calls, got %d", maxRetries+1, len(gotErrs))
 	}
 
-	if gotErrs[0] == nil {
-		t.Fatal("expected non-nil error reported to OnError")
+	for _, err := range gotErrs {
+		if err == nil {
+			t.Fatal("expected non-nil error reported to OnError for every failed attempt")
+		}
+	}
+}
+
+func TestQueuedLogger_NonRetryableHTTPStatus(t *testing.T) {
+	for _, status := range []int{http.StatusBadRequest, http.StatusInternalServerError} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			var count, onErrCount atomic.Int32
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				count.Add(1)
+				w.WriteHeader(status)
+			}))
+			defer srv.Close()
+
+			q := newTestQueuedLogger(t, srv.URL, QueuedOptions{
+				MaxRetries: 2,
+				BaseDelay:  time.Millisecond,
+				MaxDelay:   5 * time.Millisecond,
+				OnError:    func(error) { onErrCount.Add(1) },
+			})
+
+			err := q.SendEvent(newTestEvent(t))
+			if err != nil {
+				t.Fatalf("SendEvent() error = %v", err)
+			}
+
+			err = q.Close(context.Background())
+			if err != nil {
+				t.Fatalf("Close() error = %v", err)
+			}
+
+			if got := count.Load(); got != 1 {
+				t.Fatalf("expected 1 attempt for HTTP %d, got %d", status, got)
+			}
+
+			if got := onErrCount.Load(); got != 1 {
+				t.Fatalf("expected 1 OnError call, got %d", got)
+			}
+		})
 	}
 }
 
@@ -178,14 +219,14 @@ func TestQueuedLogger_T403_QueueFull(t *testing.T) {
 	var rejected bool
 
 	for range 10 {
-		if errors.Is(q.SendEvent(newTestEvent(t)), errQueueFull) {
+		if errors.Is(q.SendEvent(newTestEvent(t)), ErrQueueFull) {
 			rejected = true
 			break
 		}
 	}
 
 	if !rejected {
-		t.Fatal("expected at least one SendEvent to return errQueueFull")
+		t.Fatal("expected at least one SendEvent to return ErrQueueFull")
 	}
 }
 
@@ -203,7 +244,7 @@ func TestQueuedLogger_T404_ClosedLogger(t *testing.T) {
 	}
 
 	err = q.SendEvent(newTestEvent(t))
-	if !errors.Is(err, errLoggerClosed) {
+	if !errors.Is(err, ErrLoggerClosed) {
 		t.Fatalf("expected errLoggerClosed, got %v", err)
 	}
 
