@@ -147,23 +147,23 @@ additionalProperties: |
 | `userLoginFailure`       |           `NewUserLoginFailureEvent(metadata EventMetadata, objectID string, l LoginMethod, f FailReason, value any)`           | 
 | `tenantOnboarding`       |                               `NewTenantOnboardingEvent(metadata EventMetadata, tenantID string)`                               |
 | `tenantOffboarding`      |                              `NewTenantOffboardingEvent(metadata EventMetadata, tenantID string)`                               | 
-| `tenantUpdate`           | `NewTenantUpdateEvent(metadata EventMetadata, objectID, propertyName string, t TenantUpdateActionType, oldValue, newValue any)` | 
+| `tenantUpdate`           |          `NewTenantUpdateEvent(metadata EventMetadata, objectID, propertyName string, oldValue, newValue any)`                  | 
 | `configurationCreate`    |                        `NewConfigurationCreateEvent(metadata EventMetadata, objectID string, value any)`                        | 
-| `configurationRead`      |            `NewConfigurationUpdateEvent(metadata EventMetadata, objectID string, oldValue, newValue any)`         `             |
+| `configurationRead`      |             `NewConfigurationReadEvent(metadata EventMetadata, objectID, channelType, channelID string, value any)`             |
 | `configurationDelete`    |                        `NewConfigurationDeleteEvent(metadata EventMetadata, objectID string, value any)`                        |
-| `configurationUpdate`    |             `NewConfigurationReadEvent(metadata EventMetadata, objectID, channelType, channelID string, value any)`             |
+| `configurationUpdate`    |               `NewConfigurationUpdateEvent(metadata EventMetadata, objectID string, oldValue, newValue any)`                    |
 | `credentialCreate`       |                    `NewCredentialCreateEvent(metadata EventMetadata, credentialID string, c CredentialType)`                    |
 | `credentialExpiration`   |                  `NewCredentialExpirationEvent(metadata EventMetadata, credentialID string, c CredentialType)`                  |
 | `credentialDelete`       |                    `NewCredentialDeleteEvent(metadata EventMetadata, credentialID string, c CredentialType)`                    |
 | `credentialRevokation`   |                  `NewCredentialRevokationEvent(metadata EventMetadata, credentialID string, c CredentialType)`                  |
 | `cmkOnboarding`          |                             `NewCmkOnboardingEvent(metadata EventMetadata, cmkID, systemID string)`                             |
 | `cmkOffboarding`         |                            `NewCmkOffboardingEvent(metadata EventMetadata, cmkID, systemID string)`                             |
-| `cmkSwitch`              |                          `NewCmkSwitchEvent(metadata EventMetadata, cmkID, cmkIDOld, cmkIDNew string)`                          |
+| `cmkSwitch`              |                        `NewCmkSwitchEvent(metadata EventMetadata, systemID, cmkIDOld, cmkIDNew string)`                         |
 | `cmkTenantModification`  |                  `NewCmkTenantModificationEvent(metadata EventMetadata, cmkID, systemID string, c CmkAction)`                   |
 | `cmkTenantDelete`        |                                 `NewCmkTenantDeleteEvent(metadata EventMetadata, cmkID string)`                                 |
 | `cmkCreate`              |                                    `NewCmkCreateEvent(metadata EventMetadata, cmkID string)`                                    |
 | `cmkDelete`              |                                    `NewCmkDeleteEvent(metadata EventMetadata, cmkID string)`                                    |
-| `cmkDetach`              |                           `NewCmkDetachEvent(metadata EventMetadata, cmkID string, systemID string)`                            |
+| `cmkDetach`              |                                    `NewCmkDetachEvent(metadata EventMetadata, cmkID string)`                                    |
 | `cmkRestore`             |                                   `NewCmkRestoreEvent(metadata EventMetadata, cmkID string)`                                    |
 | `cmkEnable`              |                                    `NewCmkEnableEvent(metadata EventMetadata, cmkID string)`                                    |
 | `cmkDisable`             |                                   `NewCmkDisableEvent(metadata EventMetadata, cmkID string)`                                    |
@@ -172,6 +172,8 @@ additionalProperties: |
 | `cmkUnavailable`         |                                 `NewCmkUnavailableEvent(metadata EventMetadata, cmkID string)`                                  |
 | `unauthenticatedRequest` |                                    `NewUnauthenticatedRequestEvent(metadata EventMetadata)`                                     |
 | `unauthorizedRequest`    |                      `NewUnauthorizedRequestEvent(metadata EventMetadata, resource string, action string)`                      |
-| `accessGranted`          |              `NewAccessGrantedEvent(metadata EventMetadata, resource, action string, value any)`                                 |
+| `accessGranted`          |                       `NewAccessGrantedEvent(metadata EventMetadata, resource, action string, value any)`                       |
+| `dppDataCreate`          |   `NewDppDataCreateEvent(metadata EventMetadata, objectID, objectType, dataSubjectID, dataSubjectType string, value any)`       |
+| `dppDataDelete`          |   `NewDppDataDeleteEvent(metadata EventMetadata, objectID, objectType, dataSubjectID, dataSubjectType string, value any)`       |
 
 All the enums in the functions above are provided within this library. For every enum values can be empty (it will be set to `UNSPECIFIED`), but if they are provided they must match the enums defined in this library, otherwise there will be an error. All `*value` properties are optional with the exception of ones present in event types: `tenantUpdate`, `configurationCreate`, `configurationRead`, `configurationDelete` and `configurationUpdate`. All other properties are considered required.

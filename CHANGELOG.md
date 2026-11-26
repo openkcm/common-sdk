@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.23.0 (2026-11-25)
+
+## What's Changed
+* fix(deps): bump the gomod-group group with 2 updates by @dependabot[bot] in https://github.com/openkcm/common-sdk/pull/353
+* fix(deps): bump actions/create-github-app-token from 3.3.0 to 3.4.0 in the actions-group group by @dependabot[bot] in https://github.com/openkcm/common-sdk/pull/356
+* fix(deps): bump the gomod-group group with 2 updates by @dependabot[bot] in https://github.com/openkcm/common-sdk/pull/357
+* feat(audit): add dpp events by @pabloszel11 in https://github.com/openkcm/common-sdk/pull/359
+* feat(telemetry): propagate W3C context and correlate logs by @alienvspredator in https://github.com/openkcm/common-sdk/pull/355
+
+
+**Full Changelog**: https://github.com/openkcm/common-sdk/compare/v1.22.0...v1.23.0
+
 ## 1.22.0 (2026-11-16)
 
 ## What's Changed
