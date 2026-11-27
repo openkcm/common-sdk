@@ -2,6 +2,7 @@ package otlp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -383,54 +384,59 @@ func initTraceHTTPExporter(ctx context.Context, cfg *commoncfg.Telemetry) (*otlp
 	)
 }
 
-// initMetric initializes Prometheus metrics using chosen protocol.
+// initMetric installs the global meter provider with one reader per enabled
+// destination, so the same metrics can be exposed and exported at once:
+//   - metrics.prometheus.enabled: exposed for Prometheus to scrape on the status
+//     server's /metrics endpoint.
+//   - metrics.protocol (grpc or http): pushed periodically to the OTLP
+//     collector.
+//
+// Every measurement reaches each reader, and each reader aggregates on its own,
+// with its own temporality: cumulative for Prometheus, delta for OTLP over HTTP.
 func (reg *registry) initMetric(ctx context.Context) error {
 	if !reg.telCfg.Metrics.Enabled {
 		return nil
 	}
 
-	if reg.telCfg.Metrics.Prometheus.Enabled {
-		prometheusExporter, err := prometheus.New()
-		if err != nil {
-			return err
-		}
-
-		reg.meterProvider = metric.NewMeterProvider(
-			metric.WithResource(reg.res),
-			metric.WithReader(prometheusExporter),
-		)
-		otel.SetMeterProvider(reg.meterProvider)
-
-		return nil
+	if !reg.telCfg.Metrics.Prometheus.Enabled && reg.telCfg.Metrics.Protocol == "" {
+		return errors.New("metrics are enabled without a destination: enable metrics.prometheus or set metrics.protocol")
 	}
 
 	slogctx.Info(ctx, "Starting meters telemetry ...")
 
-	var periodicReader *metric.PeriodicReader
-
-	switch reg.telCfg.Metrics.Protocol {
-	case commoncfg.GRPCProtocol:
-		exporter, err := initMetricGrpcExporter(ctx, reg.telCfg)
-		if err != nil {
-			return err
-		}
-
-		periodicReader = metric.NewPeriodicReader(exporter, metric.WithInterval(DefPeriodicReaderInterval))
-	case commoncfg.HTTPProtocol:
-		exporter, err := initMetricHTTPExporter(ctx, reg.telCfg)
-		if err != nil {
-			return err
-		}
-
-		periodicReader = metric.NewPeriodicReader(exporter, metric.WithInterval(DefPeriodicReaderInterval))
+	opts := []metric.Option{
+		metric.WithResource(reg.res),
+		metric.WithExemplarFilter(exemplar.AlwaysOnFilter),
 	}
 
-	opts := make([]metric.Option, 0, 3)
-	opts = append(opts,
-		metric.WithResource(reg.res),
-		metric.WithReader(periodicReader),
-		metric.WithExemplarFilter(exemplar.AlwaysOnFilter),
-	)
+	var otlpReader metric.Reader
+
+	if reg.telCfg.Metrics.Protocol != "" {
+		var err error
+
+		otlpReader, err = reg.initMetricOTLPReader(ctx)
+		if err != nil {
+			return err
+		}
+
+		opts = append(opts, metric.WithReader(otlpReader))
+	}
+
+	// Created last: the exporter registers itself in the default Prometheus
+	// registry, where it must not be left behind without a meter provider.
+	if reg.telCfg.Metrics.Prometheus.Enabled {
+		prometheusExporter, err := prometheus.New()
+		if err != nil {
+			// The OTLP reader already runs its export loop: stop it.
+			if otlpReader != nil {
+				_ = otlpReader.Shutdown(ctx)
+			}
+
+			return err
+		}
+
+		opts = append(opts, metric.WithReader(prometheusExporter))
+	}
 
 	reg.meterProvider = metric.NewMeterProvider(opts...)
 	otel.SetMeterProvider(reg.meterProvider)
@@ -444,6 +450,30 @@ func (reg *registry) initMetric(ctx context.Context) error {
 	slogctx.Info(ctx, "Started successfully meters telemetry")
 
 	return nil
+}
+
+// initMetricOTLPReader returns a reader pushing metrics to the OTLP collector
+// with the configured protocol.
+func (reg *registry) initMetricOTLPReader(ctx context.Context) (metric.Reader, error) {
+	var (
+		exporter metric.Exporter
+		err      error
+	)
+
+	switch reg.telCfg.Metrics.Protocol {
+	case commoncfg.GRPCProtocol:
+		exporter, err = initMetricGrpcExporter(ctx, reg.telCfg)
+	case commoncfg.HTTPProtocol:
+		exporter, err = initMetricHTTPExporter(ctx, reg.telCfg)
+	default:
+		return nil, fmt.Errorf("unsupported metric protocol: %s", reg.telCfg.Metrics.Protocol)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return metric.NewPeriodicReader(exporter, metric.WithInterval(DefPeriodicReaderInterval)), nil
 }
 
 // initMetricGrpcExporter initializes metrics gRPC exporter.
