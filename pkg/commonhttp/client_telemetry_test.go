@@ -202,14 +202,20 @@ func TestHTTPClientMetricsIgnoreURLPath(t *testing.T) {
 	}
 }
 
-// Labels a caller puts on its Labeler (for example an incoming request's) must
-// reach the client metrics, without the client modifying that Labeler.
+// Labels a caller puts on its client Labeler must reach the client metrics,
+// without the client modifying that Labeler. A server-side Labeler (as set by
+// an otelhttp handler) must not: its http.route belongs to the incoming request.
 func TestHTTPClientMetricsUseCallerLabels(t *testing.T) {
 	reader := setupMetrics(t)
 	caller := &otelhttp.Labeler{}
 	caller.Add(attribute.String("operation", "introspection"))
 	original := caller.Get()
-	ctx := otelhttp.ContextWithLabeler(t.Context(), caller)
+
+	serverSide := &otelhttp.Labeler{}
+	serverSide.Add(attribute.String("http.route", "/incoming/{id}"))
+
+	ctx := otelhttp.ContextWithLabeler(t.Context(), serverSide)
+	ctx = otelhttp.ContextWithClientLabeler(ctx, caller)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/fail" {
@@ -262,6 +268,9 @@ func TestHTTPClientMetricsUseCallerLabels(t *testing.T) {
 
 	for _, point := range collectPoints(t, reader)[durationMetric] {
 		assertAttr(t, point.attrs, "operation", "introspection")
+
+		_, leaked := point.attrs.Value("http.route")
+		assert.False(t, leaked, "server-side labels must not reach client metrics")
 
 		status, ok := point.attrs.Value("http.response.status_code")
 		require.True(t, ok)
