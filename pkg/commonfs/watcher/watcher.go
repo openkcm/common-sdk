@@ -1,51 +1,51 @@
 // Package watcher provides a thin wrapper around fsnotify for watching
-// file system paths. It offers a configurable interface to register event
-// and error handlers, and ensures safe lifecycle management of the watcher.
+// file system paths, with event and error handlers set through options and a
+// safe start and close lifecycle.
 //
-// The Watcher struct is the main type that manages:
-//   - Configured paths to watch
-//   - Event handlers for file changes
-//   - Error handlers for watcher errors
+// A Watcher watches the paths it is given: directories, whose entries are
+// reported, or single files. With WatchSubfolders it also watches every
+// directory below the given directories, including directories created while
+// it runs.
 //
 // Example usage:
 //
-//	events := make(chan fsnotify.Event, 1)
-//	errors := make(chan error, 1)
+//	events := make(chan fsnotify.Event, 16)
+//	errs := make(chan error, 16)
 //
 //	w, err := watcher.Create(
-//	    watcher.OnPath("/tmp"),
+//	    watcher.OnPath("/etc/keys"),
 //	    watcher.WithEventChainAsHandler(events),
-//	    watcher.WithErrorChainAsHandler(errors),
+//	    watcher.WithErrorChainAsHandler(errs),
 //	)
 //	if err != nil {
-//	    log.Fatalf("failed to create watcher: %v", err)
+//	    return err
 //	}
 //
-//	if err := w.Start(); err != nil {
-//	    log.Fatalf("failed to start watcher: %v", err)
+//	err = w.Start()
+//	if err != nil {
+//	    return err
 //	}
+//	defer w.Close()
 //
-//	go func() {
-//	    for {
-//	        select {
-//	        case e := <-events:
-//	            fmt.Println("file event:", e)
-//	        case err := <-errors:
-//	            fmt.Println("watcher error:", err)
-//	        }
+//	for {
+//	    select {
+//	    case e := <-events:
+//	        fmt.Println("file event:", e)
+//	    case err := <-errs:
+//	        fmt.Println("watcher error:", err)
 //	    }
 //	}
-//
-//	defer w.Close()
 package watcher
 
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/fsnotify/fsnotify"
 
@@ -58,15 +58,18 @@ var (
 	ErrNoPathsConfigured = errors.New("no paths has been configured")
 )
 
-// Watcher wraps fsnotify.Watcher and provides higher-level configuration
-// via functional options. It simplifies setting up file system watchers with
-// custom event and error handlers.
+// Watcher wraps fsnotify.Watcher and is configured through options. It calls
+// the event handler for every file system event on the watched paths, and
+// the error handler for every error reported by fsnotify.
 //
-// It tracks its lifecycle (`started`) and ensures consistent behavior
-// when adding paths or starting multiple times.
+// Both handlers are called from a single goroutine of the Watcher, one call
+// at a time, so a slow handler delays the events after it.
+//
+// A Watcher can be started again after Close. Its methods are safe for
+// concurrent use.
 type Watcher struct {
 	startMu        sync.Mutex
-	started        bool
+	started        atomic.Bool
 	paths          map[string]struct{}
 	recursiveWatch bool
 
@@ -80,14 +83,16 @@ type Watcher struct {
 // Option represents a configuration option that can be applied to a Watcher.
 type Option func(*Watcher) error
 
-// OnPath configures the watcher to observe a single path.
+// OnPath configures the watcher to observe a single path. See
+// Watcher.AddPath.
 func OnPath(path string) Option {
 	return func(w *Watcher) error {
 		return w.AddPath(path)
 	}
 }
 
-// OnPaths configures the watcher to observe multiple paths at once.
+// OnPaths configures the watcher to observe multiple paths at once. See
+// Watcher.AddPath.
 func OnPaths(paths ...string) Option {
 	return func(w *Watcher) error {
 		for _, path := range paths {
@@ -101,15 +106,19 @@ func OnPaths(paths ...string) Option {
 	}
 }
 
-// WatchSubfolders enables or disables recursive monitoring of subfolders.
+// WatchSubfolders enables or disables watching the subdirectories of the
+// watched directories.
 //
-// By default, fsnotify does not watch subfolders of a directory automatically.
-// When enabled, this option ensures that all nested directories are included
-// in the watch scope, so events such as file creation, modification, renaming,
-// or deletion inside subdirectories will also be detected.
-// Parameters:
-//   - enabled: set to true to include subfolders in the watch, false to
-//     restrict watching only to the top-level directory.
+// fsnotify only reports changes to the entries of a watched directory, not to
+// the entries of its subdirectories. When enabled, Start watches every
+// directory below the watched directories as well, and a directory created
+// while the watcher runs is watched, together with the directories it
+// contains, before its Create event is passed to the event handler.
+//
+// Files that were created in such a directory before it was watched produce
+// no events of their own; a handler that needs them should list the directory
+// when it receives the directory's Create event. Symbolic links to
+// directories are not followed.
 func WatchSubfolders(enabled bool) Option {
 	return func(w *Watcher) error {
 		w.recursiveWatch = enabled
@@ -126,8 +135,9 @@ func WithEventHandler(handler func(fsnotify.Event)) Option {
 	}
 }
 
-// WithEventChainAsHandler sends all file system events to the provided channel.
-// This is useful for external event processing loops.
+// WithEventChainAsHandler sends all file system events to the provided
+// channel. An event that cannot be sent at once, because the channel is full,
+// is logged and dropped rather than blocking the watcher.
 func WithEventChainAsHandler(eventsCh chan<- fsnotify.Event) Option {
 	return WithEventHandler(func(e fsnotify.Event) {
 		select {
@@ -148,7 +158,8 @@ func WithErrorEventHandler(handler func(error)) Option {
 }
 
 // WithErrorChainAsHandler sends all watcher errors to the provided channel.
-// This is useful for external error handling loops.
+// An error that cannot be sent at once, because the channel is full, is
+// logged and dropped rather than blocking the watcher.
 func WithErrorChainAsHandler(eventsCh chan<- error) Option {
 	return WithErrorEventHandler(func(e error) {
 		select {
@@ -160,7 +171,8 @@ func WithErrorChainAsHandler(eventsCh chan<- error) Option {
 	})
 }
 
-// Create creates a new Watcher with the given options.
+// Create creates a new Watcher with the given options. It does not start
+// watching; call Start for that.
 //
 // Example:
 //
@@ -187,24 +199,15 @@ func Create(opts ...Option) (*Watcher, error) {
 		}
 	}
 
-	if !w.recursiveWatch {
-		return w, nil
-	}
-
-	for path := range w.paths {
-		err := w.addRecursive(path)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return w, nil
 }
 
-// AddPath adds a new path to the watcher. It must be called before Start.
-// If the watcher has already been started, this returns ErrOnStartedStateNotAllowingNewPath.
+// AddPath adds a path to watch: a directory, whose entries are reported, or a
+// single file. The path is made absolute and must exist, otherwise an error
+// is returned.
 //
-// The path must exist on the filesystem, otherwise an error is returned.
+// A path added while the watcher is started is watched from the next Start,
+// after Close.
 func (w *Watcher) AddPath(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -220,22 +223,26 @@ func (w *Watcher) AddPath(path string) error {
 		return fmt.Errorf("path does not exist: %s", absPath)
 	}
 
+	w.startMu.Lock()
+	defer w.startMu.Unlock()
+
 	w.paths[absPath] = struct{}{}
 
 	return nil
 }
 
-// Start initializes the underlying fsnotify.Watcher and begins watching all
-// configured paths. It also launches the event processing goroutine.
+// Start creates the underlying fsnotify.Watcher, watches all configured paths
+// (and, with WatchSubfolders, the directories below them) and starts passing
+// events to the handlers.
 //
-// Returns ErrNoPathsConfigured if no paths were added.
-//
-// After Start, the watcher cannot accept new paths (AddPath will fail).
+// It returns ErrNoPathsConfigured if no paths were added, and an error if a
+// path cannot be watched, for example because it no longer exists; nothing is
+// left running in that case. Calling Start on a started Watcher does nothing.
 func (w *Watcher) Start() error {
 	w.startMu.Lock()
 	defer w.startMu.Unlock()
 
-	if w.IsStarted() {
+	if w.started.Load() {
 		return nil
 	}
 
@@ -243,157 +250,128 @@ func (w *Watcher) Start() error {
 		return ErrNoPathsConfigured
 	}
 
-	if w.watcher != nil {
-		err := w.watcher.Close()
-		if err != nil {
-			return err
-		}
-	}
-
-	// Create new watcher.
-	watcher, err := fsnotify.NewWatcher()
+	fw, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
 	}
 
-	w.watcher = watcher
-
 	for path := range w.paths {
-		err := w.watcher.Add(path)
+		err := w.watch(fw, path)
 		if err != nil {
+			_ = fw.Close()
 			return err
 		}
 	}
 
-	defer func() {
-		w.started = true
-	}()
-
+	w.watcher = fw
 	w.done = make(chan struct{})
-	go w.eventProcessor()
+	w.started.Store(true)
+
+	go w.eventProcessor(fw, w.done)
 
 	return nil
 }
 
-// Close stops the watcher and releases resources.
+// Close stops watching and releases the underlying fsnotify.Watcher. No
+// handler is called after Close returns, except for a call already in
+// progress. Calling Close more than once, or on a Watcher that is not
+// started, is safe.
 func (w *Watcher) Close() error {
 	w.startMu.Lock()
 	defer w.startMu.Unlock()
 
-	if !w.IsStarted() {
+	if !w.started.Load() {
 		return nil
 	}
 
-	defer func() {
-		w.started = false
-		close(w.done)
-	}()
+	w.started.Store(false)
+	close(w.done)
 
 	return w.watcher.Close()
 }
 
+// IsStarted reports whether the Watcher is started.
 func (w *Watcher) IsStarted() bool {
-	return w.started
+	return w.started.Load()
 }
 
-// addRecursive walks the given root directory and adds all of its
-// subdirectories to the watcher, excluding the root directory itself.
-//
-// This is useful when recursive watching is enabled but the caller does
-// not want to include the root folder directly.
-//
-// For example, if root = "/project", the watcher will register:
-//   - /project/subdir1
-//   - /project/subdir2
-//   - /project/subdir2/nested
-//
-// But "/project" itself will not be added.
-func (w *Watcher) addRecursive(root string) error {
-	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+// watch adds root to fw and, with WatchSubfolders, every directory below it.
+func (w *Watcher) watch(fw *fsnotify.Watcher, root string) error {
+	err := fw.Add(root)
+	if err != nil || !w.recursiveWatch {
+		return err
+	}
+
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Skip the root itself
-		if path == root {
+		if path == root || !d.IsDir() {
 			return nil
+		}
+
+		return fw.Add(path)
+	})
+}
+
+// eventProcessor passes the events and errors of fw to the handlers until fw
+// is closed or done is closed. fw and done are those of one Start, so a
+// processor left over from before a restart never reads the new ones.
+func (w *Watcher) eventProcessor(fw *fsnotify.Watcher, done <-chan struct{}) {
+	for {
+		select {
+		case event, ok := <-fw.Events:
+			if !ok {
+				return
+			}
+
+			w.watchNewDirectory(fw, event)
+
+			if w.handler != nil {
+				w.handler(event)
+			}
+
+		case err, ok := <-fw.Errors:
+			if !ok {
+				return
+			}
+
+			if w.errorHandler != nil {
+				w.errorHandler(err)
+			}
+
+		case <-done:
+			return
+		}
+	}
+}
+
+// watchNewDirectory watches a directory created while the watcher runs, and
+// the directories it contains, when WatchSubfolders is enabled. Failures are
+// logged; the event is passed to the handler either way.
+func (w *Watcher) watchNewDirectory(fw *fsnotify.Watcher, event fsnotify.Event) {
+	if !w.recursiveWatch || !event.Has(fsnotify.Create) {
+		return
+	}
+
+	fi, err := os.Lstat(event.Name)
+	if err != nil || !fi.IsDir() {
+		return
+	}
+
+	err = filepath.WalkDir(event.Name, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
 
 		if !d.IsDir() {
 			return nil
 		}
 
-		return w.AddPath(path)
+		return fw.Add(path)
 	})
-}
-
-// eventProcessor is the internal loop that dispatches events and errors
-// to the configured handlers.
-func (w *Watcher) eventProcessor() {
-	for {
-		select {
-		case event, ok := <-w.watcher.Events:
-			if !ok {
-				return
-			}
-
-			if w.processAsDirectory(event) {
-				continue
-			}
-
-			if w.handler == nil {
-				continue
-			}
-
-			w.handler(event)
-
-		case err, ok := <-w.watcher.Errors:
-			if !ok {
-				return
-			}
-
-			if w.errorHandler == nil {
-				continue
-			}
-
-			w.errorHandler(err)
-		case <-w.done:
-			return
-		}
-	}
-}
-
-// processAsDirectory checks whether a given fsnotify event refers to a newly
-// created directory and, if recursive watching is enabled, ensures it is added
-// to the watcher.
-//
-// Behavior:
-//   - If recursive watching is disabled, the method always returns false.
-//   - If the event is a Create operation and the target is a directory,
-//     the method adds the directory and all of its subdirectories to the watcher
-//     via addRecursive.
-//   - Additionally, the newly created directory itself is explicitly registered
-//     with the watcher.
-//   - Any errors during Add are logged as warnings but do not stop execution.
-//
-// Returns true if a directory was successfully identified and processed, or
-// false otherwise.
-func (w *Watcher) processAsDirectory(event fsnotify.Event) bool {
-	if !w.recursiveWatch || !event.Has(fsnotify.Create) {
-		return false
-	}
-
-	fi, err := os.Stat(event.Name)
-	if err != nil || !fi.IsDir() {
-		return false
-	}
-
-	_ = w.addRecursive(event.Name)
-
-	err = w.watcher.Add(event.Name)
 	if err != nil {
-		slog.Warn("Failed to include into watcher new created folder at realtime", "error", err)
+		slog.Warn("failed to watch a new directory", "path", event.Name, "error", err)
 	}
-
-	return true
 }

@@ -65,6 +65,8 @@
 //
 //   - NewServer: Creates and configures a new gRPC server instance.
 //   - NewClient: Creates a single gRPC client connection.
+//   - NewDynamicClientConn: Creates a single gRPC client connection whose mTLS
+//     credentials are reloaded when their files change (see DynamicClientConn).
 //   - NewPooledClient: Initializes a pooled gRPC client.
 //
 // # Function Documentation

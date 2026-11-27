@@ -1,104 +1,112 @@
 package commongrpc_test
 
 import (
-	"context"
-	"net"
-	"sync/atomic"
+	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/test/bufconn"
 
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
 	"github.com/openkcm/common-sdk/pkg/commongrpc"
+	"github.com/openkcm/common-sdk/pkg/grpcpool"
 )
 
-// failingHealthServer returns UNAVAILABLE for the first `failFor` calls, then SERVING.
-type failingHealthServer struct {
-	healthpb.UnimplementedHealthServer
-
-	calls   atomic.Int32
-	failFor int32
+// pooledClient is the kind of client NewPooledClient fills: it keeps the
+// pool it is given.
+type pooledClient struct {
+	pool *grpcpool.Pool
 }
 
-func (s *failingHealthServer) Check(_ context.Context, _ *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
-	n := s.calls.Add(1)
-	if n <= s.failFor {
-		return nil, status.Error(codes.Unavailable, "not ready yet")
-	}
-
-	return &healthpb.HealthCheckResponse{Status: healthpb.HealthCheckResponse_SERVING}, nil
+func (c *pooledClient) SetPool(pool *grpcpool.Pool) {
+	c.pool = pool
 }
 
-// startBufconnServer starts an in-process gRPC server and returns a dial option
-// that routes connections through it.
-func startBufconnServer(t *testing.T, srv healthpb.HealthServer) grpc.DialOption {
-	t.Helper()
-
-	lis := bufconn.Listen(1024 * 1024)
-
-	t.Cleanup(func() { lis.Close() })
-
-	s := grpc.NewServer()
-	healthpb.RegisterHealthServer(s, srv)
-	t.Cleanup(s.Stop)
-
-	go s.Serve(lis) //nolint:errcheck
-
-	return grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-		return lis.DialContext(ctx)
-	})
-}
-
-func TestNewClientRetry(t *testing.T) {
+func TestNewPooledClient(t *testing.T) {
 	t.Parallel()
 
+	f := newFixture(t)
+	srv := f.startServer(t, serverOptions{})
+
+	cfg := f.clientConfig(srv.addr, nil)
+	cfg.Pool = commoncfg.GRPCPool{InitialCapacity: 1, MaxCapacity: 2}
+
+	client := &pooledClient{}
+	require.NoError(t, commongrpc.NewPooledClient(client, cfg, fastReconnect()))
+	require.NotNil(t, client.pool)
+	t.Cleanup(func() { _ = client.pool.Close() })
+
+	// Two connections at once, one created up front and one on demand.
+	for range 2 {
+		conn, err := client.pool.Get(t.Context())
+		require.NoError(t, err)
+
+		t.Cleanup(func() { _ = conn.Close() })
+
+		cn, err := clientCN(t.Context(), healthpb.NewHealthClient(conn.ClientConn))
+		require.NoError(t, err)
+		assert.Equal(t, "client-v1", cn)
+	}
+}
+
+func TestNewPooledClientErrors(t *testing.T) {
+	t.Parallel()
+
+	// The pool settings the config loader applies by default. NewPooledClient
+	// validates them before the rest of the configuration, which is checked
+	// when the pool creates its first connection.
+	defaultPool := commoncfg.GRPCPool{InitialCapacity: 1, MaxCapacity: 1}
+
 	tests := []struct {
-		name          string
-		failFor       int32 // number of calls that return UNAVAILABLE before succeeding
-		retry         commoncfg.GRPCRetry
-		wantErr       bool
-		wantCallCount int32
+		name    string
+		cfg     func(f *fixture) *commoncfg.GRPCClient
+		wantErr error
 	}{
 		{
-			name:          "no retry — fails on first UNAVAILABLE",
-			failFor:       1,
-			retry:         commoncfg.GRPCRetry{},
-			wantErr:       true,
-			wantCallCount: 1,
+			name: "empty address",
+			cfg: func(*fixture) *commoncfg.GRPCClient {
+				return &commoncfg.GRPCClient{Pool: defaultPool}
+			},
+			wantErr: commongrpc.ErrEmptyAddress,
 		},
 		{
-			name:    "retry succeeds after 2 failures",
-			failFor: 2,
-			retry: commoncfg.GRPCRetry{
-				MaxAttempts:          3,
-				InitialBackoff:       10 * time.Millisecond,
-				MaxBackoff:           100 * time.Millisecond,
-				BackoffMultiplier:    2,
-				RetryableStatusCodes: []string{"UNAVAILABLE"},
+			name: "unsupported secret type",
+			cfg: func(*fixture) *commoncfg.GRPCClient {
+				return &commoncfg.GRPCClient{
+					Address:   "localhost:12345",
+					SecretRef: &commoncfg.SecretRef{Type: "unknown"},
+					Pool:      defaultPool,
+				}
 			},
-			wantErr:       false,
-			wantCallCount: 3,
+			wantErr: commongrpc.ErrUnsupportedSecretType,
 		},
 		{
-			name:    "retry exhausted — all attempts fail",
-			failFor: 5,
-			retry: commoncfg.GRPCRetry{
-				MaxAttempts:          3,
-				InitialBackoff:       10 * time.Millisecond,
-				MaxBackoff:           100 * time.Millisecond,
-				BackoffMultiplier:    2,
-				RetryableStatusCodes: []string{"UNAVAILABLE"},
+			name: "credentials that cannot be loaded",
+			cfg: func(f *fixture) *commoncfg.GRPCClient {
+				cfg := f.clientConfig("localhost:12345", nil)
+				cfg.SecretRef.MTLS.CertKey = fileRef(f.path("missing.key"))
+				cfg.Pool = defaultPool
+
+				return cfg
 			},
-			wantErr:       true,
-			wantCallCount: 3,
+			wantErr: os.ErrNotExist,
+		},
+		{
+			name: "pool capacity not set",
+			cfg: func(*fixture) *commoncfg.GRPCClient {
+				return &commoncfg.GRPCClient{Address: "localhost:12345"}
+			},
+		},
+		{
+			name: "initial capacity above the maximum",
+			cfg: func(*fixture) *commoncfg.GRPCClient {
+				return &commoncfg.GRPCClient{
+					Address: "localhost:12345",
+					Pool:    commoncfg.GRPCPool{InitialCapacity: 3, MaxCapacity: 1},
+				}
+			},
 		},
 	}
 
@@ -106,30 +114,70 @@ func TestNewClientRetry(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			cfg := &commoncfg.GRPCClient{
-				Address: "passthrough:///bufconn",
-				Attributes: commoncfg.GRPCClientAttributes{
-					Retry: tt.retry,
-				},
+			client := &pooledClient{}
+
+			err := commongrpc.NewPooledClient(client, tt.cfg(newFixture(t)))
+			require.Error(t, err)
+			assert.Nil(t, client.pool, "no pool may be set on failure")
+
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
 			}
+		})
+	}
+}
 
-			srv := &failingHealthServer{failFor: tt.failFor}
-			conn, err := commongrpc.NewClient(cfg, startBufconnServer(t, srv))
-			require.NoError(t, err)
+func TestNewClientErrors(t *testing.T) {
+	t.Parallel()
 
-			defer conn.Close()
+	f := newFixture(t)
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
+	cfg := f.clientConfig("localhost:12345", nil)
+	cfg.SecretRef.MTLS.CertKey = fileRef(f.path("missing.key"))
 
-			_, callErr := healthpb.NewHealthClient(conn).Check(ctx, &healthpb.HealthCheckRequest{})
-			if tt.wantErr {
-				require.Error(t, callErr)
-			} else {
-				require.NoError(t, callErr)
-			}
+	conn, err := commongrpc.NewClient(cfg)
+	require.Error(t, err)
+	assert.Nil(t, conn)
 
-			assert.Equal(t, tt.wantCallCount, srv.calls.Load())
+	conn, err = commongrpc.NewClient(&commoncfg.GRPCClient{})
+	require.ErrorIs(t, err, commongrpc.ErrEmptyAddress)
+	assert.Nil(t, conn)
+}
+
+func TestNewServerRegistersOptionalServices(t *testing.T) {
+	t.Parallel()
+
+	const (
+		reflectionService = "grpc.reflection.v1.ServerReflection"
+		healthService     = "grpc.health.v1.Health"
+	)
+
+	tests := []struct {
+		name           string
+		flags          commoncfg.Flags
+		wantReflection bool
+		wantHealth     bool
+	}{
+		{name: "no optional service"},
+		{name: "reflection", flags: commoncfg.Flags{Reflection: true}, wantReflection: true},
+		{name: "health", flags: commoncfg.Flags{Health: true}, wantHealth: true},
+		{name: "both", flags: commoncfg.Flags{Reflection: true, Health: true}, wantReflection: true, wantHealth: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := commongrpc.NewServer(t.Context(), &commoncfg.GRPCServer{Flags: tt.flags, MaxRecvMsgSize: 4 << 20})
+			t.Cleanup(srv.Stop)
+
+			services := srv.GetServiceInfo()
+
+			_, hasReflection := services[reflectionService]
+			_, hasHealth := services[healthService]
+
+			assert.Equal(t, tt.wantReflection, hasReflection, "reflection service registered")
+			assert.Equal(t, tt.wantHealth, hasHealth, "health service registered")
 		})
 	}
 }

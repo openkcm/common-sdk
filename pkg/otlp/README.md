@@ -81,8 +81,11 @@ distinct path would add a series to **http.client.request.duration** and
 instrument sends further measurements to a single overflow series. With the
 Prometheus reader, that state lasts until the process restarts. To break metrics
 down further, add bounded labels, such as **url.template** or an operation name,
-to an **otelhttp.Labeler** in the request context. The client reads that Labeler
-and never modifies it.
+to an **otelhttp.Labeler** attached with **otelhttp.ContextWithClientLabeler**.
+The client reads that Labeler and never modifies it. A server-side Labeler,
+attached with **otelhttp.ContextWithLabeler** (for example by an otelhttp
+handler), does not reach client metrics, so an incoming request's
+**http.route** is not copied onto outgoing requests.
 
 The client records no error counter of its own. Failed attempts are counted from
 **http.client.request.duration**, which otelhttp records for every attempt: a

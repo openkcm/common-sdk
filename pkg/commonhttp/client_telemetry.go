@@ -26,8 +26,9 @@ const instrumentationName = "github.com/openkcm/common-sdk/pkg/commonhttp"
 //
 // Metrics carry no URL path: paths often hold identifiers, which would exhaust
 // the SDK's per-instrument series limit. Callers can add bounded labels, such as
-// url.template or an operation name, with an otelhttp.Labeler in the request
-// context. The Labeler is read, never modified.
+// url.template or an operation name, with an otelhttp.Labeler attached by
+// otelhttp.ContextWithClientLabeler. The Labeler is read, never modified. A
+// server-side Labeler (otelhttp.ContextWithLabeler) is not used.
 func newTelemetryTransport(next http.RoundTripper) *otelhttp.Transport {
 	return otelhttp.NewTransport(next,
 		// Required: without it, otelhttp takes the tracer from the parent span,

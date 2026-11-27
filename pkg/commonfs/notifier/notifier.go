@@ -49,8 +49,17 @@ import (
 	"github.com/openkcm/common-sdk/pkg/utils"
 )
 
+// maxCachedEvents is how many events a batch keeps for one watched path.
+// Events keep accumulating as long as they arrive more often than the
+// throttle interval, so without a limit a file changing continuously in a
+// watched directory would make the cache grow without bound.
+const maxCachedEvents = 20048
+
 // Notifier accumulates filesystem events and errors and triggers
 // user-defined callbacks in a rate-limited and batched manner.
+//
+// A batch keeps at most the first 1024 events of each watched path; later
+// events of the same batch are dropped, but the batch is still delivered.
 //
 // It is safe for concurrent use.
 type Notifier struct {
@@ -178,8 +187,9 @@ func WatchSubfolders(enabled bool) Option {
 // ForOperations returns an Option that configures a Notifier to
 // only consider specific filesystem operations for triggering events.
 //
-// The provided operations (ops) are combined into a set. Only events
-// matching one of these operations will be processed by the Notifier.
+// The provided operations (ops) are combined into a set. Only events that
+// include at least one of these operations will be processed by the Notifier;
+// an event may carry several operations at once (for example Write|Chmod).
 //
 // Example:
 //
@@ -322,25 +332,25 @@ func (n *Notifier) IsStarted() bool {
 // onEvent is the internal fsnotify event handler that accumulates events
 // and triggers the configured callbacks based on rate limiting.
 func (n *Notifier) onEvent(event fsnotify.Event) {
-	_, exists := n.operations[event.Op]
-	if !exists {
+	if !n.watchesAnyOf(event.Op) {
 		return
 	}
 
 	n.cacheMu.Lock()
 	defer n.cacheMu.Unlock()
 
-	dir := filepath.Dir(event.Name)
-	for dir != "/" && len(dir) > 1 {
-		_, ok := n.cacheEvents[dir]
-		if !ok {
-			dir = filepath.Dir(dir)
-			continue
+	// Group the event under the watched path it concerns: the path itself
+	// when a single file is watched, otherwise the closest watched directory
+	// above it.
+	for path := event.Name; path != "/" && len(path) > 1; path = filepath.Dir(path) {
+		events, ok := n.cacheEvents[path]
+		if ok {
+			if len(events) < maxCachedEvents {
+				n.cacheEvents[path] = append(events, event)
+			}
+
+			break
 		}
-
-		n.cacheEvents[dir] = append(n.cacheEvents[dir], event)
-
-		break
 	}
 
 	if n.limiter.Allow() {
@@ -350,12 +360,37 @@ func (n *Notifier) onEvent(event fsnotify.Event) {
 	if n.jobSendingEvents != nil {
 		n.jobSendingEvents.Reset(n.interval)
 	} else {
-		n.jobSendingEvents = time.AfterFunc(n.interval, n.sendCachedEvents)
+		n.jobSendingEvents = time.AfterFunc(n.interval, n.flushCachedEvents)
 	}
+}
+
+// flushCachedEvents is run by the throttle timer. It takes cacheMu before
+// sending, because the timer fires on its own goroutine while onEvent may be
+// adding to the same cache.
+func (n *Notifier) flushCachedEvents() {
+	n.cacheMu.Lock()
+	defer n.cacheMu.Unlock()
+
+	n.sendCachedEvents()
+}
+
+// watchesAnyOf reports whether op contains at least one of the configured
+// operations. An event can carry several operations at once: the kqueue
+// backend (macOS, BSD) merges the flags of one kernel event, so a truncate
+// followed by a write can arrive as a single Write|Chmod event.
+func (n *Notifier) watchesAnyOf(op fsnotify.Op) bool {
+	for watched := range n.operations {
+		if op.Has(watched) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // sendCachedEvents sends accumulated events to the configured callback
 // and resets the internal cache. Recovers from panics in user callbacks.
+// The caller must hold cacheMu.
 func (n *Notifier) sendCachedEvents() {
 	defer func() {
 		if err := recover(); err != nil {
@@ -375,6 +410,12 @@ func (n *Notifier) sendCachedEvents() {
 		}
 	}()
 
+	// The throttle timer can fire after the events were already sent; there
+	// is nothing to report then.
+	if !n.hasCachedEvents() {
+		return
+	}
+
 	if n.eventHandler != nil {
 		for path, events := range n.cacheEvents {
 			if len(events) > 0 {
@@ -385,10 +426,21 @@ func (n *Notifier) sendCachedEvents() {
 		return
 	}
 
-	if n.simpleHandler != nil && len(n.cacheEvents) > 0 {
+	if n.simpleHandler != nil {
 		n.simpleHandler()
-		return
 	}
+}
+
+// hasCachedEvents reports whether events are waiting to be sent. The caller
+// must hold cacheMu.
+func (n *Notifier) hasCachedEvents() bool {
+	for _, events := range n.cacheEvents {
+		if len(events) > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 // onError is the internal error handler that accumulates errors
@@ -406,12 +458,22 @@ func (n *Notifier) onError(err error) {
 	if n.jobSendingErrors != nil {
 		n.jobSendingErrors.Reset(n.interval)
 	} else {
-		n.jobSendingErrors = time.AfterFunc(n.interval, n.sendCachedErrors)
+		n.jobSendingErrors = time.AfterFunc(n.interval, n.flushCachedErrors)
 	}
+}
+
+// flushCachedErrors is run by the throttle timer. Like flushCachedEvents, it
+// takes cacheMu so it cannot race with onError.
+func (n *Notifier) flushCachedErrors() {
+	n.cacheMu.Lock()
+	defer n.cacheMu.Unlock()
+
+	n.sendCachedErrors()
 }
 
 // sendCachedErrors sends accumulated errors to the configured error callback
 // and resets the internal cache. Recovers from panics in user callbacks.
+// The caller must hold cacheMu.
 func (n *Notifier) sendCachedErrors() {
 	defer func() {
 		if errRec := recover(); errRec != nil {

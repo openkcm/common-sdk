@@ -1,250 +1,195 @@
-// Package commongrpc provides helpers for creating and managing gRPC clients with
-// support for connection pooling, telemetry, and secure mTLS credential management.
-//
-// One of the core features of this package is the ability to automatically refresh
-// gRPC client connections when underlying TLS certificates or keys are updated on disk.
-// This enables long-lived clients to handle certificate rotation without downtime.
-//
-// Typical usage:
-//
-//	cfg := &commoncfg.GRPCClient{
-//	    Address: "my-grpc-server:443",
-//	    SecretRef: &commoncfg.SecretRef{
-//	        .....
-//	    },
-//	}
-//
-//	client, err := commongrpc.NewDynamicClientConn(cfg, 2*time.Second)
-//	if err != nil {
-//	    log.Fatalf("failed to create grpc client: %v", err)
-//	}
-//	defer client.Close()
-//
-//	grpcConn := client.ClientConn
-//	myService := pb.NewMyServiceClient(grpcConn)
 package commongrpc
 
 import (
-	"log/slog"
-	"path/filepath"
-	"strings"
+	"context"
+	"crypto/tls"
+	"errors"
+	"net"
 	"sync"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/openkcm/common-sdk/pkg/commoncfg"
-	"github.com/openkcm/common-sdk/pkg/commonfs/notifier"
+	"github.com/openkcm/common-sdk/pkg/commontls"
 )
 
-// DynamicClientConn represents a gRPC client connection that automatically
-// refreshes itself when TLS certificate or key files change on disk.
+// DynamicClientConn is a gRPC client connection whose mTLS credentials follow
+// certificate rotation on disk.
 //
-// This is particularly useful for setups where mTLS secrets are rotated
-// frequently (e.g., by a secret manager or service mesh) and the client must
-// always maintain a valid secure connection.
+// It embeds the *grpc.ClientConn to use, which also makes it a
+// grpc.ClientConnInterface, so it can be passed directly to generated client
+// constructors:
 //
-// DynamicClientConn uses fsnotify to watch for file changes in the configured
-// certificate/key/CA paths. When changes are detected, the client connection is
-// torn down and recreated with the latest credentials.
-type DynamicClientConn struct {
-	*grpc.ClientConn
-
-	mu          sync.RWMutex
-	cfg         *commoncfg.GRPCClient
-	dialOptions []grpc.DialOption
-
-	notifier *notifier.Notifier
-}
-
-// NewDynamicClientConn creates a new DynamicClientConn for the given gRPC client
-// configuration. If a SecretRef is configured, the client will automatically
-// watch the certificate, key, and CA file paths for changes. When a change is
-// detected, the gRPC connection is refreshed in place with the latest credentials.
-//
-// The throttleInterval parameter defines how frequently refresh events can be
-// triggered. For example, a throttle interval of 2 seconds ensures that multiple
-// rapid file system events (e.g., a cert + key update) result in only one
-// reconnection attempt.
-//
-// If no SecretRef is provided, the client behaves like a normal static gRPC
-// client connection.
-//
-// Example:
-//
-//	client, err := commongrpc.NewDynamicClientConn(cfg, 2*time.Second)
+//	conn, err := commongrpc.NewDynamicClientConn(cfg, 2*time.Second)
 //	if err != nil {
 //	    return err
 //	}
-//	defer client.Close()
-func NewDynamicClientConn(cfg *commoncfg.GRPCClient, throttleInterval time.Duration, dialOptions ...grpc.DialOption) (*DynamicClientConn, error) {
-	rc := &DynamicClientConn{
-		mu:          sync.RWMutex{},
-		cfg:         cfg,
-		dialOptions: dialOptions,
-	}
+//	defer conn.Close()
+//
+//	client := pb.NewMyServiceClient(conn)
+//
+// The connection is created once and never replaced, so clients built from
+// it, or from conn.ClientConn, stay valid for its whole life, and a rotation
+// never interrupts RPCs or streams in flight.
+//
+// When cfg.SecretRef is of type commoncfg.MTLSSecretType, the transport
+// credentials are backed by a
+// [github.com/openkcm/common-sdk/pkg/commontls.DynamicTLSConfig]: the client
+// certificate (with its intermediates) and the certificate authorities that
+// verify the server are reloaded when their files change, and every new TLS
+// handshake uses the reloaded ones. See that type for which sources are
+// watched, how the server is verified and what happens when a reload fails.
+//
+// A rotation does not tear down connections that are already established:
+// they keep the certificate they were opened with until gRPC opens new ones.
+// gRPC does so when a connection breaks or when the server closes it, which a
+// server does regularly when it sets a maximum connection age
+// (keepalive.ServerParameters.MaxConnectionAge, or MaxConnectionAge in
+// commoncfg.GRPCServer attributes). Set one on the server so that clients move
+// to their rotated certificates within that age.
+//
+// Without mTLS (no SecretRef, or commoncfg.InsecureSecretType) it is a plain
+// client connection and nothing is watched.
+//
+// A DynamicClientConn is safe for concurrent use. Call Close when it is no
+// longer needed.
+type DynamicClientConn struct {
+	*grpc.ClientConn
 
-	if cfg.SecretRef != nil && cfg.SecretRef.Type == commoncfg.MTLSSecretType {
-		err := rc.initAndStartNotifierOnMTLSCredentials(throttleInterval, &cfg.SecretRef.MTLS)
+	tlsConfig *commontls.DynamicTLSConfig // nil without mTLS
+
+	closeOnce sync.Once
+	closeErr  error
+}
+
+// NewDynamicClientConn creates the client connection described by cfg, with
+// the same keepalive parameters, telemetry stats handler and dialOptions as
+// NewClient.
+//
+// If cfg.SecretRef is of type commoncfg.MTLSSecretType, it loads the mTLS
+// credentials and starts watching the directories of their file sources; see
+// DynamicClientConn. throttleInterval groups file changes: a reload runs once
+// no further change has been seen for throttleInterval, so writing a
+// certificate and its key in quick succession causes a single reload.
+// cfg.SecretRef.MTLS is read again on every reload and must not be modified
+// afterwards.
+//
+// The server certificate is verified against the authority gRPC dials, as
+// with NewClient: the value of grpc.WithAuthority, otherwise the server name
+// in the mTLS attributes, otherwise the host of the target, including when
+// that is an IP address. gRPC rejects a grpc.WithAuthority that differs from
+// the server name in the attributes.
+//
+// It returns an error if cfg.Address is empty, if the secret type is not
+// supported, if the credentials cannot be loaded, if a directory to watch
+// does not exist, or if the connection cannot be created. Nothing is left
+// running when it returns an error.
+func NewDynamicClientConn(cfg *commoncfg.GRPCClient, throttleInterval time.Duration, dialOptions ...grpc.DialOption) (*DynamicClientConn, error) {
+	if cfg.SecretRef == nil || cfg.SecretRef.Type != commoncfg.MTLSSecretType {
+		conn, err := NewClient(cfg, dialOptions...)
 		if err != nil {
 			return nil, err
 		}
+
+		return &DynamicClientConn{ClientConn: conn}, nil
 	}
 
-	err := rc.refreshGRPCClientConn()
-	if err != nil {
-		if rc.notifier != nil {
-			_ = rc.notifier.Close()
-		}
+	if cfg.Address == "" {
+		return nil, ErrEmptyAddress
+	}
 
+	tlsConfig, err := commontls.NewDynamicTLSConfig(throttleInterval, &cfg.SecretRef.MTLS)
+	if err != nil {
 		return nil, err
 	}
 
-	return rc, nil
+	creds := &authorityTLSCredentials{
+		TransportCredentials: credentials.NewTLS(tlsConfig.Config),
+		config:               tlsConfig.Config,
+	}
+
+	conn, err := newClient(cfg, creds, dialOptions...)
+	if err != nil {
+		_ = tlsConfig.Close()
+		return nil, err
+	}
+
+	return &DynamicClientConn{ClientConn: conn, tlsConfig: tlsConfig}, nil
 }
 
-// initAndStartNotifierOnMTLSCredentials initializes and starts a file system notifier
-// for the mTLS certificate, key, and optionally the CA files. The notifier triggers
-// events whenever these files change, allowing dynamic refresh of the gRPC client credentials.
-//
-// Parameters:
-//   - throttleInterval: the minimum duration between consecutive notifier callback invocations.
-//   - mtls: the MTLS configuration containing paths to the client certificate, key, and server CA.
-//
-// Returns:
-//   - error: non-nil if the notifier could not be created or started.
-//
-// Behavior:
-//  1. Collects the directories containing the client certificate, key, and server CA (if provided).
-//     Only the directories are monitored, not the individual files directly.
-//  2. Creates a new notifier instance with:
-//     - monitored paths as collected above
-//     - an event handler that triggers DynamicClientConn refresh
-//     - the specified throttle interval
-//     - zero burst number (only rate limiting based on throttle interval)
-//  3. Starts the notifier and stores it in the DynamicClientConn instance.
-//  4. Returns any errors encountered during creation or startup of the notifier.
-func (dcc *DynamicClientConn) initAndStartNotifierOnMTLSCredentials(throttleInterval time.Duration, mtls *commoncfg.MTLS) error {
-	pathMap := map[string]struct{}{}
-
-	certPath := strings.TrimSpace(mtls.Cert.File.Path)
-	if certPath != "" {
-		pathMap[filepath.Dir(certPath)] = struct{}{}
-	}
-
-	keyPath := strings.TrimSpace(mtls.CertKey.File.Path)
-	if keyPath != "" {
-		pathMap[filepath.Dir(keyPath)] = struct{}{}
-	}
-
-	if mtls.ServerCA != nil {
-		caPath := strings.TrimSpace(mtls.ServerCA.File.Path)
-		if caPath != "" {
-			pathMap[filepath.Dir(caPath)] = struct{}{}
-		}
-	}
-
-	for _, ca := range mtls.RootCAs {
-		caPath := strings.TrimSpace(ca.File.Path)
-		if caPath != "" {
-			pathMap[filepath.Dir(caPath)] = struct{}{}
-		}
-	}
-
-	paths := make([]string, 0, len(pathMap))
-	for path := range pathMap {
-		paths = append(paths, path)
-	}
-
-	nt, err := notifier.Create(
-		notifier.OnPaths(paths...),
-		notifier.WithEventHandler(dcc.eventHandler),
-		notifier.WithThrottleInterval(throttleInterval),
-		notifier.WithBurstNumber(0),
-	)
-	if err != nil {
-		return err
-	}
-
-	err = nt.Start()
-	if err != nil {
-		return err
-	}
-
-	dcc.notifier = nt
-
-	return nil
-}
-
-// Close stops the file watcher (if active) and closes the underlying
-// gRPC client connection. After calling Close, the DynamicClientConn
-// must not be reused.
+// Close stops watching the credential files, if any, and closes the
+// underlying client connection, which ends all RPCs and streams on it. Calling
+// Close more than once is safe; later calls return the result of the first.
+// The DynamicClientConn must not be used after Close.
 func (dcc *DynamicClientConn) Close() error {
-	if dcc.notifier == nil {
-		return nil
-	}
+	dcc.closeOnce.Do(func() {
+		var errs []error
 
-	defer func() {
-		dcc.notifier = nil
-	}()
+		if dcc.tlsConfig != nil {
+			errs = append(errs, dcc.tlsConfig.Close())
+		}
 
-	_ = dcc.notifier.Close()
+		if dcc.ClientConn != nil {
+			errs = append(errs, dcc.ClientConn.Close())
+		}
 
-	dcc.mu.Lock()
-	defer dcc.mu.Unlock()
+		dcc.closeErr = errors.Join(errs...)
+	})
 
-	return dcc.ClientConn.Close()
+	return dcc.closeErr
 }
 
-// IsClientConnNil returns true if the underlying ClientConn is nil.
-// It acquires a read (shared) lock so that concurrent readers can check safely.
+// IsClientConnNil reports whether the underlying ClientConn is nil. It is
+// never nil for a DynamicClientConn returned by NewDynamicClientConn.
 func (dcc *DynamicClientConn) IsClientConnNil() bool {
-	dcc.mu.RLock()
-	defer dcc.mu.RUnlock()
-
 	return dcc.ClientConn == nil
 }
 
-// HasClientConn returns true if the underlying ClientConn is non-nil.
-// It acquires a read (shared) lock so that concurrent readers can check safely.
+// HasClientConn reports whether the underlying ClientConn is set. It always is
+// for a DynamicClientConn returned by NewDynamicClientConn.
 func (dcc *DynamicClientConn) HasClientConn() bool {
-	dcc.mu.RLock()
-	defer dcc.mu.RUnlock()
-
 	return dcc.ClientConn != nil
 }
 
-// eventHandler is invoked by the file watcher whenever the certificate,
-// key, or CA file changes. It triggers a refresh of the gRPC client
-// connection with updated credentials.
-func (dcc *DynamicClientConn) eventHandler(path string, _ []fsnotify.Event) {
-	err := dcc.refreshGRPCClientConn()
-	if err != nil {
-		slog.Error("refreshing of dynamic grpc client failed", "watched-path", path, "error", err)
-	} else {
-		slog.Info("refreshing ok for dynamic grpc client", "watched-path", path)
-	}
+// authorityTLSCredentials are the transport credentials of a
+// DynamicClientConn. When its certificate authorities come from files, the
+// server is verified by tls.Config.VerifyConnection against the server name in
+// SNI, and SNI never carries an IP address. ClientHandshake receives the
+// authority gRPC dials, so these credentials pass its host to
+// VerifyConnection when SNI is empty, and a server dialled by IP address is
+// verified against that address, as with static credentials.
+type authorityTLSCredentials struct {
+	credentials.TransportCredentials
+
+	config *tls.Config
 }
 
-// refreshGRPCClientConn closes the existing gRPC connection (if present)
-// and creates a new one using the latest configuration and credentials.
-// If connection creation fails, the existing connection remains unchanged.
-func (dcc *DynamicClientConn) refreshGRPCClientConn() error {
-	newClient, err := NewClient(dcc.cfg, dcc.dialOptions...)
+func (c *authorityTLSCredentials) ClientHandshake(ctx context.Context, authority string, rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	verify := c.config.VerifyConnection
+	if verify == nil {
+		return c.TransportCredentials.ClientHandshake(ctx, authority, rawConn)
+	}
+
+	// The same server name gRPC derives from the authority for the handshake.
+	serverName, _, err := net.SplitHostPort(authority)
 	if err != nil {
-		return err
+		serverName = authority
 	}
 
-	dcc.mu.Lock()
-	defer dcc.mu.Unlock()
+	cfg := c.config.Clone()
+	cfg.VerifyConnection = func(cs tls.ConnectionState) error {
+		if cs.ServerName == "" {
+			cs.ServerName = serverName
+		}
 
-	if dcc.ClientConn != nil {
-		_ = dcc.ClientConn.Close()
-		dcc.ClientConn = nil
+		return verify(cs)
 	}
 
-	dcc.ClientConn = newClient
+	return credentials.NewTLS(cfg).ClientHandshake(ctx, authority, rawConn)
+}
 
-	return nil
+func (c *authorityTLSCredentials) Clone() credentials.TransportCredentials {
+	return &authorityTLSCredentials{TransportCredentials: c.TransportCredentials.Clone(), config: c.config}
 }
